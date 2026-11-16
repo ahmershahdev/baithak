@@ -1,0 +1,196 @@
+/*
+ * Baithak color tokens. Components use only the semantic tokens (second block); the ramps are
+ * the raw material and change only through docs/design.md.
+ *
+ * Light and dark come from one declaration each through light-dark(): the system setting picks
+ * the theme, and data-theme="light" or "dark" on <html> overrides it. Every text and UI pair is
+ * checked by frontend/scripts/check-contrast.mjs against WCAG 2.2 AA.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Sand: warm beige neutrals, the paper of the light theme. */
+  --sand-50: #fbf8f2;
+  --sand-100: #f4ede1;
+  --sand-200: #ebe1cf;
+  --sand-300: #dccdb4;
+  --sand-400: #bfab8c;
+  --sand-500: #9a876b;
+  --sand-600: #725f48;
+  --sand-700: #5e5140;
+  --sand-800: #3f362b;
+  --sand-900: #29231c;
+  --sand-950: #1f1a15;
+
+  /* Kohl: warm charcoal neutrals for the dark theme, never pure black. */
+  --kohl-50: #f3ece0;
+  --kohl-100: #e2d8c8;
+  --kohl-200: #bfb2a0;
+  --kohl-300: #9c8e7c;
+  --kohl-400: #7a6c5f;
+  --kohl-500: #4a4038;
+  --kohl-600: #342d27;
+  --kohl-700: #2b2621;
+  --kohl-800: #221e1a;
+  --kohl-850: #1a1714;
+  --kohl-900: #13110f;
+  --kohl-950: #0d0b0a;
+
+  /* Tomato: the brand red. 700 is the action color in both themes. */
+  --tomato-50: #fff2ee;
+  --tomato-100: #fde6de;
+  --tomato-200: #fbc4b5;
+  --tomato-300: #ffa28a;
+  --tomato-400: #ff8a70;
+  --tomato-500: #f2603f;
+  --tomato-600: #e04527;
+  --tomato-700: #c73a1e;
+  --tomato-800: #9e2d16;
+  --tomato-900: #7a2414;
+  --tomato-950: #3a1a12;
+
+  /* Ember: orange-red, the second accent (issues, highlights in illustration). */
+  --ember-50: #fff4ed;
+  --ember-100: #ffe4d2;
+  --ember-200: #ffc7a3;
+  --ember-300: #ff9a5c;
+  --ember-400: #fb7b33;
+  --ember-500: #ee6214;
+  --ember-600: #d1500c;
+  --ember-700: #b44511;
+  --ember-800: #8c3610;
+  --ember-900: #6a2a0f;
+  --ember-950: #3a1608;
+
+  /* Mustard: warnings, mentions, "away". */
+  --mustard-50: #fdf8e7;
+  --mustard-100: #fbf0cf;
+  --mustard-200: #f6df96;
+  --mustard-300: #e9c150;
+  --mustard-400: #e3b12c;
+  --mustard-500: #c9971a;
+  --mustard-600: #a67a10;
+  --mustard-700: #855f0b;
+  --mustard-800: #6e4e0c;
+  --mustard-900: #4f380c;
+  --mustard-950: #2a1e08;
+
+  /* Emerald: success, "online". */
+  --emerald-50: #f0f9f4;
+  --emerald-100: #ddf2e7;
+  --emerald-200: #b3e3cb;
+  --emerald-300: #5fcb9c;
+  --emerald-400: #36ae7d;
+  --emerald-500: #1e9066;
+  --emerald-600: #177a56;
+  --emerald-700: #146b4c;
+  --emerald-800: #115a41;
+  --emerald-900: #0e3f2f;
+  --emerald-950: #0a2a20;
+
+  /* Garnet: errors and destructive actions; cooler than tomato so the two never read as one. */
+  --garnet-50: #fdf0f3;
+  --garnet-100: #fbdde4;
+  --garnet-200: #f7b6c4;
+  --garnet-300: #f58fa4;
+  --garnet-400: #ff7a93;
+  --garnet-500: #de3a5c;
+  --garnet-600: #c42747;
+  --garnet-700: #af1f3e;
+  --garnet-800: #8a1a33;
+  --garnet-900: #631427;
+  --garnet-950: #3a0c17;
+
+  /* Neel: indigo, for information and links inside messages. */
+  --neel-50: #f1f4fc;
+  --neel-100: #e0e7f8;
+  --neel-200: #c2d0f1;
+  --neel-300: #8fa8ec;
+  --neel-400: #6b8ad9;
+  --neel-500: #4a6cc0;
+  --neel-600: #3d5cad;
+  --neel-700: #34539e;
+  --neel-800: #2a4380;
+  --neel-900: #1f315e;
+  --neel-950: #141f3b;
+}
+
+:root {
+  --bg: light-dark(var(--sand-50), var(--kohl-900));
+  --bg-subtle: light-dark(var(--sand-100), var(--kohl-950));
+  --surface: light-dark(#fffcf7, var(--kohl-800));
+  --surface-raised: light-dark(#ffffff, var(--kohl-700));
+  --surface-sunken: light-dark(var(--sand-200), var(--kohl-950));
+  --overlay: light-dark(rgb(31 26 21 / 0.4), rgb(0 0 0 / 0.6));
+
+  --border: light-dark(var(--sand-200), var(--kohl-600));
+  --border-strong: light-dark(var(--sand-500), var(--kohl-400));
+
+  --text: light-dark(var(--sand-950), var(--kohl-50));
+  --text-muted: light-dark(var(--sand-700), var(--kohl-200));
+  --text-subtle: light-dark(var(--sand-600), var(--kohl-300));
+
+  --accent: var(--tomato-700);
+  --accent-hover: var(--tomato-800);
+  --on-accent: #ffffff;
+  --accent-text: light-dark(var(--tomato-800), var(--tomato-400));
+  --accent-soft: light-dark(var(--tomato-100), var(--tomato-950));
+  --accent-soft-text: light-dark(var(--tomato-800), var(--tomato-200));
+  --focus-ring: light-dark(var(--tomato-600), var(--tomato-500));
+  --selection: light-dark(var(--tomato-100), var(--tomato-950));
+
+  --ember: light-dark(var(--ember-800), var(--ember-300));
+  --ember-soft: light-dark(var(--ember-100), var(--ember-950));
+  --ember-soft-text: light-dark(var(--ember-800), var(--ember-200));
+
+  --success: light-dark(var(--emerald-700), var(--emerald-300));
+  --success-soft: light-dark(var(--emerald-100), var(--emerald-950));
+  --success-soft-text: light-dark(var(--emerald-800), var(--emerald-200));
+
+  --warning: light-dark(var(--mustard-800), var(--mustard-300));
+  --warning-soft: light-dark(var(--mustard-100), var(--mustard-950));
+  --warning-soft-text: light-dark(var(--mustard-800), var(--mustard-200));
+
+  --danger: light-dark(var(--garnet-700), var(--garnet-400));
+  --danger-fill: var(--garnet-700);
+  --on-danger: #ffffff;
+  --danger-soft: light-dark(var(--garnet-100), var(--garnet-950));
+  --danger-soft-text: light-dark(var(--garnet-800), var(--garnet-200));
+
+  --info: light-dark(var(--neel-700), var(--neel-300));
+  --info-soft: light-dark(var(--neel-100), var(--neel-950));
+  --info-soft-text: light-dark(var(--neel-800), var(--neel-200));
+
+  --mention: light-dark(var(--mustard-100), var(--mustard-950));
+  --mention-edge: light-dark(var(--mustard-400), var(--mustard-500));
+  --unread: var(--tomato-700);
+  --on-unread: #ffffff;
+
+  --presence-online: light-dark(var(--emerald-500), var(--emerald-400));
+  --presence-away: light-dark(var(--mustard-600), var(--mustard-400));
+  --presence-busy: light-dark(var(--garnet-600), var(--garnet-500));
+  --presence-offline: light-dark(var(--sand-400), var(--kohl-400));
+
+  /* Shadows are tinted with sand, not grey, so they sit on the beige instead of muddying it. */
+  --shadow-sm: 0 1px 2px light-dark(rgb(63 54 43 / 0.08), rgb(0 0 0 / 0.4));
+  --shadow-md:
+    0 1px 2px light-dark(rgb(63 54 43 / 0.06), rgb(0 0 0 / 0.3)),
+    0 6px 16px -4px light-dark(rgb(63 54 43 / 0.12), rgb(0 0 0 / 0.5));
+  --shadow-lg:
+    0 2px 4px light-dark(rgb(63 54 43 / 0.06), rgb(0 0 0 / 0.3)),
+    0 18px 40px -12px light-dark(rgb(63 54 43 / 0.2), rgb(0 0 0 / 0.6));
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}

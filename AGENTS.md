@@ -15,6 +15,7 @@ Owner: Syed Ahmer Shah, <https://ahmershah.dev>, support@ahmershah.dev. Goes liv
 | Starting a session | [docs/status.md](docs/status.md) |
 | What is done and what is left | [docs/roadmap.md](docs/roadmap.md) |
 | Parts, data model, real-time design, every decision | [docs/architecture.md](docs/architecture.md) |
+| Colors, themes, anything visual | [docs/design.md](docs/design.md) |
 
 ## Stack
 
