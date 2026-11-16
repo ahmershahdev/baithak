@@ -83,6 +83,7 @@ broadcast to the person's other connections so every device agrees.
 | One permission function for REST, sockets, search and notifications | A private message must not leak through a second code path |
 | Soft delete for messages | Threads, reply counts and sequences stay intact; the text is removed |
 | Signed, expiring file links | Files are never public URLs |
+| English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions
 

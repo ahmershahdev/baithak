@@ -67,6 +67,6 @@ the script's list first.
 
 ## Still to decide
 
-- Typefaces for Latin and Urdu (Nastaliq or Naskh for chat text; Nastaliq needs more line height).
+- Typefaces: one display face and one text face, both with tabular figures.
 - Spacing, radius and type scale tokens.
 - Motion: durations and easing, with `prefers-reduced-motion` respected.

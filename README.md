@@ -6,8 +6,7 @@ Baithak (بیٹھک, the room where people sit together and talk) is for small t
 conversations in one app and their work in another, and lose the link between the two. A workspace
 has channels, threads and direct messages that update live, and a small issue tracker where every
 issue can start from a message and keep its discussion in a thread. GitHub pull request events
-arrive in the channel that follows the repository. The app speaks English and Urdu, right to left
-where needed.
+arrive in the channel that follows the repository. The interface is in English.
 
 > Status: planning. Nothing is built yet. See [docs/roadmap.md](docs/roadmap.md) for the
 > milestones and [docs/status.md](docs/status.md) for where the work is.
@@ -35,7 +34,7 @@ where needed.
 | API and real time | Python 3.12, Django 5.2, Django REST Framework, drf-spectacular, Django Channels |
 | Jobs | Celery (email, previews, webhooks, search indexing) |
 | Data | MySQL 8.4 (InnoDB, FULLTEXT search), Redis (channel layer, presence, queue, cache) |
-| Web | React, TypeScript (strict), Vite, Tailwind CSS, TanStack Query, i18next |
+| Web | React, TypeScript (strict), Vite, Tailwind CSS, TanStack Query |
 | Quality | pytest, pytest-asyncio, factory_boy, Vitest, Playwright, Ruff, mypy, ESLint, Prettier, GitHub Actions, CodeQL |
 | Run | Docker Compose |
 

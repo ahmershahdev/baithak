@@ -6,7 +6,8 @@ Last updated: 2026-11-17. Update at the end of every work session.
 
 Planning. The repository, roadmap, architecture draft, rulesets and GitHub milestones are set up.
 Color palette and light/dark tokens are in `frontend/src/styles/tokens.css` with a WCAG contrast
-check (see [design.md](design.md)); no app code yet. Next: M1 (platform skeleton), see
+check (see [design.md](design.md)). The interface is English only; Urdu and right to left are out of
+scope. No app code yet. Next: M1 (platform skeleton), see
 [roadmap.md](roadmap.md).
 
 ## Next session
@@ -22,4 +23,4 @@ check (see [design.md](design.md)); no app code yet. Next: M1 (platform skeleton
 
 - Presence design (see [architecture.md](architecture.md)).
 - Guest permissions and the allowed message formatting.
-- Typefaces for Latin and Urdu, spacing and type scale (see [design.md](design.md)).
+- Typefaces, spacing and type scale (see [design.md](design.md)).

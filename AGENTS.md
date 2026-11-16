@@ -4,7 +4,7 @@ Guide for coding agents and contributors. Short on purpose: details live in `doc
 a task needs them. When a decision changes, update the matching doc in the same PR.
 
 Baithak: real-time team chat (workspaces, channels, threads, direct messages, files, search) with a
-small issue tracker linked to chat threads and GitHub webhooks, in English and Urdu.
+small issue tracker linked to chat threads and GitHub webhooks, in English.
 Owner: Syed Ahmer Shah, <https://ahmershah.dev>, support@ahmershah.dev. Goes live at
 `baithak.ahmershah.dev`.
 
@@ -21,7 +21,7 @@ Owner: Syed Ahmer Shah, <https://ahmershah.dev>, support@ahmershah.dev. Goes liv
 
 Python 3.12, Django 5.2, Django REST Framework, drf-spectacular, Django Channels (ASGI, Daphne or
 Uvicorn), Celery, MySQL 8.4 (utf8mb4, InnoDB, FULLTEXT; never SQLite, even in tests), Redis.
-React, TypeScript (strict), Vite, Tailwind CSS, TanStack Query, i18next. pytest, pytest-asyncio,
+React, TypeScript (strict), Vite, Tailwind CSS, TanStack Query. pytest, pytest-asyncio,
 factory_boy, Vitest, Playwright. Ruff, mypy (strict), ESLint, Prettier. Docker Compose for dev and
 prod.
 
