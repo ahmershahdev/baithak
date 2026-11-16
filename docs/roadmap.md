@@ -21,7 +21,6 @@ in CI, and seed data.
 - [ ] Workspaces, members, roles (owner, admin, member, guest), invitations
 - [ ] Workspace-scoped managers and an access test that runs against every endpoint
 - [ ] Audit log for changes to workspaces, members and roles
-- [ ] English and Urdu in the app shell, right to left for Urdu
 
 ## M2. Channels and live messages (target 2026-12-27)
 
