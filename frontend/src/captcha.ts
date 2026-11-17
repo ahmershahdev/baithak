@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 import { api } from "./api/client";
 
@@ -8,7 +8,13 @@ interface Grecaptcha {
   execute(siteKey: string, options: { action: string }): Promise<string>;
   render(
     container: HTMLElement,
-    options: { sitekey: string; callback: (token: string) => void; "expired-callback": () => void },
+    options: {
+      sitekey: string;
+      theme: "light" | "dark";
+      callback: (token: string) => void;
+      "expired-callback": () => void;
+      "error-callback": () => void;
+    },
   ): number;
   reset(widget?: number): void;
 }
@@ -48,6 +54,13 @@ function loadScript(v3Key: string): Promise<Grecaptcha> {
   });
 }
 
+/** The theme the page is showing: the data-theme override, else the system setting. */
+function pageTheme(): "light" | "dark" {
+  const chosen = document.documentElement.dataset.theme;
+  if (chosen === "light" || chosen === "dark") return chosen;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 function useAuthConfig() {
   return useQuery({
     queryKey: ["auth-config"],
@@ -73,12 +86,49 @@ export function useCaptcha(action: string, box: RefObject<HTMLDivElement | null>
   const widget = useRef<number | null>(null);
   const [v2Token, setV2Token] = useState<string | null>(null);
   const [challenged, setChallenged] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const v3Key = config.data?.recaptcha_v3_site_key ?? "";
   const v2Key = config.data?.recaptcha_v2_site_key ?? "";
 
+  // The checkbox is drawn only after React has shown its container: reCAPTCHA measures the
+  // box when it renders, and inside a display:none parent it comes out blank or squashed.
+  useEffect(() => {
+    if (!challenged || !v2Key || widget.current !== null) return;
+    let cancelled = false;
+    loadScript(v3Key)
+      .then((grecaptcha) => {
+        if (cancelled || !box.current || widget.current !== null) return;
+        widget.current = grecaptcha.render(box.current, {
+          sitekey: v2Key,
+          theme: pageTheme(),
+          callback: (token) => {
+            setV2Token(token);
+          },
+          "expired-callback": () => {
+            setV2Token(null);
+          },
+          "error-callback": () => {
+            setFailed(true);
+          },
+        });
+      })
+      .catch(() => {
+        setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [box, challenged, v2Key, v3Key]);
+
   const tokens = useCallback(async (): Promise<CaptchaFields> => {
-    if (v2Token) return { captcha_v2: v2Token };
+    if (v2Token) {
+      // Google accepts a checkbox token once. Clear it and untick the box now, so a retry
+      // after a wrong password asks for a fresh tick instead of failing the person check.
+      setV2Token(null);
+      if (widget.current !== null) window.grecaptcha?.reset(widget.current);
+      return { captcha_v2: v2Token };
+    }
     if (!v3Key) return {};
     try {
       const grecaptcha = await loadScript(v3Key);
@@ -89,26 +139,19 @@ export function useCaptcha(action: string, box: RefObject<HTMLDivElement | null>
     }
   }, [action, v2Token, v3Key]);
 
-  const challenge = useCallback(async () => {
-    setChallenged(true);
+  const challenge = useCallback(() => {
     setV2Token(null);
-    if (!v2Key) return;
-    const grecaptcha = await loadScript(v3Key);
-    if (widget.current !== null) {
-      grecaptcha.reset(widget.current);
-      return;
-    }
-    if (!box.current) return;
-    widget.current = grecaptcha.render(box.current, {
-      sitekey: v2Key,
-      callback: (token) => {
-        setV2Token(token);
-      },
-      "expired-callback": () => {
-        setV2Token(null);
-      },
-    });
-  }, [box, v2Key, v3Key]);
+    setFailed(false);
+    if (widget.current !== null) window.grecaptcha?.reset(widget.current);
+    setChallenged(true);
+  }, []);
 
-  return { tokens, challenge, challenged, solved: v2Token !== null };
+  return {
+    tokens,
+    challenge,
+    challenged,
+    solved: v2Token !== null,
+    failed,
+    enabled: Boolean(v3Key || v2Key),
+  };
 }

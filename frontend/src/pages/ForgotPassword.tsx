@@ -3,7 +3,7 @@ import { useRef, useState, type SubmitEvent } from "react";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
 import { useCaptcha } from "../captcha";
-import { CaptchaBox } from "../components/CaptchaBox";
+import { CaptchaBox, CaptchaNotice } from "../components/CaptchaBox";
 import {
   AuthLayout,
   Button,
@@ -33,7 +33,7 @@ export function ForgotPassword() {
       }
       const problems = readErrors(error);
       setErrors(problems);
-      if (problems.captcha) void captcha.challenge();
+      if (problems.captcha) captcha.challenge();
     },
     onError: () => {
       setErrors({ detail: "Could not reach Baithak. Try again.", fields: {} });
@@ -70,10 +70,16 @@ export function ForgotPassword() {
             errors={errors.fields.email}
           />
           <Honeypot />
-          <CaptchaBox box={captchaBox} challenged={captcha.challenged} solved={captcha.solved} />
+          <CaptchaBox
+            box={captchaBox}
+            challenged={captcha.challenged}
+            solved={captcha.solved}
+            failed={captcha.failed}
+          />
           <Button type="submit" busy={request.isPending} busyLabel="Sending the link">
             Send reset link
           </Button>
+          {captcha.enabled && <CaptchaNotice />}
         </form>
       )}
       <p className="mt-6 text-text-muted">

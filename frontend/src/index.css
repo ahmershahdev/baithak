@@ -80,6 +80,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Browsers paint autofilled fields their own blue or yellow; keep them on the page colors.
+   The inset shadow covers the autofill background, which can't be set directly; Tailwind's
+   ring shadows are layered on top so the focus ring still shows. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    0 0 0 1000px var(--bg) inset;
+  transition: background-color 9999s;
+}
+
+/* The floating reCAPTCHA v3 badge would cover the page corner; forms show Google's notice in
+   its place (CaptchaNotice), which the reCAPTCHA FAQ allows. */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
 /* Fraunces at its softest, with the wonky letterforms: headings and the wordmark. */
 .wonky {
   font-variation-settings:
