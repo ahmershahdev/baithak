@@ -1,3 +1,5 @@
+from smtplib import SMTPException
+
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
@@ -6,6 +8,8 @@ from apps.accounts.models import User
 from apps.accounts.tokens import email_verification_token, encode_uid, password_reset_token
 
 # Tasks take a user id and make the token themselves, so no token passes through the broker.
+# A failed send (Resend down, timeout) is retried with backoff; a retry builds a fresh token.
+email_task = shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=5)
 
 
 def _link(path: str, user: User, token: str) -> str:
@@ -16,7 +20,7 @@ def _active_user(user_id: int) -> User | None:
     return User.objects.filter(pk=user_id, is_active=True).first()
 
 
-@shared_task
+@email_task
 def send_verification_email(user_id: int) -> None:
     user = _active_user(user_id)
     if user is None or user.email_verified:
@@ -31,7 +35,7 @@ def send_verification_email(user_id: int) -> None:
     )
 
 
-@shared_task
+@email_task
 def send_password_reset_email(user_id: int) -> None:
     user = _active_user(user_id)
     if user is None:
@@ -46,7 +50,7 @@ def send_password_reset_email(user_id: int) -> None:
     )
 
 
-@shared_task
+@email_task
 def send_account_exists_email(user_id: int) -> None:
     user = _active_user(user_id)
     if user is None:

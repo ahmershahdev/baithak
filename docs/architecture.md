@@ -93,6 +93,7 @@ broadcast to the person's other connections so every device agrees.
 | Sign in with email; `username` is the @handle | Email is what people remember; the handle (lowercase, 2 to 30 of `a-z 0-9 . _ -`) is what mentions match |
 | Sign-up and password reset answer the same for known and unknown emails | The API can't be used to find out who has an account; the owner of a taken email gets a mail instead |
 | Email links carry `uid` and a token built from the account's state | Verification and reset links stop working once used, with no token table; they expire after a day |
+| Email through Resend's SMTP relay | Django's own SMTP backend, so no SDK dependency; the API key is the SMTP password, and without one development prints mail to the worker log |
 | Celery email tasks take a user id, not a token | No usable secret passes through the broker |
 | `backend/openapi.yaml` and `frontend/src/api/schema.d.ts` are committed and CI checks both | API changes show up in review, and the web app can't drift from the API |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |

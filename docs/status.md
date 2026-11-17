@@ -20,7 +20,8 @@ M1 in progress. Merged so far:
   and TypeScript 6.0.
 - Accounts API under `/api/v1/auth/`: CSRF cookie, sign up, sign in (by email), sign out, `me`,
   email verification with resend, password reset. Session auth; CSRF also on anonymous calls;
-  `auth` throttle 10 per minute; email sent from Celery. `backend/openapi.yaml` and
+  `auth` throttle 10 per minute; email sent from Celery through Resend SMTP (from
+  `no-reply@ahmershah.dev`, verified in Resend), retried with backoff. `backend/openapi.yaml` and
   `frontend/src/api/schema.d.ts` are generated and checked in CI.
 
 ## Next session
