@@ -109,6 +109,9 @@ def test_member_cannot_reach_a_person_in_another_workspace(
 
     path = f"/api/v1/workspaces/mine/members/{stranger.user_id}/"
 
-    assert api.patch(path, {"role": "guest"}, format="json").status_code == 404
-    assert api.delete(path).status_code == 404
+    patched = api.patch(path, {"role": "guest"}, format="json")
+    deleted = api.delete(path)
+
+    assert patched.status_code == 404
+    assert deleted.status_code == 404
     assert Member.objects.for_workspace(workspace).get().role == Role.OWNER

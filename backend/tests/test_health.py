@@ -39,4 +39,6 @@ def test_health_is_503_when_redis_fails(client: Client, monkeypatch: pytest.Monk
 
 
 def test_health_rejects_post(client: Client) -> None:
-    assert client.post("/health/").status_code == 405
+    response = client.post("/health/")
+
+    assert response.status_code == 405
