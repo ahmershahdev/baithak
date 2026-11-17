@@ -15,8 +15,8 @@ in CI, and seed data.
       tests too, never SQLite)
 - [x] pytest with coverage and pytest-asyncio, Ruff, mypy (strict); Vite + React + TypeScript app
       with Vitest, ESLint
-- [ ] GitHub Actions: `backend`, `frontend`, CodeQL; add them as required checks in the ruleset
-- [ ] Dependabot for Actions, Python, npm and Docker
+- [x] GitHub Actions: `backend`, `frontend`, CodeQL; add them as required checks in the ruleset
+- [x] Dependabot for Actions, Python, npm and Docker
 - [ ] Accounts: sign up, sign in, password reset, email verification
 - [ ] Workspaces, members, roles (owner, admin, member, guest), invitations
 - [ ] Workspace-scoped managers and an access test that runs against every endpoint

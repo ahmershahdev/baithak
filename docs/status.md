@@ -4,28 +4,30 @@ Last updated: 2026-11-17. Update at the end of every work session.
 
 ## Where we are
 
-M1 in progress. The backend skeleton is on `feat/backend-skeleton`: Django 5.2 with `dev`, `test`
-and `prod` settings, ASGI through Channels and Daphne, a Celery app, a custom `accounts.User`
-(email unique) in the first migration, and `/health/` checking MySQL and Redis (503 when either
-fails). `compose.yaml` runs MySQL 8.4, Redis, the backend and one worker. pytest runs against the
-Compose MySQL (coverage gate 90%, now 100%), and Ruff and mypy (strict, django-stubs) pass.
-Dependencies are pinned in `backend/pyproject.toml` with `uv.lock`.
+M1 in progress. Merged so far:
 
-The web app skeleton is on `feat/frontend-skeleton` (PR based on the backend branch): Vite 8,
-React 19, TypeScript 6 (strict), Tailwind 4 with only the semantic color tokens in the theme,
-TanStack Query, Vitest and ESLint (strict type-checked). The one page shows whether the backend,
-database and Redis answer. `npm run dev` at the root starts the Compose stack, waits for it to be
-healthy and runs Vite, which proxies `/api`, `/ws`, `/admin` and `/health` to the backend.
+- Backend skeleton (#2): Django 5.2 with `dev`, `test` and `prod` settings, ASGI through Channels
+  and Daphne, Celery, a custom `accounts.User` (email unique), `/health/` checking MySQL and
+  Redis. Dependencies pinned in `backend/pyproject.toml` with `uv.lock`.
+- Web app skeleton (#3): Vite 8, React 19, TypeScript 6 (strict), Tailwind 4 with only the
+  semantic color tokens, TanStack Query, Vitest, ESLint. Root `npm run dev` starts the Compose
+  stack (MySQL 8.4, Redis, backend, worker), waits for it to be healthy and runs Vite, which proxies
+  `/api`, `/ws`, `/admin` and `/health` to the backend.
+- CI (#4): `backend` (MySQL and Redis service containers), `frontend` and CodeQL (Python,
+  TypeScript, Actions). All five checks are required in the "Protect main" ruleset, applied to the
+  repository. SonarCloud also runs on PRs.
+- Dependabot for Actions, uv, npm, Docker and Compose, held to Django 5.2, Python 3.12, MySQL 8.4
+  and TypeScript 6.0.
 
 ## Next session
 
-1. Merge PR #2, then retarget the frontend PR to `main`.
-2. Add the `backend` (MySQL and Redis service containers, Ruff, mypy, pytest), `frontend`
-   (typecheck, lint, format check, Vitest, build, `npm run contrast`) and `codeql` CI jobs, then
-   make them required checks in the "Protect main" ruleset (`.github/rulesets/protect-main.json`
-   and the repository settings).
-3. Dependabot entries for `uv`, npm and Docker.
-4. Accounts: sign up, sign in, password reset, email verification (adds DRF and drf-spectacular).
+1. Accounts API: sign up, sign in, sign out, password reset, email verification. Adds Django REST
+   Framework and drf-spectacular, session auth with CSRF, the OpenAPI schema and generated
+   frontend types.
+2. Workspaces, members, roles (owner, admin, member, guest), invitations; the workspace-scoped
+   manager; the audit log.
+3. The access test that runs against every endpoint.
+4. Sign-in and workspace screens in the web app.
 
 ## Open questions
 

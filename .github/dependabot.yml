@@ -7,3 +7,54 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      backend-dev:
+        dependency-type: development
+      backend:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # Django stays on the 5.2 LTS line (see AGENTS.md); django-stubs follows it.
+      - dependency-name: django
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: django-stubs
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      frontend-dev:
+        dependency-type: development
+        update-types: [minor, patch]
+      frontend:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # typescript-eslint supports TypeScript below 6.1 (docs/architecture.md).
+      - dependency-name: typescript
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+    ignore:
+      # Python stays on 3.12 (AGENTS.md); only patch releases.
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
+    ignore:
+      # MySQL stays on the 8.4 LTS line.
+      - dependency-name: mysql
+        update-types: [version-update:semver-major, version-update:semver-minor]
