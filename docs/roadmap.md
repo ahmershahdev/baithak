@@ -18,7 +18,7 @@ in CI, and seed data.
 - [x] GitHub Actions: `backend`, `frontend`, CodeQL; add them as required checks in the ruleset
 - [x] Dependabot for Actions, Python, npm and Docker
 - [x] Accounts: sign up, sign in, password reset, email verification
-- [ ] Workspaces, members, roles (owner, admin, member, guest), invitations
+- [x] Workspaces, members, roles (owner, admin, member, guest), invitations
 - [x] Workspace-scoped managers and an access test that runs against every endpoint
 - [x] Audit log for changes to workspaces, members and roles
 

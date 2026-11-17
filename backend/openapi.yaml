@@ -215,6 +215,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+  /api/v1/invitations/accept/:
+    post:
+      operationId: invitations_accept_create
+      summary: Accept an invitation
+      tags:
+      - invitations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/invitations/preview/:
+    post:
+      operationId: invitations_preview_create
+      summary: What an invitation link is for
+      tags:
+      - invitations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPreview'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
   /api/v1/workspaces/:
     get:
       operationId: workspaces_list
@@ -330,6 +391,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditPage'
+          description: ''
+  /api/v1/workspaces/{slug}/invitations/:
+    get:
+      operationId: workspaces_invitations_list
+      summary: Pending invitations
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invitation'
+          description: ''
+    post:
+      operationId: workspaces_invitations_create
+      summary: Invite someone by email
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/invitations/{invitation_id}/:
+    delete:
+      operationId: workspaces_invitations_destroy
+      summary: Revoke an invitation
+      parameters:
+      - in: path
+        name: invitation_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
           description: ''
   /api/v1/workspaces/{slug}/members/:
     get:
@@ -524,6 +674,80 @@ components:
           maxLength: 254
       required:
       - email
+    InvitableRoleEnum:
+      enum:
+      - admin
+      - member
+      - guest
+      type: string
+      description: |-
+        * `admin` - admin
+        * `member` - member
+        * `guest` - guest
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        invited_by:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - expires_at
+      - id
+      - invited_by
+      - role
+    InvitationPreview:
+      type: object
+      properties:
+        workspace:
+          type: string
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        invited_by:
+          type: string
+          nullable: true
+        email:
+          type: string
+          description: The invited address, masked.
+      required:
+      - email
+      - invited_by
+      - role
+      - workspace
+    InviteRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        role:
+          $ref: '#/components/schemas/InvitableRoleEnum'
+      required:
+      - email
+      - role
     Member:
       type: object
       properties:
@@ -657,6 +881,15 @@ components:
       - email
       - password
       - username
+    TokenRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - token
     UidTokenRequest:
       type: object
       properties:

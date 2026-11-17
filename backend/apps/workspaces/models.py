@@ -73,3 +73,37 @@ class AuditEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.action} {self.model}:{self.object_id}"
+
+
+class Invitation(models.Model):
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="invitations")
+    email = models.EmailField()
+    role = models.CharField(max_length=10, choices=[(r.value, r.name.title()) for r in Role])
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    # SHA-256 of the token in the emailed link. The token itself is never stored, so a leaked
+    # database can't be used to join workspaces. Empty until the email task has run.
+    token_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    objects = WorkspaceScopedManager["Invitation"]()
+
+    def __str__(self) -> str:
+        return f"{self.email} to {self.workspace_id} as {self.role}"
+
+    @property
+    def is_pending(self) -> bool:
+        from django.utils import timezone
+
+        return (
+            self.accepted_at is None
+            and self.revoked_at is None
+            and self.expires_at > timezone.now()
+        )

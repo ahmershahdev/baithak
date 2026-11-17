@@ -31,6 +31,14 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ),
     ("workspaces:member", "delete", "/api/v1/workspaces/{slug}/members/{user_id}/", None),
     ("workspaces:audit", "get", "/api/v1/workspaces/{slug}/audit/", None),
+    ("workspaces:invitations", "get", "/api/v1/workspaces/{slug}/invitations/", None),
+    (
+        "workspaces:invitations",
+        "post",
+        "/api/v1/workspaces/{slug}/invitations/",
+        {"email": "x@example.com", "role": "member"},
+    ),
+    ("workspaces:invitation", "delete", "/api/v1/workspaces/{slug}/invitations/1/", None),
 ]
 
 # Endpoints that are not inside one workspace, so the rule above does not apply.

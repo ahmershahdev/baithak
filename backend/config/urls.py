@@ -10,6 +10,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/workspaces/", include("apps.workspaces.urls")),
+    path("api/v1/invitations/", include("apps.workspaces.invitation_urls")),
 ]
 
 if settings.DEBUG:
