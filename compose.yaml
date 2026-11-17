@@ -46,7 +46,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:8.4.8-alpine
+    image: redis:8.10.3-alpine
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
