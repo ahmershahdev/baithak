@@ -15,7 +15,9 @@ import {
   Notice,
   TextLink,
 } from "../components/ui";
+import { useAvailability } from "../availability";
 import { honeypot, textField } from "../forms";
+import { meetsRules } from "../passwords";
 import { rememberNext, safePath } from "../next";
 
 interface SignUpBody {
@@ -24,6 +26,24 @@ interface SignUpBody {
   display_name: string;
   password: string;
   website: string;
+}
+
+function Available() {
+  return (
+    <p className="flex items-center gap-1.5 text-sm font-medium text-success" role="status">
+      <svg viewBox="0 0 16 16" className="size-4" aria-hidden="true">
+        <path
+          d="M3.5 8.5l3 3 6-7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      Available
+    </p>
+  );
 }
 
 export function SignUp() {
@@ -40,6 +60,8 @@ export function SignUp() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   // Kept as the person types so the strength meter can mark a password built from them.
   const [about, setAbout] = useState({ email: "", username: "", name: "" });
+  const emailCheck = useAvailability("email", about.email);
+  const handleCheck = useAvailability("username", about.username);
 
   const signUp = useMutation({
     mutationFn: async (body: SignUpBody) =>
@@ -61,6 +83,14 @@ export function SignUp() {
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (!meetsRules(textField(form, "password"))) {
+      setErrors({ fields: { password: ["Meet every rule below first."] } });
+      return;
+    }
+    if (handleCheck?.available === false) {
+      setErrors({ fields: { username: [handleCheck.message] } });
+      return;
+    }
     setErrors({ fields: {} });
     signUp.mutate({
       email: textField(form, "email"),
@@ -106,7 +136,11 @@ export function SignUp() {
           autoComplete="email"
           placeholder="you@company.com"
           required
-          errors={errors.fields.email}
+          errors={
+            errors.fields.email ??
+            (emailCheck?.available === false ? [emailCheck.message] : undefined)
+          }
+          below={emailCheck?.available && <Available />}
           onChange={(event) => {
             setAbout((now) => ({ ...now, email: event.target.value }));
           }}
@@ -120,7 +154,11 @@ export function SignUp() {
             spellCheck={false}
             placeholder="amna"
             required
-            errors={errors.fields.username}
+            errors={
+              errors.fields.username ??
+              (handleCheck?.available === false ? [handleCheck.message] : undefined)
+            }
+            below={handleCheck?.available && <Available />}
             onChange={(event) => {
               setAbout((now) => ({ ...now, username: event.target.value }));
             }}
@@ -144,7 +182,7 @@ export function SignUp() {
           label="Password"
           name="password"
           autoComplete="new-password"
-          placeholder="At least 8 characters"
+          placeholder="Strong and easy for you to remember"
           required
           errors={errors.fields.password}
           meterWith={[about.email, about.username, about.name, "baithak"]}
@@ -152,6 +190,7 @@ export function SignUp() {
         <Honeypot />
         <CaptchaBox
           box={captchaBox}
+          shown={captcha.shown}
           challenged={captcha.challenged}
           solved={captcha.solved}
           failed={captcha.failed}

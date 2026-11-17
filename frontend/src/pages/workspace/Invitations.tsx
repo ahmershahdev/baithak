@@ -86,7 +86,7 @@ export function Invitations() {
               <label htmlFor="invite-role" className="text-sm font-semibold">
                 Role
               </label>
-              <Select id="invite-role" name="role" defaultValue="member" className="h-12">
+              <Select id="invite-role" name="role" defaultValue="member" className="h-12" full>
                 {invitable(workspace.role).map((role) => (
                   <option key={role} value={role}>
                     {ROLE_LABELS[role]}

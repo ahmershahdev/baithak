@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ComponentProps } from "react";
 
+import { RULES } from "../passwords";
 import { measure, type Strength } from "../strength";
 import { Field } from "./ui";
 
@@ -111,6 +112,41 @@ function StrengthMeter({ password, related }: { password: string; related: strin
   );
 }
 
+function RuleChecklist({ password }: { password: string }) {
+  return (
+    <ul className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2" aria-label="Password rules">
+      {RULES.map((rule) => {
+        const met = rule.met(password);
+        return (
+          <li
+            key={rule.label}
+            className={`flex items-center gap-2 ${met ? "text-success" : "text-text-muted"}`}
+          >
+            <svg viewBox="0 0 16 16" className="size-4 shrink-0" aria-hidden="true">
+              {met ? (
+                <path
+                  d="M3.5 8.5l3 3 6-7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ) : (
+                <circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              )}
+            </svg>
+            <span>
+              {rule.label}
+              <span className="sr-only">{met ? ": done" : ": not yet"}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 interface PasswordFieldProps extends Omit<ComponentProps<"input">, "type"> {
   label: string;
   hint?: string;
@@ -144,7 +180,14 @@ export function PasswordField({ meterWith, onChange, ...props }: PasswordFieldPr
           }}
         />
       }
-      below={meterWith ? <StrengthMeter password={value} related={meterWith} /> : undefined}
+      below={
+        meterWith ? (
+          <>
+            <StrengthMeter password={value} related={meterWith} />
+            <RuleChecklist password={value} />
+          </>
+        ) : undefined
+      }
     />
   );
 }

@@ -95,6 +95,12 @@ input:-webkit-autofill:focus {
   transition: background-color 9999s;
 }
 
+/* The open list of a native select follows color-scheme; its rows take the page colors here. */
+select option {
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
 /* Replaced by CaptchaNotice; see there. */
 .grecaptcha-badge {
   visibility: hidden;

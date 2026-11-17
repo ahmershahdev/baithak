@@ -224,6 +224,9 @@ export function WorkspaceShell({ me }: { me: User }) {
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">
           <Account me={me} />
+          <Link to="/contact" className="mt-1 block px-2 text-xs text-text-subtle hover:text-text">
+            Help and contact
+          </Link>
         </div>
       </aside>
       <main className="min-w-0 px-5 py-8 sm:px-10 lg:px-14">

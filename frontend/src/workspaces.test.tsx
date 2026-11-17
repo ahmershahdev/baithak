@@ -115,7 +115,7 @@ describe("home", () => {
   });
 
   test("signed out, a workspace page goes to sign in", async () => {
-    fakeBackend({ "GET /api/v1/auth/me/": () => json(403, {}) });
+    fakeBackend({ "GET /api/v1/auth/me/": () => new Response(null, { status: 204 }) });
     renderAt("/w/karachi-team/members");
 
     expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
@@ -298,7 +298,7 @@ describe("invitation link", () => {
 
   test("signed out, it explains and links to sign in that comes back here", async () => {
     fakeBackend({
-      "GET /api/v1/auth/me/": () => json(403, {}),
+      "GET /api/v1/auth/me/": () => new Response(null, { status: 204 }),
       "POST /api/v1/invitations/preview/": () => json(200, preview),
     });
     renderAt("/invite?token=tok-123");
@@ -348,7 +348,7 @@ describe("invitation link", () => {
 
   test("a used or expired link says it has closed", async () => {
     fakeBackend({
-      "GET /api/v1/auth/me/": () => json(403, {}),
+      "GET /api/v1/auth/me/": () => new Response(null, { status: 204 }),
       "POST /api/v1/invitations/preview/": () => json(404, { detail: "gone" }),
     });
     renderAt("/invite?token=used");
@@ -360,14 +360,14 @@ describe("invitation link", () => {
 
   test("signing in from the invitation comes back to it", async () => {
     fakeBackend({
-      "GET /api/v1/auth/me/": () => json(403, {}),
+      "GET /api/v1/auth/me/": () => new Response(null, { status: 204 }),
       "POST /api/v1/auth/signin/": () => json(200, amna),
       "POST /api/v1/invitations/preview/": () => json(200, preview),
     });
     renderAt(`/signin?next=${encodeURIComponent("/invite?token=tok-123")}`);
 
     await userEvent.type(await screen.findByLabelText("Email"), "amna@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.type(screen.getByLabelText("Password"), "Chai-At-Four-42");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("button", { name: "Accept and join" })).toBeInTheDocument();

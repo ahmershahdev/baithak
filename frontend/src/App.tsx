@@ -6,6 +6,7 @@ import { useWorkspaces } from "./api/workspaces";
 import { useMe } from "./auth";
 import { lastWorkspace } from "./lastWorkspace";
 import { ErrorMessage } from "./components/ui";
+import { Contact } from "./pages/Contact";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { Home } from "./pages/Home";
 import { Invite } from "./pages/Invite";
@@ -82,6 +83,7 @@ export function App() {
         <Route path="audit" element={<Audit />} />
       </Route>
       <Route path="/invite" element={<Invite />} />
+      <Route path="/contact" element={<Contact />} />
       <Route
         path="/signin"
         element={

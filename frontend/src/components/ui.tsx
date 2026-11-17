@@ -1,6 +1,7 @@
 import { useId, type ComponentProps, type ReactNode } from "react";
 import { Link } from "react-router";
 
+import { SITE_URL, SUPPORT_EMAIL } from "../contact";
 import { Jaali, Scene, Wordmark } from "./brand";
 
 export function AuthLayout({
@@ -44,6 +45,17 @@ export function AuthLayout({
           <h1 className="wonky font-display text-4xl font-semibold tracking-tight">{title}</h1>
           {intro && <p className="mt-2 text-text-muted">{intro}</p>}
           <div className="mt-8">{children}</div>
+          <footer className="mt-12 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-5 text-sm text-text-subtle">
+            <Link to="/contact" className="hover:text-text">
+              Contact
+            </Link>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-text">
+              {SUPPORT_EMAIL}
+            </a>
+            <a href={SITE_URL} target="_blank" rel="noreferrer" className="hover:text-text">
+              ahmershah.dev
+            </a>
+          </footer>
         </div>
       </main>
     </div>

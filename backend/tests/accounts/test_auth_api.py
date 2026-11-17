@@ -1,18 +1,20 @@
 import re
+from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.core import mail
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.accounts import tasks
-from apps.accounts.models import User
-from apps.accounts.tokens import email_verification_token, encode_uid, password_reset_token
+from apps.accounts import reset_codes, tasks
+from apps.accounts.models import PasswordResetCode, User
+from apps.accounts.tokens import email_verification_token, encode_uid
 from tests.accounts.factories import PASSWORD, make_user
 
 pytestmark = pytest.mark.django_db
 
-NEW_PASSWORD = "another-long-password-77"
+NEW_PASSWORD = "Lamp-Lit-Room-77"
 
 
 def link_params(body: str) -> dict[str, str]:
@@ -20,6 +22,12 @@ def link_params(body: str) -> dict[str, str]:
     assert match is not None
     query = parse_qs(urlparse(match.group(0)).query)
     return {"uid": query["uid"][0], "token": query["token"][0]}
+
+
+def reset_code(body: str) -> str:
+    match = re.search(r"^\s+(\d{6})$", body, re.M)
+    assert match is not None
+    return match.group(1)
 
 
 def sign_up(api: APIClient, **overrides: str) -> tuple[int, dict[str, object]]:
@@ -53,7 +61,7 @@ class TestSignUp:
     def test_does_not_sign_in(self, api: APIClient) -> None:
         sign_up(api)
 
-        assert api.get("/api/v1/auth/me/").status_code == 403
+        assert api.get("/api/v1/auth/me/").status_code == 204
 
     def test_taken_email_answers_the_same_and_mails_the_owner(
         self, api: APIClient, django_capture_on_commit_callbacks: object
@@ -225,27 +233,45 @@ class TestSignIn:
         signed_out = api.post("/api/v1/auth/signout/")
 
         assert signed_out.status_code == 204
-        assert api.get("/api/v1/auth/me/").status_code == 403
+        assert api.get("/api/v1/auth/me/").status_code == 204
 
 
 class TestPasswordReset:
-    def test_known_email_gets_a_link_that_sets_the_password(self, api: APIClient) -> None:
+    def test_a_known_email_gets_a_six_digit_code_that_sets_the_password(
+        self, api: APIClient
+    ) -> None:
         user = make_user(email="chanda@example.com")
 
         response = api.post(
             "/api/v1/auth/password-reset/", {"email": "Chanda@example.com"}, format="json"
         )
-        params = link_params(str(mail.outbox[0].body))
+        code = reset_code(str(mail.outbox[0].body))
         confirm = api.post(
             "/api/v1/auth/password-reset/confirm/",
-            params | {"password": NEW_PASSWORD},
+            {"email": "chanda@example.com", "code": code, "password": NEW_PASSWORD},
             format="json",
         )
 
         assert response.status_code == 202
+        assert mail.outbox[0].subject == f"{code} is your Baithak reset code"
         assert confirm.status_code == 204
         user.refresh_from_db()
         assert user.check_password(NEW_PASSWORD)
+        assert mail.outbox[-1].subject == "Your Baithak password was changed"
+
+    def test_the_emailed_link_carries_uid_and_code(self, api: APIClient) -> None:
+        user = make_user(email="chanda@example.com")
+        api.post("/api/v1/auth/password-reset/", {"email": user.email}, format="json")
+        match = re.search(r"/reset-password\?uid=(\w+)&code=(\d{6})", str(mail.outbox[0].body))
+        assert match is not None
+
+        confirm = api.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"uid": match.group(1), "code": match.group(2), "password": NEW_PASSWORD},
+            format="json",
+        )
+
+        assert confirm.status_code == 204
 
     def test_unknown_email_gets_the_same_answer_and_no_mail(self, api: APIClient) -> None:
         response = api.post(
@@ -256,38 +282,108 @@ class TestPasswordReset:
         assert response.json() == {"detail": "If the address can be used, an email is on its way."}
         assert mail.outbox == []
 
-    def test_link_stops_working_after_use(self, api: APIClient) -> None:
+    def test_a_code_works_once(self, api: APIClient) -> None:
         user = make_user()
-        params = {"uid": encode_uid(user), "token": password_reset_token.make_token(user)}
+        code = reset_codes.issue(user)
+        body = {"email": user.email, "code": code, "password": NEW_PASSWORD}
 
-        first = api.post(
-            "/api/v1/auth/password-reset/confirm/",
-            params | {"password": NEW_PASSWORD},
-            format="json",
-        )
+        first = api.post("/api/v1/auth/password-reset/confirm/", body, format="json")
         second = api.post(
             "/api/v1/auth/password-reset/confirm/",
-            params | {"password": "yet-another-password-9"},
+            body | {"password": "Other-Lamp-Lit-99"},
             format="json",
         )
 
         assert first.status_code == 204
         assert second.status_code == 400
 
-    def test_weak_new_password_is_rejected(self, api: APIClient) -> None:
+    def test_a_code_expires_after_ten_minutes(self, api: APIClient) -> None:
         user = make_user()
-        params = {"uid": encode_uid(user), "token": password_reset_token.make_token(user)}
+        code = reset_codes.issue(user)
+        PasswordResetCode.objects.filter(user=user).update(
+            expires_at=timezone.now() - timedelta(seconds=1)
+        )
 
         response = api.post(
             "/api/v1/auth/password-reset/confirm/",
-            params | {"password": "12345678"},
+            {"email": user.email, "code": code, "password": NEW_PASSWORD},
             format="json",
         )
 
         assert response.status_code == 400
-        assert "password" in response.json()
+        assert response.json() == {
+            "detail": "The code is wrong or has expired. Ask for a new one if you need to."
+        }
+
+    def test_a_new_code_cancels_the_old_one(self, api: APIClient) -> None:
+        user = make_user()
+        old = reset_codes.issue(user)
+        reset_codes.issue(user)
+
+        response = api.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"email": user.email, "code": old, "password": NEW_PASSWORD},
+            format="json",
+        )
+
+        assert response.status_code == 400
+
+    def test_codes_are_random_six_digits_and_stored_only_as_hmac(self) -> None:
+        user = make_user()
+
+        codes = {reset_codes.issue(user) for _ in range(20)}
+        stored = PasswordResetCode.objects.filter(user=user).values_list("code_hash", flat=True)
+
+        assert all(re.fullmatch(r"\d{6}", code) for code in codes)
+        assert len(codes) > 15
+        assert not set(codes) & set(stored)
+
+    def test_weak_new_password_is_rejected_and_the_code_survives(self, api: APIClient) -> None:
+        user = make_user()
+        code = reset_codes.issue(user)
+        body = {"email": user.email, "code": code}
+
+        weak = api.post(
+            "/api/v1/auth/password-reset/confirm/", body | {"password": "12345678"}, format="json"
+        )
+        strong = api.post(
+            "/api/v1/auth/password-reset/confirm/",
+            body | {"password": NEW_PASSWORD},
+            format="json",
+        )
+
+        assert weak.status_code == 400
+        assert "password" in weak.json()
+        assert strong.status_code == 204
+
+    def test_three_wrong_codes_lock_the_account_and_mail_the_owner(self, api: APIClient) -> None:
+        user = make_user()
+        reset_codes.issue(user)
+        wrong = {"email": user.email, "code": "000000", "password": NEW_PASSWORD}
+
+        codes = [
+            api.post("/api/v1/auth/password-reset/confirm/", wrong, format="json").status_code
+            for _ in range(4)
+        ]
+
+        assert codes == [400, 400, 400, 429]
         user.refresh_from_db()
-        assert user.check_password(PASSWORD)
+        assert user.locked_until is not None
+        assert mail.outbox[-1].subject == "Someone is trying to get into your Baithak account"
+
+    def test_reset_requests_are_limited_to_three_an_hour(self, api: APIClient) -> None:
+        user = make_user()
+        for _ in range(5):
+            api.post("/api/v1/auth/password-reset/", {"email": user.email}, format="json")
+
+        assert len(mail.outbox) == 3
+
+    def test_a_locked_account_gets_no_code(self, api: APIClient) -> None:
+        user = make_user(locked_until=timezone.now() + timedelta(hours=1))
+
+        api.post("/api/v1/auth/password-reset/", {"email": user.email}, format="json")
+
+        assert mail.outbox == []
 
 
 class TestEmailTasksSkipInactivePeople:

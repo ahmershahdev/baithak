@@ -165,6 +165,14 @@ broadcast to the person's other connections so every device agrees.
 | `client_id` on sends, unique per channel and author | A send retried after a dropped connection returns the stored message instead of a second copy |
 | Messages are not audited, except an admin deleting someone else's | Content keeps its own trail (`edited_at`, `deleted_at`); moderation is a change to the workspace and is audited |
 | `post` throttle, 120 sends per minute per person | Stops a stuck client or a script flooding a channel; reading history is never limited |
+| Lockout ladder on the account, shared by sign-in and reset codes | 3 wrong attempts lock for 1 hour, 3 more for 4 hours, then a week of suspension, then a ban only an admin lifts (Django admin, "Unlock"). Stored on the user so it survives restarts; the owner is emailed at each step. Unknown emails get the same answers from a cache so locks don't reveal who has an account |
+| Password reset by a 6-digit code, 10 minutes, one use, three tries | Stored as an HMAC with the secret key, not a plain hash, since a million codes are easy to brute-force; a new code cancels the old one; wrong codes climb the same ladder |
+| Password rules in `apps/core/passwords.py`: 12 to 128 characters, 2 lower, 2 upper, 2 digits, 1 symbol | Enforced by the API; the web app shows the same rules as a checklist |
+| Handles checked against `apps/core/handles.py` | Reserved names, and hate or abuse found after folding look-alikes (4 as a or e, 1 as i or l), separators and doubled letters. Words that hide inside ordinary names (grape, crisis, islamabad) are left out on purpose |
+| Live email and handle availability on sign-up, throttled to 30 a minute | It does let anyone test whether an email has an account, which sign-up itself still never reveals, so the throttle is the guard |
+| `GET /auth/me/` answers 204 when signed out | Being signed out is an answer, not an error, and browsers stop logging a failed request on every page |
+| reCAPTCHA v2 checkbox shown on anonymous forms from the start, v3 scoring alongside | People expected to see the check; a ticked box passes, otherwise v3 decides |
+| Contact form stored, then emailed to support@ahmershah.dev with Reply-To | The message survives a mail outage and can be read in the admin |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions
