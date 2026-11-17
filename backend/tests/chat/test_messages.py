@@ -130,7 +130,8 @@ def test_concurrent_sends_get_distinct_gap_free_seqs(owner: User) -> None:
         try:
             for i in range(5):
                 messages.post(channel, owner, f"{n}-{i}")
-        except BaseException as error:
+        # Any failure in a thread would otherwise vanish; collect it for the assert below.
+        except Exception as error:
             errors.append(error)
         finally:
             connection.close()
