@@ -10,8 +10,8 @@ in CI, and seed data.
 
 ## M1. Platform skeleton (target 2026-12-06)
 
-- [ ] Django project, settings per environment (`dev`, `test`, `prod`), health endpoint
-- [ ] ASGI with Django Channels, MySQL 8.4, Redis and one Celery worker in Docker Compose (MySQL in
+- [x] Django project, settings per environment (`dev`, `test`, `prod`), health endpoint
+- [x] ASGI with Django Channels, MySQL 8.4, Redis and one Celery worker in Docker Compose (MySQL in
       tests too, never SQLite)
 - [ ] pytest with coverage and pytest-asyncio, Ruff, mypy (strict); Vite + React + TypeScript app
       with Vitest, ESLint

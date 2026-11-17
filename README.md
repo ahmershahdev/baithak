@@ -8,7 +8,7 @@ has channels, threads and direct messages that update live, and a small issue tr
 issue can start from a message and keep its discussion in a thread. GitHub pull request events
 arrive in the channel that follows the repository. The interface is in English.
 
-> Status: planning. Nothing is built yet. See [docs/roadmap.md](docs/roadmap.md) for the
+> Status: early. The backend skeleton runs; no features yet. See [docs/roadmap.md](docs/roadmap.md) for the
 > milestones and [docs/status.md](docs/status.md) for where the work is.
 
 ## What it will do
@@ -37,6 +37,29 @@ arrive in the channel that follows the repository. The interface is in English.
 | Web | React, TypeScript (strict), Vite, Tailwind CSS, TanStack Query |
 | Quality | pytest, pytest-asyncio, factory_boy, Vitest, Playwright, Ruff, mypy, ESLint, Prettier, GitHub Actions, CodeQL |
 | Run | Docker Compose |
+
+## Run it locally
+
+You need Docker with Compose, and [uv](https://docs.astral.sh/uv/) to run the backend checks on
+your machine.
+
+```sh
+cp .env.example .env
+docker compose up -d --build
+docker compose exec backend python manage.py migrate
+curl http://localhost:8000/health/
+```
+
+The backend runs at <http://localhost:8000> and a Celery worker runs next to it. Tests run against
+the MySQL from Compose (never SQLite):
+
+```sh
+cd backend
+uv sync
+uv run pytest
+uv run ruff check . && uv run ruff format --check .
+uv run mypy .
+```
 
 ## Why it exists
 

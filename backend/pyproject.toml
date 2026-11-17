@@ -1,0 +1,62 @@
+[project]
+name = "baithak"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "django==5.2.19",
+  "channels==4.3.2",
+  "channels-redis==4.3.0",
+  "daphne==4.2.3",
+  "celery==5.7.0",
+  "redis==8.1.0",
+  "mysqlclient==2.3.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.2.0",
+  "pytest-django==4.14.0",
+  "pytest-asyncio==1.5.0",
+  "pytest-cov==7.1.0",
+  "ruff==0.17.5",
+  "mypy==1.19.1",
+  "django-stubs[compatible-mypy]==5.2.9",
+  "celery-types==0.26.0",
+  "types-channels==4.3.0.20260408",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["**/migrations/**"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM", "RUF", "PT", "ASYNC"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+exclude = ["^manage\\.py$"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--strict-markers --cov=apps --cov=config --cov-branch --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = ["config/settings/prod.py", "config/settings/dev.py", "config/wsgi.py"]
+
+[tool.coverage.report]
+fail_under = 90
