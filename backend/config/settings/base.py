@@ -136,7 +136,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     # "invite" limits how much email one person can make Baithak send to strangers.
-    "DEFAULT_THROTTLE_RATES": {"auth": "10/minute", "invite": "30/hour"},
+    "DEFAULT_THROTTLE_RATES": {"auth": "10/minute", "invite": "30/hour", "post": "120/minute"},
     # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
     # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.
     "NUM_PROXIES": int(env("NUM_PROXIES", "0")),

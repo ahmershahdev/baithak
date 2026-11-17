@@ -61,12 +61,15 @@ M1 in progress. Merged so far:
   `/api/v1/workspaces/{slug}/channels/`, rules in `apps/core/channels.py`, `#general` with every
   workspace. Private channels are 404 to workspace members outside them, in the access test.
 
+- Messages API under `.../channels/{id}/messages/`: send (with `client_id` against duplicates),
+  edit, delete (row kept, text removed), history pages by `before`, catch-up by `after_event`.
+  `seq` and `event` move under the channel row lock; a 4-thread race test checks they stay
+  distinct and gap-free.
+
 ## Next session
 
-1. Messages: send, edit, delete (soft), saved with the next per-channel `seq` under a row lock;
-   history with cursor pagination and catch-up after a `seq`.
-2. WebSockets: session auth, one Channels group per channel, broadcast after commit.
-3. Chat screens with reconnect and backoff.
+1. WebSockets: session auth, one Channels group per channel, broadcast after commit.
+2. Chat screens with reconnect and backoff.
 
 ## Open questions
 

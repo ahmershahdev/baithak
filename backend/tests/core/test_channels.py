@@ -109,3 +109,38 @@ def test_can_manage(
 )
 def test_can_add_member(role: Role | None, is_member: bool, expected: bool) -> None:
     assert can_add_member(role, is_member=is_member) is expected
+
+
+@pytest.mark.parametrize(
+    ("is_author", "deleted", "archived", "expected"),
+    [
+        (True, False, False, True),
+        (False, False, False, False),
+        (True, True, False, False),
+        (True, False, True, False),
+    ],
+)
+def test_can_edit_message(is_author: bool, deleted: bool, archived: bool, expected: bool) -> None:
+    from apps.core.channels import can_edit_message
+
+    assert can_edit_message(is_author=is_author, deleted=deleted, archived=archived) is expected
+
+
+@pytest.mark.parametrize(
+    ("role", "is_author", "deleted", "expected"),
+    [
+        (MEMBER, True, False, True),
+        (GUEST, True, False, True),
+        (MEMBER, False, False, False),
+        (ADMIN, False, False, True),
+        (OWNER, False, False, True),
+        (ADMIN, True, True, False),
+        (None, True, False, False),
+    ],
+)
+def test_can_delete_message(
+    role: Role | None, is_author: bool, deleted: bool, expected: bool
+) -> None:
+    from apps.core.channels import can_delete_message
+
+    assert can_delete_message(role, is_author=is_author, deleted=deleted) is expected

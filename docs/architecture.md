@@ -38,9 +38,9 @@ workspace         id, name, slug, created_by
 member            workspace_id, user_id, role (owner, admin, member, guest), joined_at
 audit_event       workspace_id, user_id, action, model, object_id, changes (JSON), at
 
-channel           workspace_id, name, kind (public, private, direct, group), topic, archived_at, last_seq
+channel           workspace_id, name, kind (public, private, direct, group), topic, archived_at, last_seq, last_event
 channel_member    channel_id, user_id, last_read_seq, muted
-message           channel_id, seq, author_id, thread_root_id, body, edited_at, deleted_at, created_at
+message           channel_id, seq, event, author_id, thread_root_id, body, client_id, edited_at, deleted_at, created_at
 reaction          message_id, user_id, emoji
 attachment        workspace_id, message_id, uploader_id, name, content_type, size, storage_key
 
@@ -54,6 +54,12 @@ notification      user_id, kind, object_id, read_at
 
 `message (channel_id, seq)` is unique: `seq` comes from `channel.last_seq`, taken under
 `select_for_update` in the same transaction as the insert, so every client sees one order.
+
+Each channel also has `last_event`, bumped (under the same lock) by every send, edit and delete
+and stored on the message as `event`. `seq` is a message's place in the channel and never
+changes; `event` is the last change to it. Unread counts use `seq`; catching up after a
+reconnect asks for `?after_event=N`, which returns new, edited and deleted messages in the order
+they changed, so nothing that happened while the socket was down is missed.
 
 ## Sending a message
 
@@ -126,6 +132,9 @@ broadcast to the person's other connections so every device agrees.
 | Guests see only channels they were added to | Guests are for outside collaborators; they don't browse the workspace |
 | `#general` made with every workspace, joined by every non-guest | People land somewhere to talk on day one |
 | Channels addressed by id in the API | Names can be renamed; ids never change |
+| `client_id` on sends, unique per channel and author | A send retried after a dropped connection returns the stored message instead of a second copy |
+| Messages are not audited, except an admin deleting someone else's | Content keeps its own trail (`edited_at`, `deleted_at`); moderation is a change to the workspace and is audited |
+| `post` throttle, 120 sends per minute per person | Stops a stuck client or a script flooding a channel; reading history is never limited |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions
