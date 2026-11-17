@@ -114,6 +114,10 @@ broadcast to the person's other connections so every device agrees.
 | reCAPTCHA site keys come from `GET /api/v1/auth/config/` | One `.env` at the root for everything; site keys are public by design |
 | Web app CSP as a meta tag in the build, sources not a nonce | The built app has no inline scripts and is static files, so a per-request nonce adds nothing; only our files and Google's reCAPTCHA may run. `frame-ancestors` has to come from the serving proxy as a header |
 | zxcvbn-ts with the common dictionary only, loaded on first keystroke | The English word list is another 1.2 MB for little gain; the strength checker never loads on pages without a new-password field |
+| Invitation tokens made in the worker, stored as SHA-256 | Like the email links, no token goes through the broker, and a leaked database can't be used to join workspaces |
+| Accepting needs the invited email address | A forwarded link is useless to anyone else; the link coming to that inbox also confirms the address |
+| Re-inviting replaces the pending invitation | Only the newest link works, so an old forwarded email can't be used |
+| `invite` throttle, 30 per hour per person | Stops anyone using Baithak to send email to strangers in bulk |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

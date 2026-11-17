@@ -134,7 +134,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"auth": "10/minute"},
+    # "invite" limits how much email one person can make Baithak send to strangers.
+    "DEFAULT_THROTTLE_RATES": {"auth": "10/minute", "invite": "30/hour"},
     # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
     # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.
     "NUM_PROXIES": int(env("NUM_PROXIES", "0")),
@@ -156,6 +157,10 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "RoleEnum": "apps.workspaces.serializers.ROLE_CHOICES",
+        "InvitableRoleEnum": "apps.workspaces.serializers.INVITABLE_ROLE_CHOICES",
+    },
 }
 
 # Argon2id for every new or changed password. PBKDF2 stays second so older hashes still verify

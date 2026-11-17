@@ -44,18 +44,20 @@ M1 in progress. Merged so far:
   toggle, lamplight button, strength meter, placeholders, honeypot and reCAPTCHA wiring, web app
   CSP in the build.
 
+- Invitations API: invite by email with a role (admin and up, never owner), pending list,
+  revoke, preview and accept by link (`/invite?token=...`, the signed-in email must match, 7
+  days, single use). Audited and in the access test. The reCAPTCHA keys and the Resend key are
+  set in the local `.env` and checked working.
+
 ## Next session
 
-1. Invitations: invite by email with a role, accept by link (the signed-in email must match),
-   revoke, list pending; audit rows; added to the access test.
-2. Workspace screens: list, create, switch, members and roles, invitations.
-3. Then M2: channels and live messages.
+1. Workspace screens: list, create, switch, members and roles, invitations, and the `/invite`
+   page the email links to. This closes M1.
+2. Then M2: channels and live messages.
 
 ## Open questions
 
-- reCAPTCHA keys: create one v3 and one v2 checkbox key in the Google admin console for
-  `localhost` and `baithak.ahmershah.dev`, then fill the four `RECAPTCHA_*` values in `.env`.
-  reCAPTCHA sends visitor data to Google; mention it in the privacy notes before launch.
+- reCAPTCHA sends visitor data to Google; mention it in the privacy notes before launch.
 
 - Decided: an unverified person can sign in but can't create or join a workspace (enforce in the
   workspaces API).
