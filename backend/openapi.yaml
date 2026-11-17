@@ -376,6 +376,11 @@ paths:
       operationId: workspaces_audit_retrieve
       summary: Audit log, newest first
       parameters:
+      - in: query
+        name: cursor
+        schema:
+          type: string
+        description: From `next` of the previous page.
       - in: path
         name: slug
         schema:

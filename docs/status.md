@@ -49,11 +49,17 @@ M1 in progress. Merged so far:
   days, single use). Audited and in the access test. The reCAPTCHA keys and the Resend key are
   set in the local `.env` and checked working.
 
+- Workspace screens: home opens the last workspace used (or offers to create one), `/w/new`,
+  and a workspace shell with switcher, overview, members (role changes, remove, leave),
+  invitations (send, revoke), settings (rename) and the audit log (cursor paging). `/invite`
+  previews the invitation, sends signed-out people through sign-in or sign-up and back, and
+  accepts. M1 is complete.
+
 ## Next session
 
-1. Workspace screens: list, create, switch, members and roles, invitations, and the `/invite`
-   page the email links to. This closes M1.
-2. Then M2: channels and live messages.
+1. Tag `v0.1.0` for M1 (`gh release create v0.1.0 --verify-tag --generate-notes --prerelease`).
+2. M2: public and private channels, the read-channel permission in `apps/core`, WebSocket
+   connection with session auth, messages saved then broadcast with a per-channel sequence.
 
 ## Open questions
 

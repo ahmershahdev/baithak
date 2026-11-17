@@ -4,7 +4,7 @@ from typing import cast
 from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.utils.text import slugify
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import CursorPagination
@@ -190,7 +190,13 @@ class AuditPagination(CursorPagination):
 
 
 class AuditLogView(APIView):
-    @extend_schema(responses={200: AuditPageSerializer}, summary="Audit log, newest first")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("cursor", str, description="From `next` of the previous page.")
+        ],
+        responses={200: AuditPageSerializer},
+        summary="Audit log, newest first",
+    )
     def get(self, request: Request, slug: str) -> Response:
         member = membership(_user(request), slug)
         if not roles.can_see_audit_log(role_of(member)):

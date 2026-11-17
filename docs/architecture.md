@@ -118,6 +118,9 @@ broadcast to the person's other connections so every device agrees.
 | Accepting needs the invited email address | A forwarded link is useless to anyone else; the link coming to that inbox also confirms the address |
 | Re-inviting replaces the pending invitation | Only the newest link works, so an old forwarded email can't be used |
 | `invite` throttle, 30 per hour per person | Stops anyone using Baithak to send email to strangers in bulk |
+| Role rules mirrored in `frontend/src/roles.ts` | The screens only offer what the API allows; the API still decides and its refusal is shown |
+| Return paths kept in sessionStorage, only same-site paths | An invitation survives sign-up and the confirmation email in the same tab; `//host` and full URLs are dropped so the link can't redirect elsewhere |
+| `<meta name="referrer" content="same-origin">` on the web app | Invitation, reset and verification links carry one-time tokens that must not leak to other sites |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

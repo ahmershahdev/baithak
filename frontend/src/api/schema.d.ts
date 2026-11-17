@@ -919,7 +919,10 @@ export interface operations {
     };
     workspaces_audit_retrieve: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description From `next` of the previous page. */
+                cursor?: string;
+            };
             header?: never;
             path: {
                 slug: string;

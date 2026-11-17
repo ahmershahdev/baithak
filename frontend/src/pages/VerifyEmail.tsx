@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { api, readErrors } from "../api/client";
 import { useSetMe } from "../auth";
 import { AuthLayout, Button, ErrorMessage, TextLink } from "../components/ui";
+import { takeNext } from "../next";
 
 // Confirming takes a click rather than happening on load: mail scanners open links, and the
 // link only works once.
@@ -21,7 +22,7 @@ export function VerifyEmail() {
     onSuccess: ({ data, error: apiError }) => {
       if (data) {
         setMe(data);
-        void navigate("/");
+        void navigate(takeNext());
       } else {
         setError(readErrors(apiError).detail ?? "This link is not valid or has expired.");
       }

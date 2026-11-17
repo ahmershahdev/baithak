@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState, type SubmitEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { useSearchParams } from "react-router";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
 import { useCaptcha } from "../captcha";
@@ -15,6 +16,7 @@ import {
   TextLink,
 } from "../components/ui";
 import { honeypot, textField } from "../forms";
+import { rememberNext, safePath } from "../next";
 
 interface SignUpBody {
   email: string;
@@ -27,7 +29,14 @@ interface SignUpBody {
 export function SignUp() {
   const captchaBox = useRef<HTMLDivElement>(null);
   const captcha = useCaptcha("signup", captchaBox);
+  const [params] = useSearchParams();
+  const next = safePath(params.get("next"));
   const [errors, setErrors] = useState<ApiErrors>({ fields: {} });
+
+  // Kept for after the confirmation email, which signs the person in in this tab.
+  useEffect(() => {
+    rememberNext(next);
+  }, [next]);
   const [sentTo, setSentTo] = useState<string | null>(null);
   // Kept as the person types so the strength meter can mark a password built from them.
   const [about, setAbout] = useState({ email: "", username: "", name: "" });
@@ -80,7 +89,10 @@ export function SignUp() {
       title="Make yourself at home"
       intro={
         <>
-          Have an account? <TextLink to="/signin">Sign in</TextLink>
+          Have an account?{" "}
+          <TextLink to={next ? `/signin?next=${encodeURIComponent(next)}` : "/signin"}>
+            Sign in
+          </TextLink>
         </>
       }
     >
