@@ -70,6 +70,8 @@ const pairs = [
   ["info-soft-text", "info-soft", TEXT],
   ["text", "mention", TEXT],
   ["text", "selection", TEXT],
+  ["border-strong", "warning-soft", UI],
+  ["warning-soft-text", "bg-subtle", TEXT],
   ["presence-online", "bg-subtle", UI],
   ["presence-away", "bg-subtle", UI],
   ["presence-busy", "bg-subtle", UI],
