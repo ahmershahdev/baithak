@@ -22,7 +22,7 @@ EMAIL_PORT = int(env("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Baithak <no-reply@ahmershah.dev>")
+FRONTEND_URL = env("FRONTEND_URL", "https://baithak.ahmershah.dev")
 
 # baithak is one subdomain of ahmershah.dev; it can't promise HTTPS for its sibling subdomains,
 # so HSTS stays on this host only and the domain is not submitted for preload.

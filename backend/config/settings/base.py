@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "channels",
+    "rest_framework",
+    "drf_spectacular",
     "apps.accounts",
 ]
 
@@ -92,6 +94,35 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 AUTH_USER_MODEL = "accounts.User"
+# Sign-in throttling counts attempts here, so it has to be shared by every process.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("CACHE_URL", "redis://127.0.0.1:6379/2"),
+    }
+}
+
+FRONTEND_URL = env("FRONTEND_URL", "http://localhost:5173")
+# One day, for both password reset and email verification links.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Baithak <no-reply@ahmershah.dev>")
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"auth": "10/minute"},
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Baithak API",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

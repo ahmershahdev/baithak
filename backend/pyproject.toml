@@ -10,6 +10,8 @@ dependencies = [
   "celery==5.7.0",
   "redis==8.1.0",
   "mysqlclient==2.3.1",
+  "djangorestframework==3.18.3",
+  "drf-spectacular==0.30.0",
 ]
 
 [dependency-groups]
@@ -23,6 +25,7 @@ dev = [
   "django-stubs[compatible-mypy]==5.2.9",
   "celery-types==0.26.0",
   "types-channels==4.3.0.20260408",
+  "djangorestframework-stubs[compatible-mypy]==3.16.9",
 ]
 
 [tool.uv]

@@ -88,6 +88,13 @@ broadcast to the person's other connections so every device agrees.
 | uv with exact pins and `uv.lock` | One lock file for the image and CI; installs are fast and repeatable |
 | Vite dev server proxies the API and sockets | The browser sees one origin in development as in production, so session cookies and CSRF work the same way |
 | TypeScript 6.0, not 7 | typescript-eslint supports TypeScript below 6.1; move when it does |
+| Session cookies with CSRF, no tokens in the browser | The web app is same-origin; an HttpOnly session cookie can't be read by injected script, and DRF and Channels both understand it |
+| CSRF enforced on anonymous auth endpoints too | DRF checks CSRF only for signed-in requests; without it a hostile page could sign a visitor into another account |
+| Sign in with email; `username` is the @handle | Email is what people remember; the handle (lowercase, 2 to 30 of `a-z 0-9 . _ -`) is what mentions match |
+| Sign-up and password reset answer the same for known and unknown emails | The API can't be used to find out who has an account; the owner of a taken email gets a mail instead |
+| Email links carry `uid` and a token built from the account's state | Verification and reset links stop working once used, with no token table; they expire after a day |
+| Celery email tasks take a user id, not a token | No usable secret passes through the broker |
+| `backend/openapi.yaml` and `frontend/src/api/schema.d.ts` are committed and CI checks both | API changes show up in review, and the web app can't drift from the API |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions
