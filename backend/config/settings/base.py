@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.ApiSecurityHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -134,7 +135,21 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {"auth": "10/minute"},
+    # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
+    # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.
+    "NUM_PROXIES": int(env("NUM_PROXIES", "0")),
 }
+
+# Five wrong passwords for one email lock sign-in for that email for 15 minutes, from any IP.
+SIGNIN_MAX_FAILURES = 5
+SIGNIN_LOCKOUT_SECONDS = 15 * 60
+
+# Google reCAPTCHA. Empty keys turn the check off (local development and tests).
+RECAPTCHA_V3_SITE_KEY = env("RECAPTCHA_V3_SITE_KEY", "")
+RECAPTCHA_V3_SECRET_KEY = env("RECAPTCHA_V3_SECRET_KEY", "")
+RECAPTCHA_V2_SITE_KEY = env("RECAPTCHA_V2_SITE_KEY", "")
+RECAPTCHA_V2_SECRET_KEY = env("RECAPTCHA_V2_SECRET_KEY", "")
+RECAPTCHA_V3_MIN_SCORE = float(env("RECAPTCHA_V3_MIN_SCORE", "0.5"))
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Baithak API",
@@ -142,6 +157,13 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
 }
+
+# Argon2id for every new or changed password. PBKDF2 stays second so older hashes still verify
+# and are rehashed with Argon2id at the next sign-in.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

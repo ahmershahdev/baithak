@@ -29,7 +29,15 @@ class HandleField(serializers.CharField):
         return super().to_internal_value(data).lower()
 
 
-class SignUpSerializer(serializers.Serializer[None]):
+class BotCheckFields(serializers.Serializer[None]):
+    """Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot."""
+
+    captcha = serializers.CharField(required=False, allow_blank=True, max_length=4000)
+    captcha_v2 = serializers.CharField(required=False, allow_blank=True, max_length=4000)
+    website = serializers.CharField(required=False, allow_blank=True, max_length=200)
+
+
+class SignUpSerializer(BotCheckFields):
     email = serializers.EmailField(max_length=254)
     # The uniqueness check is done here rather than by a model validator so the email check
     # can be left out on purpose: a taken email must not be revealed.
@@ -55,7 +63,7 @@ class SignUpSerializer(serializers.Serializer[None]):
         return attrs
 
 
-class SignInSerializer(serializers.Serializer[None]):
+class SignInSerializer(BotCheckFields):
     email = serializers.EmailField(max_length=254)
     password = serializers.CharField(write_only=True, max_length=128, trim_whitespace=False)
 
@@ -63,7 +71,7 @@ class SignInSerializer(serializers.Serializer[None]):
         return value.strip().lower()
 
 
-class EmailSerializer(serializers.Serializer[None]):
+class EmailSerializer(BotCheckFields):
     email = serializers.EmailField(max_length=254)
 
     def validate_email(self, value: str) -> str:
@@ -81,3 +89,13 @@ class PasswordResetConfirmSerializer(UidTokenSerializer):
 
 class DetailSerializer(serializers.Serializer[None]):
     detail = serializers.CharField()
+
+
+class AuthConfigSerializer(serializers.Serializer[None]):
+    recaptcha_v3_site_key = serializers.CharField(allow_blank=True)
+    recaptcha_v2_site_key = serializers.CharField(allow_blank=True)
+
+
+class CaptchaErrorSerializer(serializers.Serializer[None]):
+    detail = serializers.CharField()
+    captcha = serializers.ChoiceField(choices=["v2"], required=False)

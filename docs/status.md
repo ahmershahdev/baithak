@@ -35,6 +35,10 @@ M1 in progress. Merged so far:
   100% branch coverage gate in CI. `tests/test_access.py` checks every workspace endpoint for 404
   to outsiders.
 
+- Auth hardening: Argon2id hashing, reCAPTCHA v3 with a v2 fallback (off until keys are in
+  `.env`), honeypot, per-account sign-in lock, spoof-proof IP throttle, CSP and `no-store` on
+  API responses. The local `.env` exists (git ignores it) with a generated secret key.
+
 ## Next session
 
 1. Invitations: invite by email with a role, accept by link (the signed-in email must match),
@@ -43,6 +47,10 @@ M1 in progress. Merged so far:
 3. Then M2: channels and live messages.
 
 ## Open questions
+
+- reCAPTCHA keys: create one v3 and one v2 checkbox key in the Google admin console for
+  `localhost` and `baithak.ahmershah.dev`, then fill the four `RECAPTCHA_*` values in `.env`.
+  reCAPTCHA sends visitor data to Google; mention it in the privacy notes before launch.
 
 - Decided: an unverified person can sign in but can't create or join a workspace (enforce in the
   workspaces API).

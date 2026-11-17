@@ -3,6 +3,22 @@ info:
   title: Baithak API
   version: 0.1.0
 paths:
+  /api/v1/auth/config/:
+    get:
+      operationId: auth_config_retrieve
+      summary: Public settings for auth forms
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthConfig'
+          description: ''
   /api/v1/auth/csrf/:
     get:
       operationId: auth_csrf_retrieve
@@ -51,6 +67,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Detail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptchaError'
           description: ''
   /api/v1/auth/password-reset/confirm/:
     post:
@@ -102,6 +124,12 @@ paths:
           content:
             application/json:
               schema:
+                $ref: '#/components/schemas/CaptchaError'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
   /api/v1/auth/signout/:
@@ -137,6 +165,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Detail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptchaError'
           description: ''
   /api/v1/auth/verify-email/:
     post:
@@ -438,6 +472,30 @@ components:
       - next
       - previous
       - results
+    AuthConfig:
+      type: object
+      properties:
+        recaptcha_v3_site_key:
+          type: string
+        recaptcha_v2_site_key:
+          type: string
+      required:
+      - recaptcha_v2_site_key
+      - recaptcha_v3_site_key
+    CaptchaEnum:
+      enum:
+      - v2
+      type: string
+      description: '* `v2` - v2'
+    CaptchaError:
+      type: object
+      properties:
+        detail:
+          type: string
+        captcha:
+          $ref: '#/components/schemas/CaptchaEnum'
+      required:
+      - detail
     Detail:
       type: object
       properties:
@@ -447,7 +505,18 @@ components:
       - detail
     EmailRequest:
       type: object
+      description: 'Fields every anonymous form sends: reCAPTCHA tokens and the hidden
+        honeypot.'
       properties:
+        captcha:
+          type: string
+          maxLength: 4000
+        captcha_v2:
+          type: string
+          maxLength: 4000
+        website:
+          type: string
+          maxLength: 200
         email:
           type: string
           format: email
@@ -527,7 +596,18 @@ components:
         * `guest` - guest
     SignInRequest:
       type: object
+      description: 'Fields every anonymous form sends: reCAPTCHA tokens and the hidden
+        honeypot.'
       properties:
+        captcha:
+          type: string
+          maxLength: 4000
+        captcha_v2:
+          type: string
+          maxLength: 4000
+        website:
+          type: string
+          maxLength: 200
         email:
           type: string
           format: email
@@ -543,7 +623,18 @@ components:
       - password
     SignUpRequest:
       type: object
+      description: 'Fields every anonymous form sends: reCAPTCHA tokens and the hidden
+        honeypot.'
       properties:
+        captcha:
+          type: string
+          maxLength: 4000
+        captcha_v2:
+          type: string
+          maxLength: 4000
+        website:
+          type: string
+          maxLength: 200
         email:
           type: string
           format: email

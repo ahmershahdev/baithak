@@ -185,10 +185,15 @@ class TestSignIn:
 
         assert response.status_code == 400
 
-    def test_is_throttled_after_ten_attempts(self, api: APIClient) -> None:
-        payload = {"email": "x@example.com", "password": "wrong"}
+    def test_one_ip_is_throttled_after_ten_attempts(self, api: APIClient) -> None:
+        # A different email each time, so the per-account limit never kicks in.
         codes = [
-            api.post("/api/v1/auth/signin/", payload, format="json").status_code for _ in range(11)
+            api.post(
+                "/api/v1/auth/signin/",
+                {"email": f"x{n}@example.com", "password": "wrong"},
+                format="json",
+            ).status_code
+            for n in range(11)
         ]
 
         assert codes[:10] == [400] * 10
