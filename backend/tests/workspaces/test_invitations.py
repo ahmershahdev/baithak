@@ -8,7 +8,8 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.core.roles import Role
-from apps.workspaces.invitations import hash_token, mask_email
+from apps.workspaces.invitation_tokens import hash_token
+from apps.workspaces.invitations import mask_email
 from apps.workspaces.models import AuditEvent, Invitation, Member, Workspace
 from tests.accounts.factories import make_user
 

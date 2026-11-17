@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 
 from apps.accounts.tasks import email_task
+from apps.workspaces.invitation_tokens import new_token
 from apps.workspaces.models import Invitation
 
 
@@ -9,8 +10,6 @@ from apps.workspaces.models import Invitation
 def send_invitation_email(invitation_id: int) -> None:
     # The token is made here, in the worker, so it never passes through the broker; a retry
     # makes a new one and the old link stops working.
-    from apps.workspaces.invitations import new_token
-
     invitation = (
         Invitation.objects.select_related("workspace", "invited_by")
         .filter(pk=invitation_id)

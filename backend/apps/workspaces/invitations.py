@@ -1,7 +1,5 @@
 """Inviting people into a workspace by email, and accepting with the emailed link."""
 
-import hashlib
-import secrets
 from datetime import timedelta
 from typing import cast
 
@@ -22,6 +20,7 @@ from apps.core import roles
 from apps.core.roles import Role
 from apps.workspaces import audit
 from apps.workspaces.access import membership, role_of
+from apps.workspaces.invitation_tokens import hash_token
 from apps.workspaces.models import Invitation, Member
 from apps.workspaces.serializers import (
     INVITABLE_ROLE_CHOICES,
@@ -32,18 +31,6 @@ from apps.workspaces.tasks import send_invitation_email
 
 INVITATION_DAYS = 7
 BAD_INVITATION = "This invitation is not valid any more. Ask for a new one."
-
-
-def hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
-
-
-def new_token(invitation: Invitation) -> str:
-    """Give the invitation a fresh token, store only its hash, and return the token."""
-    token = secrets.token_urlsafe(32)
-    invitation.token_hash = hash_token(token)
-    invitation.save(update_fields=["token_hash"])
-    return token
 
 
 def pending_by_token(token: str) -> Invitation | None:
