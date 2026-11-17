@@ -12,7 +12,7 @@ export interface paths {
             cookie?: never;
         };
         /** Set the CSRF cookie */
-        get: operations["csrf_retrieve"];
+        get: operations["auth_csrf_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29,7 +29,7 @@ export interface paths {
             cookie?: never;
         };
         /** The signed-in person */
-        get: operations["me_retrieve"];
+        get: operations["auth_me_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -48,7 +48,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Ask for a reset link */
-        post: operations["password_reset_create"];
+        post: operations["auth_password_reset_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -65,7 +65,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Choose a new password */
-        post: operations["password_reset_confirm_create"];
+        post: operations["auth_password_reset_confirm_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -82,7 +82,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Sign in */
-        post: operations["signin_create"];
+        post: operations["auth_signin_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -99,7 +99,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Sign out */
-        post: operations["signout_create"];
+        post: operations["auth_signout_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -116,7 +116,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Sign up */
-        post: operations["signup_create"];
+        post: operations["auth_signup_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -133,7 +133,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Confirm an email address and sign in */
-        post: operations["verify_email_create"];
+        post: operations["auth_verify_email_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -150,17 +150,122 @@ export interface paths {
         get?: never;
         put?: never;
         /** Resend the email */
-        post: operations["verify_email_resend_create"];
+        post: operations["auth_verify_email_resend_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My workspaces */
+        get: operations["workspaces_list"];
+        put?: never;
+        /** Create a workspace */
+        post: operations["workspaces_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One workspace */
+        get: operations["workspaces_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a workspace */
+        patch: operations["workspaces_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/audit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit log, newest first */
+        get: operations["workspaces_audit_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/members/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workspace members */
+        get: operations["workspaces_members_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/members/{user_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a member, or leave */
+        delete: operations["workspaces_members_destroy"];
+        options?: never;
+        head?: never;
+        /** Change a member's role */
+        patch: operations["workspaces_members_partial_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AuditEvent: {
+            readonly id: number;
+            readonly actor: string | null;
+            readonly action: string;
+            readonly model: string;
+            readonly object_id: string;
+            readonly changes: unknown;
+            /** Format: date-time */
+            readonly at: string;
+        };
+        AuditPage: {
+            /** Format: uri */
+            next: string | null;
+            /** Format: uri */
+            previous: string | null;
+            results: components["schemas"]["AuditEvent"][];
+        };
         Detail: {
             detail: string;
         };
@@ -168,11 +273,33 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        Member: {
+            readonly user_id: number;
+            readonly username: string;
+            readonly display_name: string;
+            readonly role: components["schemas"]["RoleEnum"];
+            /** Format: date-time */
+            readonly joined_at: string;
+        };
         PasswordResetConfirmRequest: {
             uid: string;
             token: string;
             password: string;
         };
+        PatchedRoleRequest: {
+            role?: components["schemas"]["RoleEnum"];
+        };
+        PatchedWorkspaceWriteRequest: {
+            name?: string;
+        };
+        /**
+         * @description * `owner` - owner
+         *     * `admin` - admin
+         *     * `member` - member
+         *     * `guest` - guest
+         * @enum {string}
+         */
+        RoleEnum: "owner" | "admin" | "member" | "guest";
         SignInRequest: {
             /** Format: email */
             email: string;
@@ -197,6 +324,17 @@ export interface components {
             readonly display_name: string;
             readonly email_verified: boolean;
         };
+        /** @description A workspace as seen by one member: built from that member's row. */
+        Workspace: {
+            readonly slug: string;
+            readonly name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly role: components["schemas"]["RoleEnum"];
+        };
+        WorkspaceWriteRequest: {
+            name: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -206,7 +344,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    csrf_retrieve: {
+    auth_csrf_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -224,7 +362,7 @@ export interface operations {
             };
         };
     };
-    me_retrieve: {
+    auth_me_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -243,7 +381,7 @@ export interface operations {
             };
         };
     };
-    password_reset_create: {
+    auth_password_reset_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -266,7 +404,7 @@ export interface operations {
             };
         };
     };
-    password_reset_confirm_create: {
+    auth_password_reset_confirm_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -296,7 +434,7 @@ export interface operations {
             };
         };
     };
-    signin_create: {
+    auth_signin_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -327,7 +465,7 @@ export interface operations {
             };
         };
     };
-    signout_create: {
+    auth_signout_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -345,7 +483,7 @@ export interface operations {
             };
         };
     };
-    signup_create: {
+    auth_signup_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -368,7 +506,7 @@ export interface operations {
             };
         };
     };
-    verify_email_create: {
+    auth_verify_email_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -399,7 +537,7 @@ export interface operations {
             };
         };
     };
-    verify_email_resend_create: {
+    auth_verify_email_resend_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -409,6 +547,215 @@ export interface operations {
         requestBody?: never;
         responses: {
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"][];
+                };
+            };
+        };
+    };
+    workspaces_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+        };
+    };
+    workspaces_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedWorkspaceWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_audit_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+        };
+    };
+    workspaces_members_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"][];
+                };
+            };
+        };
+    };
+    workspaces_members_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_members_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRoleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

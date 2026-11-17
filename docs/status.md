@@ -29,12 +29,18 @@ M1 in progress. Merged so far:
   openapi-fetch typed from the schema, CSRF header added by a client middleware. Dev settings
   trust the Vite origin for CSRF.
 
+- Workspaces API under `/api/v1/workspaces/`: list and create (needs a confirmed email; the
+  creator is owner), read and rename, members with role changes and removal or leaving, and the
+  audit log (cursor-paginated, admins and owners only). Role rules in `apps/core/roles.py` with a
+  100% branch coverage gate in CI. `tests/test_access.py` checks every workspace endpoint for 404
+  to outsiders.
+
 ## Next session
 
-1. Workspaces, members, roles (owner, admin, member, guest), invitations; the workspace-scoped
-   manager; the audit log.
-2. The access test that runs against every endpoint.
-3. Workspace screens.
+1. Invitations: invite by email with a role, accept by link (the signed-in email must match),
+   revoke, list pending; audit rows; added to the access test.
+2. Workspace screens: list, create, switch, members and roles, invitations.
+3. Then M2: channels and live messages.
 
 ## Open questions
 

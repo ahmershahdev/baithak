@@ -1,7 +1,11 @@
 import os
 from pathlib import Path
 
+import django_stubs_ext
 from django.core.exceptions import ImproperlyConfigured
+
+# Lets Django's generic classes (ModelAdmin, QuerySet) take type parameters at runtime.
+django_stubs_ext.monkeypatch()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -37,6 +41,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "apps.accounts",
+    "apps.workspaces",
 ]
 
 MIDDLEWARE = [
