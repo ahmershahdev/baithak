@@ -121,6 +121,11 @@ broadcast to the person's other connections so every device agrees.
 | Role rules mirrored in `frontend/src/roles.ts` | The screens only offer what the API allows; the API still decides and its refusal is shown |
 | Return paths kept in sessionStorage, only same-site paths | An invitation survives sign-up and the confirmation email in the same tab; `//host` and full URLs are dropped so the link can't redirect elsewhere |
 | `<meta name="referrer" content="same-origin">` on the web app | Invitation, reset and verification links carry one-time tokens that must not leak to other sites |
+| Channel rules in `apps/core/channels.py`; the list query is checked against them | `can_read` decides one channel; `readable_channels` writes the same rule as SQL for lists, and a test compares the two for every role, kind and membership so they can't drift |
+| Private channels are closed to admins who aren't in them | Membership, not rank, opens a private conversation; admins can still archive it once added |
+| Guests see only channels they were added to | Guests are for outside collaborators; they don't browse the workspace |
+| `#general` made with every workspace, joined by every non-guest | People land somewhere to talk on day one |
+| Channels addressed by id in the API | Names can be renamed; ids never change |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

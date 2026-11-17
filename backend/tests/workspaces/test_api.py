@@ -46,7 +46,7 @@ class TestCreate:
     ) -> None:
         assert workspace.slug == "karachi-team"
         assert Member.objects.for_workspace(workspace).get().user == owner
-        assert actions(workspace) == ["workspace.create", "member.add"]
+        assert actions(workspace) == ["workspace.create", "member.add", "channel.create"]
         assert api.get("/api/v1/workspaces/").json() == [
             {
                 "slug": "karachi-team",
@@ -111,7 +111,7 @@ class TestRename:
     def test_same_name_writes_no_audit_row(self, api: APIClient, workspace: Workspace) -> None:
         api.patch("/api/v1/workspaces/karachi-team/", {"name": "Karachi Team"}, format="json")
 
-        assert actions(workspace) == ["workspace.create", "member.add"]
+        assert actions(workspace) == ["workspace.create", "member.add", "channel.create"]
 
     @pytest.mark.parametrize("role", [Role.MEMBER, Role.GUEST])
     def test_members_and_guests_cannot(
@@ -238,6 +238,7 @@ class TestAuditLog:
 
         assert [e["action"] for e in page["results"]] == [
             "workspace.update",
+            "channel.create",
             "member.add",
             "workspace.create",
         ]

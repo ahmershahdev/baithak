@@ -24,8 +24,8 @@ in CI, and seed data.
 
 ## M2. Channels and live messages (target 2026-12-27)
 
-- [ ] Public and private channels, channel members, topics, archive
-- [ ] One permission check in `apps/core` for reading a channel, used by REST and WebSockets
+- [x] Public and private channels, channel members, topics, archive
+- [x] One permission check in `apps/core` for reading a channel, used by REST and WebSockets
 - [ ] WebSocket connection with session auth; one Channels group per channel
 - [ ] Send, edit and delete messages; saved first, then broadcast with a per-channel sequence
 - [ ] Message history with cursor pagination; catch-up from the last sequence after a reconnect

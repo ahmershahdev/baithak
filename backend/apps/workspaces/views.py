@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
+from apps.chat.services import create_default_channel
 from apps.core import roles
 from apps.core.roles import Role
 from apps.workspaces import audit
@@ -81,6 +82,7 @@ class WorkspaceListView(APIView):
                     member = Member.objects.create(workspace=workspace, user=user, role=Role.OWNER)
                     audit.record(workspace, user, "workspace.create", workspace, {"name": name})
                     audit.record(workspace, user, "member.add", member, {"role": Role.OWNER})
+                    create_default_channel(workspace, user)
                 break
             except IntegrityError:
                 # Another request took the same slug between the check and the insert.

@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
+from apps.chat.services import join_default_channels
 from apps.core import roles
 from apps.core.roles import Role
 from apps.workspaces import audit
@@ -241,4 +242,5 @@ class InvitationAcceptView(APIView):
             audit.record(workspace, user, "invitation.accept", invitation, {"email": user.email})
             if created:
                 audit.record(workspace, user, "member.add", member, {"role": member.role})
+                join_default_channels(workspace, user, Role(member.role))
         return Response(WorkspaceSerializer(member).data)
