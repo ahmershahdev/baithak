@@ -75,6 +75,7 @@ const pairs = [
   ["scrollbar-thumb", "bg", UI],
   ["scrollbar-thumb", "surface", UI],
   ["scrollbar-thumb-hover", "bg", UI],
+  ["danger", "danger-soft", TEXT],
   ["presence-online", "bg-subtle", UI],
   ["presence-away", "bg-subtle", UI],
   ["presence-busy", "bg-subtle", UI],

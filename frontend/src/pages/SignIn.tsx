@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState, type SubmitEvent } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
 import { useSetMe } from "../auth";
@@ -9,6 +9,7 @@ import { CaptchaBox, CaptchaNotice } from "../components/CaptchaBox";
 import { PasswordField } from "../components/PasswordField";
 import { AuthLayout, Button, ErrorMessage, Field, Honeypot, TextLink } from "../components/ui";
 import { honeypot, textField } from "../forms";
+import { rememberNext, safePath, takeNext } from "../next";
 
 interface SignInBody {
   email: string;
@@ -18,10 +19,16 @@ interface SignInBody {
 
 export function SignIn() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = safePath(params.get("next"));
   const setMe = useSetMe();
   const captchaBox = useRef<HTMLDivElement>(null);
   const captcha = useCaptcha("signin", captchaBox);
   const [errors, setErrors] = useState<ApiErrors>({ fields: {} });
+
+  useEffect(() => {
+    rememberNext(next);
+  }, [next]);
 
   const signIn = useMutation({
     mutationFn: async (body: SignInBody) =>
@@ -29,7 +36,7 @@ export function SignIn() {
     onSuccess: ({ data, error }) => {
       if (data) {
         setMe(data);
-        void navigate("/");
+        void navigate(takeNext());
         return;
       }
       const problems = readErrors(error);
@@ -57,7 +64,10 @@ export function SignIn() {
       title="Welcome back"
       intro={
         <>
-          New here? <TextLink to="/signup">Create an account</TextLink>
+          New here?{" "}
+          <TextLink to={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}>
+            Create an account
+          </TextLink>
         </>
       }
     >

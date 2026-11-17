@@ -1,20 +1,38 @@
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 
+import type { User } from "./api/client";
+import { useWorkspaces } from "./api/workspaces";
 import { useMe } from "./auth";
+import { lastWorkspace } from "./lastWorkspace";
 import { ErrorMessage } from "./components/ui";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { Home } from "./pages/Home";
+import { Invite } from "./pages/Invite";
 import { ResetPassword } from "./pages/ResetPassword";
 import { SignIn } from "./pages/SignIn";
 import { SignUp } from "./pages/SignUp";
 import { VerifyEmail } from "./pages/VerifyEmail";
+import { Audit } from "./pages/workspace/Audit";
+import { Invitations } from "./pages/workspace/Invitations";
+import { Members } from "./pages/workspace/Members";
+import { Overview } from "./pages/workspace/Overview";
+import { Settings } from "./pages/workspace/Settings";
+import { WorkspaceShell } from "./pages/workspace/Shell";
 
 function Loading() {
   return (
     <p role="status" className="p-8 text-text-muted">
       Loading
     </p>
+  );
+}
+
+function Unreachable() {
+  return (
+    <main className="mx-auto max-w-sm px-4 py-12">
+      <ErrorMessage>Could not reach Baithak. Is the backend running?</ErrorMessage>
+    </main>
   );
 }
 
@@ -25,24 +43,43 @@ function SignedOutOnly({ children }: { children: ReactNode }) {
   return children;
 }
 
-function HomeRoute() {
+/** Pages that need an account: signed-out visitors go to sign in and come back after. */
+function SignedIn({ children }: { children: (me: User) => ReactNode }) {
   const me = useMe();
+  const location = useLocation();
   if (me.isPending) return <Loading />;
-  if (me.isError) {
-    return (
-      <main className="mx-auto max-w-sm px-4 py-12">
-        <ErrorMessage>Could not reach Baithak. Is the backend running?</ErrorMessage>
-      </main>
-    );
+  if (me.isError) return <Unreachable />;
+  if (me.data === null) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={location.pathname === "/" ? "/signin" : `/signin?next=${next}`} replace />;
   }
-  if (me.data === null) return <Navigate to="/signin" replace />;
-  return <Home user={me.data} />;
+  return children(me.data);
+}
+
+/** Home opens the last workspace used, else the first; with none it offers to create one. */
+function HomeRoute({ me }: { me: User }) {
+  const workspaces = useWorkspaces();
+  if (workspaces.isPending) return <Loading />;
+  if (workspaces.isError) return <Unreachable />;
+  const last = lastWorkspace();
+  const open = workspaces.data.find((w) => w.slug === last) ?? workspaces.data[0];
+  if (open) return <Navigate to={`/w/${open.slug}`} replace />;
+  return <Home user={me} />;
 }
 
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomeRoute />} />
+      <Route path="/" element={<SignedIn>{(me) => <HomeRoute me={me} />}</SignedIn>} />
+      <Route path="/w/new" element={<SignedIn>{(me) => <Home user={me} adding />}</SignedIn>} />
+      <Route path="/w/:slug" element={<SignedIn>{(me) => <WorkspaceShell me={me} />}</SignedIn>}>
+        <Route index element={<Overview />} />
+        <Route path="members" element={<Members />} />
+        <Route path="invitations" element={<Invitations />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="audit" element={<Audit />} />
+      </Route>
+      <Route path="/invite" element={<Invite />} />
       <Route
         path="/signin"
         element={

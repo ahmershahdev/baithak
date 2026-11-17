@@ -20,5 +20,7 @@ Object.defineProperty(window, "matchMedia", {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  localStorage.clear();
+  sessionStorage.clear();
   document.cookie = "csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 });
