@@ -115,7 +115,7 @@ export function Channels() {
                   <label htmlFor="channel-kind" className="text-sm font-semibold">
                     Who can see it
                   </label>
-                  <Select id="channel-kind" name="kind" defaultValue="public" className="h-12">
+                  <Select id="channel-kind" name="kind" defaultValue="public" className="h-12" full>
                     <option value="public">Everyone</option>
                     <option value="private">Invited only</option>
                   </Select>

@@ -99,6 +99,7 @@ export function SignIn() {
         <Honeypot />
         <CaptchaBox
           box={captchaBox}
+          shown={captcha.shown}
           challenged={captcha.challenged}
           solved={captcha.solved}
           failed={captcha.failed}

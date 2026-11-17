@@ -174,14 +174,14 @@ class TestAuthEndpointsUseTheGuards:
     @override_settings(
         REST_FRAMEWORK={**base.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": {"auth": None}}
     )
-    def test_five_wrong_passwords_lock_the_account_from_any_ip(self, api: APIClient) -> None:
+    def test_three_wrong_passwords_lock_the_account_from_any_ip(self, api: APIClient) -> None:
         make_user(email="amna@example.com")
         wrong = {"email": "amna@example.com", "password": "wrong-password"}
         codes = [
             api.post(
                 "/api/v1/auth/signin/", wrong, format="json", REMOTE_ADDR=f"10.0.0.{n}"
             ).status_code
-            for n in range(5)
+            for n in range(3)
         ]
 
         right = api.post(
@@ -191,23 +191,23 @@ class TestAuthEndpointsUseTheGuards:
             REMOTE_ADDR="10.0.0.99",
         )
 
-        assert codes == [400] * 5
+        assert codes == [400] * 3
         assert right.status_code == 429
 
     def test_a_good_sign_in_clears_earlier_failures(self, api: APIClient) -> None:
         make_user(email="amna@example.com")
         wrong = {"email": "amna@example.com", "password": "wrong-password"}
         right = {"email": "amna@example.com", "password": PASSWORD}
-        for _ in range(4):
+        for _ in range(2):
             api.post("/api/v1/auth/signin/", wrong, format="json")
         api.post("/api/v1/auth/signin/", right, format="json")
         api.post("/api/v1/auth/signout/")
 
         after = [
-            api.post("/api/v1/auth/signin/", wrong, format="json").status_code for _ in range(4)
+            api.post("/api/v1/auth/signin/", wrong, format="json").status_code for _ in range(2)
         ]
 
-        assert after == [400] * 4
+        assert after == [400] * 2
 
 
 @pytest.mark.django_db

@@ -136,14 +136,24 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     # "invite" limits how much email one person can make Baithak send to strangers.
-    "DEFAULT_THROTTLE_RATES": {"auth": "10/minute", "invite": "30/hour", "post": "120/minute"},
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": "10/minute",
+        "invite": "30/hour",
+        "post": "120/minute",
+        "availability": "30/minute",
+        "contact": "5/hour",
+    },
     # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
     # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.
     "NUM_PROXIES": int(env("NUM_PROXIES", "0")),
 }
 
-SIGNIN_MAX_FAILURES = 5
-SIGNIN_LOCKOUT_SECONDS = 15 * 60
+# For emails with no account, so they answer like real ones (apps/core/lockout.py).
+SIGNIN_MAX_FAILURES = 3
+SIGNIN_LOCKOUT_SECONDS = 60 * 60
+
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", "support@ahmershah.dev")
+SITE_URL = env("SITE_URL", "https://ahmershah.dev")
 
 # Empty reCAPTCHA keys turn the check off.
 RECAPTCHA_V3_SITE_KEY = env("RECAPTCHA_V3_SITE_KEY", "")
@@ -172,9 +182,8 @@ PASSWORD_HASHERS = [
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "apps.accounts.validators.StrongPasswordValidator"},
 ]
 
 LANGUAGE_CODE = "en"

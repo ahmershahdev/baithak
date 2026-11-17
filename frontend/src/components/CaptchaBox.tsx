@@ -3,30 +3,35 @@ import type { RefObject } from "react";
 // The widget is a fixed 304 x 78 px iframe, hence the scale-down on narrow phones.
 export function CaptchaBox({
   box,
+  shown,
   challenged,
   solved,
   failed,
 }: {
   box: RefObject<HTMLDivElement | null>;
+  shown: boolean;
   challenged: boolean;
   solved: boolean;
   failed: boolean;
 }) {
+  const note = failed
+    ? "The check could not load. Check your connection and try again."
+    : challenged && !solved
+      ? "Please tick the box, then send the form again."
+      : null;
   return (
     <div
       className={
-        challenged
-          ? "settle flex flex-col items-center gap-3 rounded-xl border border-border bg-surface px-3 py-4"
+        shown
+          ? "flex flex-col items-center gap-2 rounded-xl border border-border bg-surface px-3 py-3"
           : "hidden"
       }
     >
-      <p className="text-center text-sm text-text-muted" aria-live="polite">
-        {failed
-          ? "The check could not load. Check your connection and try again."
-          : solved
-            ? "Thanks. Now send the form again."
-            : "One quick check: tick the box, then send the form again."}
-      </p>
+      {note && (
+        <p className="text-center text-sm text-danger" role="status">
+          {note}
+        </p>
+      )}
       <div className="flex min-h-[78px] w-full justify-center overflow-hidden">
         <div ref={box} className="origin-top max-[360px]:scale-[0.88]" />
       </div>

@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 
-PASSWORD = "a-long-test-password-42"
+PASSWORD = "Chai-At-Four-42"
 
 _numbers = count()
 

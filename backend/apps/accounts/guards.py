@@ -34,3 +34,13 @@ def note_failure(email: str) -> None:
 
 def clear_failures(email: str) -> None:
     cache.delete(_failures_key(email))
+
+
+def allow_reset_request(email: str, per_hour: int = 3) -> bool:
+    key = "reset-requests:" + hashlib.sha256(email.encode()).hexdigest()
+    cache.add(key, 0, timeout=3600)
+    try:
+        return cache.incr(key) <= per_hour
+    except ValueError:
+        cache.set(key, 1, timeout=3600)
+        return True

@@ -14,7 +14,7 @@ const amna: User = {
   email_verified: true,
 };
 
-const signedOut = { "GET /api/v1/auth/me/": () => json(403, { detail: "Not signed in." }) };
+const signedOut = { "GET /api/v1/auth/me/": () => new Response(null, { status: 204 }) };
 
 describe("home", () => {
   test("sends a signed-out visitor to sign in", async () => {
@@ -47,7 +47,8 @@ describe("home", () => {
   test("signing out returns to sign in", async () => {
     let signedIn = true;
     fakeBackend({
-      "GET /api/v1/auth/me/": () => (signedIn ? json(200, amna) : json(403, {})),
+      "GET /api/v1/auth/me/": () =>
+        signedIn ? json(200, amna) : new Response(null, { status: 204 }),
       "POST /api/v1/auth/signout/": () => {
         signedIn = false;
         return new Response(null, { status: 204 });
@@ -77,7 +78,7 @@ describe("sign in", () => {
     renderAt("/signin");
 
     await userEvent.type(await screen.findByLabelText("Email"), "amna@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.type(screen.getByLabelText("Password"), "Chai-At-Four-42");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("heading", { name: "Welcome, Amna Khan" })).toBeInTheDocument();
@@ -111,7 +112,7 @@ describe("sign up", () => {
   async function fillAndSubmit() {
     await userEvent.type(await screen.findByLabelText("Email"), "amna@example.com");
     await userEvent.type(screen.getByLabelText("Handle"), "amna");
-    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.type(screen.getByLabelText("Password"), "Chai-At-Four-42");
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
   }
 
@@ -181,7 +182,7 @@ describe("email links", () => {
     renderAt("/forgot-password");
 
     await userEvent.type(await screen.findByLabelText("Email"), "who@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send me a code" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent(
       "If who@example.com has an account",
@@ -192,17 +193,18 @@ describe("email links", () => {
     const backend = fakeBackend({
       "POST /api/v1/auth/password-reset/confirm/": () => new Response(null, { status: 204 }),
     });
-    renderAt("/reset-password?uid=MQ&token=abc");
+    renderAt("/reset-password?uid=MQ&code=123456");
 
-    await userEvent.type(await screen.findByLabelText("New password"), "a-new-long-password");
+    expect(await screen.findByLabelText("Code")).toHaveValue("123456");
+    await userEvent.type(screen.getByLabelText("New password"), "Lamp-Lit-Room-77");
     await userEvent.click(screen.getByRole("button", { name: "Save password" }));
 
     expect(await screen.findByRole("heading", { name: "Password changed" })).toBeInTheDocument();
     const confirm = backend.requests.find((r) => r.url.endsWith("/confirm/"));
     expect(await confirm?.json()).toEqual({
       uid: "MQ",
-      token: "abc",
-      password: "a-new-long-password",
+      code: "123456",
+      password: "Lamp-Lit-Room-77",
     });
   });
 });
@@ -275,7 +277,7 @@ describe("bot checks", () => {
     expect(screen.queryByRole("textbox", { name: "Website" })).not.toBeInTheDocument();
 
     await userEvent.type(email, "amna@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.type(screen.getByLabelText("Password"), "Chai-At-Four-42");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await screen.findByRole("heading", { name: "Welcome, Amna Khan" });
 
@@ -312,7 +314,7 @@ describe("bot checks", () => {
     renderAt("/signin");
 
     await userEvent.type(await screen.findByLabelText("Email"), "amna@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.type(screen.getByLabelText("Password"), "Chai-At-Four-42");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Please confirm you are a person.");

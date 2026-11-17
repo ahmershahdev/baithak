@@ -93,7 +93,7 @@ export function useCaptcha(action: string, box: RefObject<HTMLDivElement | null>
   // The checkbox is drawn only after React has shown its container: reCAPTCHA measures the
   // box when it renders, and inside a display:none parent it comes out blank or squashed.
   useEffect(() => {
-    if (!challenged || !v2Key || widget.current !== null) return;
+    if (!v2Key || widget.current !== null) return;
     let cancelled = false;
     loadScript(v3Key)
       .then((grecaptcha) => {
@@ -118,7 +118,7 @@ export function useCaptcha(action: string, box: RefObject<HTMLDivElement | null>
     return () => {
       cancelled = true;
     };
-  }, [box, challenged, v2Key, v3Key]);
+  }, [box, v2Key, v3Key]);
 
   const tokens = useCallback(async (): Promise<CaptchaFields> => {
     if (v2Token) {
@@ -149,6 +149,7 @@ export function useCaptcha(action: string, box: RefObject<HTMLDivElement | null>
     tokens,
     challenge,
     challenged,
+    shown: Boolean(v2Key),
     solved: v2Token !== null,
     failed,
     enabled: Boolean(v3Key || v2Key),

@@ -76,11 +76,24 @@ M1 in progress. Merged so far:
   channel catches up; a test drops the socket and checks nothing is lost or shown twice. Tried
   with two real tabs: a message from one appeared live in the other. M2 is complete.
 
+- M2 released as `v0.2.0`. Account protection: lockout ladder (1 h, 4 h, a week, ban with admin
+  unlock) for sign-in and reset codes with owner emails, 6-digit reset codes (10 minutes, one
+  use), stronger password rules with a checklist, handle and display-name blocklist with
+  look-alike folding, live email and handle availability, `/me` 204 when signed out, the
+  reCAPTCHA checkbox shown up front, themed selects, and a contact page that mails
+  support@ahmershah.dev.
+
 ## Next session
 
-1. Tag `v0.2.0` for M2 and close the milestone.
-2. M3: threads, direct and group messages, mentions, reactions, typing and presence, unread
-   counts and read markers.
+M3, in this order:
+
+1. Unread counts and read markers per person and channel (uses `last_read_seq`), the same on
+   every device.
+2. Threads with reply counts and "also send to channel".
+3. Mentions parsed in `apps/core` (`@person`, `@channel`) with autocomplete.
+4. Reactions.
+5. Direct and group messages.
+6. Typing indicator and online status in Redis with expiry.
 
 ## Open questions
 

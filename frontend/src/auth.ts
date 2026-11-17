@@ -9,7 +9,7 @@ export function useMe() {
     queryKey: ME,
     queryFn: async (): Promise<User | null> => {
       const { data, response } = await api.GET("/api/v1/auth/me/");
-      if (response.status === 403) return null;
+      if (response.status === 204) return null;
       if (data === undefined)
         throw new Error(`Could not load the account (${String(response.status)})`);
       return data;

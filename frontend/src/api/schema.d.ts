@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/api/v1/auth/availability/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Is this email or handle free?
+         * @description Live checks for the sign-up form.
+         *
+         *     This tells anyone whether an email has an account, which sign-up itself never does; the
+         *     tight throttle is what keeps it from being a list of members.
+         */
+        post: operations["auth_availability_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/config/": {
         parameters: {
             query?: never;
@@ -45,7 +68,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in person */
+        /** The signed-in person; 204 when nobody is signed in */
         get: operations["auth_me_retrieve"];
         put?: never;
         post?: never;
@@ -168,6 +191,23 @@ export interface paths {
         put?: never;
         /** Resend the email */
         post: operations["auth_verify_email_resend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contact/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write to the Baithak team */
+        post: operations["contact_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -486,6 +526,18 @@ export interface components {
             readonly username: string;
             readonly display_name: string;
         };
+        Availability: {
+            available: boolean;
+            message: string;
+        };
+        AvailabilityRequestRequest: {
+            email?: string;
+            username?: string;
+        };
+        AvailabilityResult: {
+            email?: components["schemas"]["Availability"];
+            username?: components["schemas"]["Availability"];
+        };
         /**
          * @description * `v2` - v2
          * @enum {string}
@@ -519,6 +571,15 @@ export interface components {
             readonly display_name: string;
             /** Format: date-time */
             readonly joined_at: string;
+        };
+        ContactRequest: {
+            captcha?: string;
+            captcha_v2?: string;
+            website?: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            message: string;
         };
         Detail: {
             detail: string;
@@ -593,9 +654,12 @@ export interface components {
             last_seq: number;
             last_event: number;
         };
+        /** @description The code from the email, and who it is for: `uid` from the emailed link, or `email`. */
         PasswordResetConfirmRequest: {
-            uid: string;
-            token: string;
+            uid?: string;
+            /** Format: email */
+            email?: string;
+            code: string;
             password: string;
         };
         PatchedBodyRequest: {
@@ -677,6 +741,29 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    auth_availability_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AvailabilityRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityResult"];
+                };
+            };
+        };
+    };
     auth_config_retrieve: {
         parameters: {
             query?: never;
@@ -730,6 +817,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["User"];
                 };
+            };
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -928,6 +1022,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    contact_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaError"];
                 };
             };
         };
