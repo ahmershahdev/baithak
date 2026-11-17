@@ -1,0 +1,10 @@
+{
+  "name": "baithak",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm --prefix frontend install",
+    "dev": "docker compose up -d --build --wait mysql redis backend worker && npm --prefix frontend run dev",
+    "stop": "docker compose stop",
+    "logs": "docker compose logs -f backend worker"
+  }
+}

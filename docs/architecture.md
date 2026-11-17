@@ -86,6 +86,8 @@ broadcast to the person's other connections so every device agrees.
 | Daphne as the ASGI server | Comes with Channels and makes `runserver` serve ASGI in development, so dev and prod run the same server |
 | Custom user model from the first migration | Django can't swap the user model after tables exist |
 | uv with exact pins and `uv.lock` | One lock file for the image and CI; installs are fast and repeatable |
+| Vite dev server proxies the API and sockets | The browser sees one origin in development as in production, so session cookies and CSRF work the same way |
+| TypeScript 6.0, not 7 | typescript-eslint supports TypeScript below 6.1; move when it does |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

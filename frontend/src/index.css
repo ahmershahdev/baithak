@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+/*
+ * Only the semantic tokens become Tailwind colors, so a class like bg-tomato-700 does not exist
+ * and components can't bypass the themes (see docs/design.md). The default palette is cleared.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-overlay: var(--overlay);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-text: var(--accent-soft-text);
+  --color-focus-ring: var(--focus-ring);
+
+  --color-ember: var(--ember);
+  --color-ember-soft: var(--ember-soft);
+  --color-ember-soft-text: var(--ember-soft-text);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-text: var(--success-soft-text);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-text: var(--warning-soft-text);
+  --color-danger: var(--danger);
+  --color-danger-fill: var(--danger-fill);
+  --color-on-danger: var(--on-danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-soft-text: var(--danger-soft-text);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-soft-text: var(--info-soft-text);
+
+  --color-mention: var(--mention);
+  --color-mention-edge: var(--mention-edge);
+  --color-unread: var(--unread);
+  --color-on-unread: var(--on-unread);
+
+  --color-presence-online: var(--presence-online);
+  --color-presence-away: var(--presence-away);
+  --color-presence-busy: var(--presence-busy);
+  --color-presence-offline: var(--presence-offline);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}

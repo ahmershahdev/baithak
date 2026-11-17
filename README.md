@@ -8,7 +8,7 @@ has channels, threads and direct messages that update live, and a small issue tr
 issue can start from a message and keep its discussion in a thread. GitHub pull request events
 arrive in the channel that follows the repository. The interface is in English.
 
-> Status: early. The backend skeleton runs; no features yet. See [docs/roadmap.md](docs/roadmap.md) for the
+> Status: early. The backend and web app skeletons run; no features yet. See [docs/roadmap.md](docs/roadmap.md) for the
 > milestones and [docs/status.md](docs/status.md) for where the work is.
 
 ## What it will do
@@ -40,18 +40,21 @@ arrive in the channel that follows the repository. The interface is in English.
 
 ## Run it locally
 
-You need Docker with Compose, and [uv](https://docs.astral.sh/uv/) to run the backend checks on
-your machine.
+You need Docker with Compose and Node 22.12 or later. [uv](https://docs.astral.sh/uv/) is only
+needed to run the backend checks on your machine.
 
 ```sh
-cp .env.example .env
-docker compose up -d --build
-docker compose exec backend python manage.py migrate
-curl http://localhost:8000/health/
+npm install
+npm run dev
 ```
 
-The backend runs at <http://localhost:8000> and a Celery worker runs next to it. Tests run against
-the MySQL from Compose (never SQLite):
+`npm run dev` starts MySQL, Redis, the backend (migrations run on start) and a Celery worker in
+Docker, waits until they are healthy, then starts the web app at <http://localhost:5173>. Vite
+proxies `/api`, `/ws`, `/admin` and `/health` to the backend at <http://localhost:8000>.
+`npm run stop` stops the containers. Compose has local defaults for every setting; copy
+`.env.example` to `.env` only to change one.
+
+Backend checks run against the MySQL from Compose (never SQLite):
 
 ```sh
 cd backend
@@ -59,6 +62,15 @@ uv sync
 uv run pytest
 uv run ruff check . && uv run ruff format --check .
 uv run mypy .
+```
+
+Web app checks:
+
+```sh
+cd frontend
+npm run typecheck && npm run lint && npm run format:check
+npm test
+npm run contrast
 ```
 
 ## Why it exists
