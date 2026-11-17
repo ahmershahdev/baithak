@@ -15,3 +15,4 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"
 FRONTEND_URL = "http://web.test"
 RECAPTCHA_V3_SECRET_KEY = ""
 RECAPTCHA_V2_SECRET_KEY = ""
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}

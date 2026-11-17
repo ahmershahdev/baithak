@@ -2,6 +2,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.chat import events
 from apps.chat.models import Channel, Message
 
 
@@ -34,6 +35,7 @@ def post(channel: Channel, author: User, body: str, client_id: str = "") -> tupl
             body=body,
             client_id=client_id,
         )
+        events.message_changed(message)
     return message, True
 
 
@@ -46,6 +48,7 @@ def edit(message: Message, body: str) -> Message:
         message.edited_at = timezone.now()
         message.event = locked.last_event
         message.save(update_fields=["body", "edited_at", "event"])
+        events.message_changed(message)
     return message
 
 
@@ -59,4 +62,5 @@ def delete(message: Message) -> Message:
         message.deleted_at = timezone.now()
         message.event = locked.last_event
         message.save(update_fields=["body", "deleted_at", "event"])
+        events.message_changed(message)
     return message

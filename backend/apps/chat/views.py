@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
+from apps.chat import events
 from apps.chat.access import channel_access, readable_channels
 from apps.chat.models import Channel, ChannelMember
 from apps.chat.serializers import (
@@ -123,6 +124,7 @@ class ChannelDetailView(APIView):
                 channel.save(update_fields=["name", "topic", "archived_at"])
                 if changes:
                     audit.record(access.member.workspace, user, "channel.update", channel, changes)
+                    events.channel_changed(channel)
         except IntegrityError as error:
             raise ValidationError({"name": [NAME_TAKEN]}) from error
         return Response(_serialize(channel, is_member=access.is_member))
@@ -142,6 +144,7 @@ class ChannelJoinView(APIView):
                 audit.record(
                     access.member.workspace, user, "channel.join", channel, {"name": channel.name}
                 )
+                events.access_changed(user.pk)
         return Response(_serialize(channel, is_member=True))
 
 
@@ -153,6 +156,7 @@ class ChannelLeaveView(APIView):
         if access.is_member:
             with transaction.atomic():
                 ChannelMember.objects.filter(channel=access.channel, user=user).delete()
+                events.access_changed(user.pk)
                 audit.record(
                     access.member.workspace,
                     user,
@@ -212,6 +216,7 @@ class ChannelMembersView(APIView):
                     access.channel,
                     {"user": target.user.username},
                 )
+                events.access_changed(target.user_id)
         return Response(
             ChannelMemberSerializer(added).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,

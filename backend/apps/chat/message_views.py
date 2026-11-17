@@ -14,6 +14,7 @@ from apps.accounts.serializers import DetailSerializer
 from apps.chat import messages
 from apps.chat.access import ChannelAccess, channel_access
 from apps.chat.models import Message
+from apps.chat.serializers import MessageSerializer
 from apps.chat.throttles import SendThrottle
 from apps.core import channels as rules
 from apps.workspaces import audit
@@ -21,32 +22,6 @@ from apps.workspaces import audit
 PAGE_SIZE = 50
 CATCH_UP_LIMIT = 500
 MAX_BODY = 4000
-
-
-class AuthorSerializer(serializers.Serializer[User]):
-    id = serializers.IntegerField(read_only=True)
-    username = serializers.CharField(read_only=True)
-    display_name = serializers.CharField(read_only=True)
-
-
-class MessageSerializer(serializers.ModelSerializer[Message]):
-    author = AuthorSerializer(read_only=True, allow_null=True)
-    deleted = serializers.BooleanField(read_only=True)
-
-    class Meta:
-        model = Message
-        fields = (
-            "id",
-            "seq",
-            "event",
-            "author",
-            "body",
-            "client_id",
-            "created_at",
-            "edited_at",
-            "deleted",
-        )
-        read_only_fields = fields
 
 
 class MessagePageSerializer(serializers.Serializer[None]):

@@ -1,3 +1,8 @@
-from django.urls import URLPattern
+from django.urls import path
 
-websocket_urlpatterns: list[URLPattern] = []
+from apps.chat.consumers import WorkspaceConsumer
+
+websocket_urlpatterns = [
+    # django-stubs types path() for views only; Channels routes ASGI apps through it.
+    path("ws/workspaces/<slug:slug>/", WorkspaceConsumer.as_asgi()),  # type: ignore[arg-type]
+]

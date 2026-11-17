@@ -72,6 +72,25 @@ they changed, so nothing that happened while the socket was down is missed.
 4. Mentions and direct messages create notifications in Celery; email goes out only if the person
    hasn't read them after a delay and isn't in quiet hours.
 
+## The socket
+
+One WebSocket per open workspace tab, `ws/workspaces/<slug>/`, authenticated by the session
+cookie and checked against `ALLOWED_HOSTS` for Origin. A non-member is closed with 4404, a
+signed-out visitor with 4401. On connect the consumer joins the group of every channel
+`readable_channels` allows (`chat.channel.<id>`) and the person's own group (`chat.user.<id>`).
+
+| Server sends | When |
+|---|---|
+| `{"type": "subscribed", "channels": [...]}` | on connect, and whenever access changes |
+| `{"type": "message", "channel", "event", "message"}` | a message was sent, edited or deleted |
+| `{"type": "channel", "channel", "data"}` | a channel was renamed, given a topic, archived |
+| `{"type": "pong"}` | answer to `{"type": "ping"}` |
+
+Joining, leaving, being added, a role change or removal sends `chat.access` to the person's
+group; each of their sockets works out its channels again and drops the ones it may no longer
+read (or closes with 4404 if they left the workspace). Messages are only ever sent through the
+REST API, so they are saved before anyone hears them.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`. Unread = `channel.last_seq - last_read_seq` (minus

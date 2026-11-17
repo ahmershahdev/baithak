@@ -66,10 +66,15 @@ M1 in progress. Merged so far:
   `seq` and `event` move under the channel row lock; a 4-thread race test checks they stay
   distinct and gap-free.
 
+- WebSockets: `ws/workspaces/<slug>/` with session auth and Origin check; one group per
+  channel; messages and channel changes broadcast after commit; subscriptions follow access
+  (join, leave, add, role change, removal) without reconnecting.
+
 ## Next session
 
-1. WebSockets: session auth, one Channels group per channel, broadcast after commit.
-2. Chat screens with reconnect and backoff.
+1. Chat screens: channel list, messages with history paging, composer; the socket with
+   reconnect, exponential backoff and catch-up by `after_event`, gaps detected by `event`.
+2. The dropped-socket test (nothing lost or duplicated), then M2 is done.
 
 ## Open questions
 
