@@ -19,8 +19,8 @@ in CI, and seed data.
 - [x] Dependabot for Actions, Python, npm and Docker
 - [x] Accounts: sign up, sign in, password reset, email verification
 - [ ] Workspaces, members, roles (owner, admin, member, guest), invitations
-- [ ] Workspace-scoped managers and an access test that runs against every endpoint
-- [ ] Audit log for changes to workspaces, members and roles
+- [x] Workspace-scoped managers and an access test that runs against every endpoint
+- [x] Audit log for changes to workspaces, members and roles
 
 ## M2. Channels and live messages (target 2026-12-27)
 

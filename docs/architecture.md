@@ -99,6 +99,12 @@ broadcast to the person's other connections so every device agrees.
 | openapi-fetch for API calls | Every request and response is typed from `schema.d.ts`, so an API change breaks the frontend build instead of a page |
 | React Router in declarative mode | Few routes so far and data is loaded through TanStack Query, so the framework and data-loader modes add nothing yet |
 | Email links confirm on a click, not on page load | Mail scanners open links, and the verification link works only once |
+| Role rules in `apps/core/roles.py`, compared by rank | Owner > admin > member > guest; nobody acts on or grants a rank above their own; the last owner can't step down or leave. Plain functions, so every rule is one table of test cases |
+| Membership changes lock the workspace row | Two owners demoting each other at once can't leave a workspace without an owner |
+| `WorkspaceScopedManager.for_workspace()` on every workspace-owned model | One way to read workspace rows, so a query can't forget its workspace |
+| `tests/test_access.py` lists every workspace endpoint and fails on an unlisted one | Each new endpoint is checked for 404 to outsiders and to unknown slugs without anyone remembering to add it |
+| Audit rows written in the same transaction as the change, with `{field: [old, new]}` | The log can't say something happened that was rolled back; unchanged saves write nothing |
+| Member lists don't show emails | Handles are public inside a workspace; emails are not |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

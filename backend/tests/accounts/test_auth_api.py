@@ -111,9 +111,10 @@ class TestVerifyEmail:
         user = make_user(email_verified_at=None)
         params = {"uid": encode_uid(user), "token": email_verification_token.make_token(user)}
 
-        assert api.post("/api/v1/auth/verify-email/", params, format="json").status_code == 200
+        first = api.post("/api/v1/auth/verify-email/", params, format="json")
         second = api.post("/api/v1/auth/verify-email/", params, format="json")
 
+        assert first.status_code == 200
         assert second.status_code == 400
 
     @pytest.mark.parametrize("uid", ["not-base64!", "MTIzNDU2Nzg5"])
@@ -137,7 +138,9 @@ class TestVerifyEmail:
     def test_resend_does_nothing_when_verified(self, api: APIClient) -> None:
         api.force_authenticate(make_user())
 
-        assert api.post("/api/v1/auth/verify-email/resend/").status_code == 202
+        response = api.post("/api/v1/auth/verify-email/resend/")
+
+        assert response.status_code == 202
         assert mail.outbox == []
 
 
@@ -214,7 +217,9 @@ class TestSignIn:
             format="json",
         )
 
-        assert api.post("/api/v1/auth/signout/").status_code == 204
+        signed_out = api.post("/api/v1/auth/signout/")
+
+        assert signed_out.status_code == 204
         assert api.get("/api/v1/auth/me/").status_code == 403
 
 
