@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api, type User } from "../api/client";
 import { ME } from "../auth";
+import { Wordmark } from "../components/brand";
 import { Notice, QuietButton } from "../components/ui";
 
 export function Home({ user }: { user: User }) {
@@ -27,7 +28,7 @@ export function Home({ user }: { user: User }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-12">
       <header className="flex items-center justify-between gap-4">
-        <p className="text-lg font-semibold tracking-tight text-accent-text">Baithak</p>
+        <Wordmark />
         <QuietButton
           type="button"
           onClick={() => {
@@ -56,7 +57,9 @@ export function Home({ user }: { user: User }) {
           </div>
         ))}
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h1 className="text-xl font-semibold">Welcome, {user.display_name || user.username}</h1>
+        <h1 className="wonky font-display text-3xl font-semibold tracking-tight">
+          Welcome, {user.display_name || user.username}
+        </h1>
         <p className="mt-1 text-text-muted">
           Signed in as @{user.username} ({user.email}). Workspaces are coming next.
         </p>

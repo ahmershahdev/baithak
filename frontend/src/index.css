@@ -2,6 +2,7 @@
 @import "@fontsource-variable/fraunces/full.css";
 @import "@fontsource-variable/instrument-sans/wdth.css";
 @import "./styles/tokens.css";
+@import "./styles/motion.css";
 
 /*
  * Only the semantic tokens become Tailwind colors, so a class like bg-tomato-700 does not exist
@@ -77,6 +78,13 @@ body {
   font-family: var(--font-sans);
   font-feature-settings: "tnum" 1;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Fraunces at its softest, with the wonky letterforms: headings and the wordmark. */
+.wonky {
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1;
 }
 
 /*

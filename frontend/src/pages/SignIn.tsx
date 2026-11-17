@@ -1,27 +1,40 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState, type SubmitEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { useRef, useState, type SubmitEvent } from "react";
+import { useNavigate } from "react-router";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
 import { useSetMe } from "../auth";
-import { AuthCard, Button, ErrorMessage, Field } from "../components/ui";
-import { textField } from "../forms";
+import { useCaptcha } from "../captcha";
+import { CaptchaBox } from "../components/CaptchaBox";
+import { PasswordField } from "../components/PasswordField";
+import { AuthLayout, Button, ErrorMessage, Field, Honeypot, TextLink } from "../components/ui";
+import { honeypot, textField } from "../forms";
+
+interface SignInBody {
+  email: string;
+  password: string;
+  website: string;
+}
 
 export function SignIn() {
   const navigate = useNavigate();
   const setMe = useSetMe();
+  const captchaBox = useRef<HTMLDivElement>(null);
+  const captcha = useCaptcha("signin", captchaBox);
   const [errors, setErrors] = useState<ApiErrors>({ fields: {} });
 
   const signIn = useMutation({
-    mutationFn: async (body: { email: string; password: string }) =>
-      api.POST("/api/v1/auth/signin/", { body }),
+    mutationFn: async (body: SignInBody) =>
+      api.POST("/api/v1/auth/signin/", { body: { ...body, ...(await captcha.tokens()) } }),
     onSuccess: ({ data, error }) => {
       if (data) {
         setMe(data);
         void navigate("/");
-      } else {
-        setErrors(readErrors(error));
+        return;
       }
+      const problems = readErrors(error);
+      setErrors(problems);
+      if (problems.captcha) void captcha.challenge();
     },
     onError: () => {
       setErrors({ detail: "Could not reach Baithak. Try again.", fields: {} });
@@ -31,44 +44,54 @@ export function SignIn() {
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    signIn.mutate({ email: textField(form, "email"), password: textField(form, "password") });
+    setErrors({ fields: {} });
+    signIn.mutate({
+      email: textField(form, "email"),
+      password: textField(form, "password"),
+      ...honeypot(form),
+    });
   }
 
   return (
-    <AuthCard title="Sign in">
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+    <AuthLayout
+      title="Welcome back"
+      intro={
+        <>
+          New here? <TextLink to="/signup">Create an account</TextLink>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="relative flex flex-col gap-5" noValidate>
         {errors.detail && <ErrorMessage>{errors.detail}</ErrorMessage>}
         <Field
           label="Email"
           name="email"
           type="email"
+          inputMode="email"
           autoComplete="email"
+          placeholder="you@company.com"
           required
           errors={errors.fields.email}
         />
-        <Field
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          errors={errors.fields.password}
-        />
-        <Button type="submit" disabled={signIn.isPending}>
-          {signIn.isPending ? "Signing in" : "Sign in"}
+        <div className="flex flex-col gap-2">
+          <PasswordField
+            label="Password"
+            name="password"
+            autoComplete="current-password"
+            placeholder="Your password"
+            required
+            errors={errors.fields.password}
+          />
+          <TextLink to="/forgot-password" className="self-end text-sm">
+            Forgot your password?
+          </TextLink>
+        </div>
+        <Honeypot />
+        <CaptchaBox box={captchaBox} challenged={captcha.challenged} solved={captcha.solved} />
+        <Button type="submit" busy={signIn.isPending} busyLabel="Signing in" className="mt-1">
+          Sign in
         </Button>
       </form>
-      <div className="mt-5 flex flex-col gap-2 text-sm">
-        <Link className="text-accent-text underline" to="/forgot-password">
-          Forgot your password?
-        </Link>
-        <p className="text-text-muted">
-          New here?{" "}
-          <Link className="text-accent-text underline" to="/signup">
-            Create an account
-          </Link>
-        </p>
-      </div>
-    </AuthCard>
+    </AuthLayout>
   );
 }

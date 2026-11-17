@@ -111,7 +111,30 @@ Selected text is turmeric (mustard-200, mustard-800 in dark), like a highlighter
 selection never reads as an error or as the brand red. Scrollbars are a slim pill floating in a
 clear track, sand at rest and brand red under the pointer; the thumb meets 3:1 like any control.
 
+## Sign-in screens
+
+Wide screens split in two: on the left the brand room (sand, a faint jaali of eight-point stars,
+the arch scene, "Pull up a cushion."), on the right the form. Narrow screens show the wordmark
+and the form only. Headings are Fraunces with the soft and wonky axes (`.wonky`).
+
+- **The scene**: the arch rises, the two people sit down one after the other, the diya flickers
+  and glows, and short messages float up between them in turn.
+- **Show password (parda)**: the eye sits in a small jharoka with two brand-red curtains. Hidden,
+  the curtains are drawn; shown, they gather to the sides with mustard tie-backs and the eye
+  glances across once.
+- **Primary button (lamplight)**: a band of warm light passes across on hover, the arrow steps
+  forward, the button gives a little when pressed. While waiting, the label becomes three dots
+  rising in turn, like people taking turns to speak.
+- **Password strength**: four segments under the new-password field, red, mustard, then green,
+  with zxcvbn's advice in words. It scores against the email, handle and name typed so far.
+
+## Motion
+
+All durations and easing live in `frontend/src/styles/motion.css`: `--ease-out` for things
+arriving, `--ease-spring` for the people sitting and the arrow, `--ease-in-out` for loops. Under
+`prefers-reduced-motion` every animation and transition is cut to 1 ms and the message loop
+shows one message, still.
+
 ## Still to decide
 
 - Spacing, radius and type scale tokens.
-- Motion: durations and easing, with `prefers-reduced-motion` respected.

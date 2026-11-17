@@ -112,6 +112,8 @@ broadcast to the person's other connections so every device agrees.
 | `NUM_PROXIES` 0 locally, 1 in production | DRF otherwise trusts a client-sent `X-Forwarded-For`, which lets anyone dodge the IP throttle |
 | API responses carry `default-src 'none'` CSP and `no-store` | JSON never needs to load or run anything; the web app's own CSP is set where it is served |
 | reCAPTCHA site keys come from `GET /api/v1/auth/config/` | One `.env` at the root for everything; site keys are public by design |
+| Web app CSP as a meta tag in the build, sources not a nonce | The built app has no inline scripts and is static files, so a per-request nonce adds nothing; only our files and Google's reCAPTCHA may run. `frame-ancestors` has to come from the serving proxy as a header |
+| zxcvbn-ts with the common dictionary only, loaded on first keystroke | The English word list is another 1.2 MB for little gain; the strength checker never loads on pages without a new-password field |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

@@ -40,6 +40,8 @@ api.use(csrf);
 export interface ApiErrors {
   detail?: string;
   fields: Record<string, string[]>;
+  /** The API wants the reCAPTCHA checkbox solved before it tries again. */
+  captcha?: boolean;
 }
 
 // DRF answers 400 with either {"detail": "..."} or {"field": ["...", ...]}.
@@ -51,6 +53,7 @@ export function readErrors(error: unknown): ApiErrors {
   }
   for (const [key, value] of Object.entries(error)) {
     if (key === "detail" && typeof value === "string") result.detail = value;
+    else if (key === "captcha") result.captcha = value === "v2";
     else if (key === "non_field_errors" && Array.isArray(value))
       result.detail = value.map(String).join(" ");
     else if (Array.isArray(value)) result.fields[key] = value.map(String);
