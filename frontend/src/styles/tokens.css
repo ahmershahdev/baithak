@@ -138,7 +138,13 @@
   --accent-soft: light-dark(var(--tomato-100), var(--tomato-950));
   --accent-soft-text: light-dark(var(--tomato-800), var(--tomato-200));
   --focus-ring: light-dark(var(--tomato-600), var(--tomato-500));
-  --selection: light-dark(var(--tomato-100), var(--tomato-950));
+  /* Selection is turmeric, like a highlighter on paper, so it never looks like an error or the
+     brand red. */
+  --selection: light-dark(var(--mustard-200), var(--mustard-800));
+  --selection-text: light-dark(var(--sand-950), var(--kohl-50));
+
+  --scrollbar-thumb: light-dark(var(--sand-500), var(--kohl-400));
+  --scrollbar-thumb-hover: light-dark(var(--tomato-600), var(--tomato-500));
 
   --ember: light-dark(var(--ember-800), var(--ember-300));
   --ember-soft: light-dark(var(--ember-100), var(--ember-950));
@@ -192,5 +198,5 @@
 
 ::selection {
   background: var(--selection);
-  color: var(--text);
+  color: var(--selection-text);
 }

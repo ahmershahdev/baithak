@@ -11,6 +11,32 @@ room: warm paper, deep ink, a few strong spice colors used with restraint. The c
 never white; dark mode is warm charcoal, never black. Red is the brand and the action color, so it
 appears on one thing per view (the primary button, the unread badge), not as decoration.
 
+## Logo
+
+`frontend/public/logo.svg` (4:3, 1200 x 900) is the mark above the wordmark. The mark is a
+jharoka arch in tomato-700 with two people sitting side by side on a mustard gaddi, a diya
+between them: a baithak is the room where people sit together and talk. The wordmark is
+"baithak" in lowercase Fraunces at weight 640 with the soft and wonky axes on, turned into
+outlines so it needs no font. The SVGs switch the arch and ink to their dark-theme values with
+`prefers-color-scheme`.
+
+| File | Use |
+|---|---|
+| `logo.svg`, `logo.png` | the full 4:3 logo (PNG on sand-50, for places that need a bitmap) |
+| `logo-mark.svg` | the mark alone |
+| `favicon.svg`, `favicon.ico` (16, 32, 48) | browser tabs; small sizes leave out the diya |
+| `apple-touch-icon.png`, `icon-512.png` | home screens, mark on sand-50 |
+
+All of them are built by `frontend/scripts/make-brand.py` (command at the top of the file).
+Change the script, not the files.
+
+## Type
+
+Fraunces (variable, with the soft and wonky axes) for display text and the wordmark; Instrument
+Sans (variable width) for everything else, with tabular figures on so counts and times line up.
+Both are self-hosted from `@fontsource-variable`, so no request goes to a font service and the
+CSP can stay `font-src 'self'`.
+
 ## Palette
 
 | Ramp | Role | Anchor |
@@ -46,6 +72,8 @@ themes through `light-dark()`.
 | `success` / `warning` / `danger` / `info` | emerald-700 / mustard-800 / garnet-700 / neel-700 | emerald-300 / mustard-300 / garnet-400 / neel-300 |
 | `*-soft` with `*-soft-text` | 100 step, 800 text | 950 step, 200 text |
 | `mention` / `mention-edge` | mustard-100 / mustard-400 | mustard-950 / mustard-500 |
+| `selection` / `selection-text` | mustard-200 / sand-950 | mustard-800 / kohl-50 |
+| `scrollbar-thumb` / `-hover` | sand-500 / tomato-600 | kohl-400 / tomato-500 |
 | `presence-*` | online emerald, away mustard, busy garnet, offline sand | same hues, lighter steps |
 
 The primary button keeps tomato-700 with white text in both themes: a lighter red in dark mode
@@ -77,8 +105,13 @@ and are tied to the input with `aria-describedby` and `aria-invalid`.
 failure. It goes into the `frontend` CI job in M1. Any new color pair a component uses is added to
 the script's list first.
 
+## Selection and scrollbars
+
+Selected text is turmeric (mustard-200, mustard-800 in dark), like a highlighter on paper, so a
+selection never reads as an error or as the brand red. Scrollbars are a slim pill floating in a
+clear track, sand at rest and brand red under the pointer; the thumb meets 3:1 like any control.
+
 ## Still to decide
 
-- Typefaces: one display face and one text face, both with tabular figures.
 - Spacing, radius and type scale tokens.
 - Motion: durations and easing, with `prefers-reduced-motion` respected.
