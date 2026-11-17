@@ -1,58 +1,68 @@
-import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { Navigate, Route, Routes } from "react-router";
 
-import { fetchHealth, type HealthStatus } from "./api/health";
+import { useMe } from "./auth";
+import { ErrorMessage } from "./components/ui";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { Home } from "./pages/Home";
+import { ResetPassword } from "./pages/ResetPassword";
+import { SignIn } from "./pages/SignIn";
+import { SignUp } from "./pages/SignUp";
+import { VerifyEmail } from "./pages/VerifyEmail";
 
-function StatusRow({ label, status }: { label: string; status: HealthStatus | undefined }) {
-  const text = status === undefined ? "Checking" : status === "ok" ? "Running" : "Not reachable";
-  const dot =
-    status === undefined
-      ? "bg-presence-offline"
-      : status === "ok"
-        ? "bg-presence-online"
-        : "bg-presence-busy";
+function Loading() {
   return (
-    <li className="flex items-center justify-between gap-4 py-3">
-      <span>{label}</span>
-      <span className="flex items-center gap-2 text-text-muted">
-        <span aria-hidden="true" className={`size-2.5 rounded-full ${dot}`} />
-        {text}
-      </span>
-    </li>
+    <p role="status" className="p-8 text-text-muted">
+      Loading
+    </p>
   );
 }
 
-export function App() {
-  const health = useQuery({ queryKey: ["health"], queryFn: fetchHealth, refetchInterval: 10_000 });
-  const backend = health.isError ? "error" : health.data ? "ok" : undefined;
+function SignedOutOnly({ children }: { children: ReactNode }) {
+  const me = useMe();
+  if (me.isPending) return <Loading />;
+  if (me.data) return <Navigate to="/" replace />;
+  return children;
+}
 
+function HomeRoute() {
+  const me = useMe();
+  if (me.isPending) return <Loading />;
+  if (me.isError) {
+    return (
+      <main className="mx-auto max-w-sm px-4 py-12">
+        <ErrorMessage>Could not reach Baithak. Is the backend running?</ErrorMessage>
+      </main>
+    );
+  }
+  if (me.data === null) return <Navigate to="/signin" replace />;
+  return <Home user={me.data} />;
+}
+
+export function App() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-4 py-12">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Baithak</h1>
-        <p className="mt-2 text-text-muted">
-          Team chat and issue tracking in one place. Nothing to sign in to yet; this page shows
-          whether the local backend is up.
-        </p>
-      </header>
-      <section
-        aria-labelledby="services"
-        className="rounded-lg border border-border bg-surface px-4 shadow-sm"
-      >
-        <h2 id="services" className="sr-only">
-          Services
-        </h2>
-        <ul className="divide-y divide-border">
-          <StatusRow label="Backend" status={backend} />
-          <StatusRow label="Database" status={health.data?.database} />
-          <StatusRow label="Redis" status={health.data?.redis} />
-        </ul>
-      </section>
-      {health.isError && (
-        <p className="rounded-lg bg-danger-soft px-4 py-3 text-danger-soft-text" role="alert">
-          The backend did not answer. Start it with <code>docker compose up -d</code> from the
-          repository root.
-        </p>
-      )}
-    </main>
+    <Routes>
+      <Route path="/" element={<HomeRoute />} />
+      <Route
+        path="/signin"
+        element={
+          <SignedOutOnly>
+            <SignIn />
+          </SignedOutOnly>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <SignedOutOnly>
+            <SignUp />
+          </SignedOutOnly>
+        }
+      />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

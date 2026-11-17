@@ -24,19 +24,22 @@ M1 in progress. Merged so far:
   `no-reply@ahmershah.dev`, verified in Resend), retried with backoff. `backend/openapi.yaml` and
   `frontend/src/api/schema.d.ts` are generated and checked in CI.
 
+- Auth screens: sign in, sign up, check your email, confirm email, forgot and reset password,
+  and a signed-in home with sign out and a "confirm your email" banner. React Router,
+  openapi-fetch typed from the schema, CSRF header added by a client middleware. Dev settings
+  trust the Vite origin for CSRF.
+
 ## Next session
 
-1. Sign-up, sign-in, verify-email and reset-password screens (routes match the email links:
-   `/verify-email` and `/reset-password` with `uid` and `token`).
-2. Workspaces, members, roles (owner, admin, member, guest), invitations; the workspace-scoped
+1. Workspaces, members, roles (owner, admin, member, guest), invitations; the workspace-scoped
    manager; the audit log.
-3. The access test that runs against every endpoint.
-4. Workspace screens.
+2. The access test that runs against every endpoint.
+3. Workspace screens.
 
 ## Open questions
 
-- Should sign-in require a verified email, or only creating and joining workspaces? Now anyone
-  with the password can sign in; `email_verified` is in `me`.
+- Decided: an unverified person can sign in but can't create or join a workspace (enforce in the
+  workspaces API).
 - openapi-typescript declares TypeScript 5 as its peer; `frontend/package.json` overrides it to
   the project's 6.0. Drop the override when it supports 6.
 

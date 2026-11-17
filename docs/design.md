@@ -64,6 +64,12 @@ which is the browser floor for Baithak.
 the theme (`bg-surface`, `text-text-muted`, `border-border`, `bg-presence-online`). Ramp steps are
 not Tailwind colors, so a component can't reach past the themes.
 
+## Forms
+
+Inputs sit on `bg` inside `surface` cards: `border-strong` on `surface-raised` is 2.95:1 in dark,
+under the 3:1 UI minimum, while on `bg` it passes in both themes. Field errors use `danger` text
+and are tied to the input with `aria-describedby` and `aria-invalid`.
+
 ## Contrast
 
 `node frontend/scripts/check-contrast.mjs` checks every text pair at 4.5:1 and every UI part
