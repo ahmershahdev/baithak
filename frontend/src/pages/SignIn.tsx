@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 import { api, readErrors, type ApiErrors } from "../api/client";
 import { useSetMe } from "../auth";
 import { useCaptcha } from "../captcha";
-import { CaptchaBox } from "../components/CaptchaBox";
+import { CaptchaBox, CaptchaNotice } from "../components/CaptchaBox";
 import { PasswordField } from "../components/PasswordField";
 import { AuthLayout, Button, ErrorMessage, Field, Honeypot, TextLink } from "../components/ui";
 import { honeypot, textField } from "../forms";
@@ -34,7 +34,7 @@ export function SignIn() {
       }
       const problems = readErrors(error);
       setErrors(problems);
-      if (problems.captcha) void captcha.challenge();
+      if (problems.captcha) captcha.challenge();
     },
     onError: () => {
       setErrors({ detail: "Could not reach Baithak. Try again.", fields: {} });
@@ -87,10 +87,16 @@ export function SignIn() {
           </TextLink>
         </div>
         <Honeypot />
-        <CaptchaBox box={captchaBox} challenged={captcha.challenged} solved={captcha.solved} />
+        <CaptchaBox
+          box={captchaBox}
+          challenged={captcha.challenged}
+          solved={captcha.solved}
+          failed={captcha.failed}
+        />
         <Button type="submit" busy={signIn.isPending} busyLabel="Signing in" className="mt-1">
           Sign in
         </Button>
+        {captcha.enabled && <CaptchaNotice />}
       </form>
     </AuthLayout>
   );

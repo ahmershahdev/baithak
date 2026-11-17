@@ -3,7 +3,7 @@ import { useRef, useState, type SubmitEvent } from "react";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
 import { useCaptcha } from "../captcha";
-import { CaptchaBox } from "../components/CaptchaBox";
+import { CaptchaBox, CaptchaNotice } from "../components/CaptchaBox";
 import { PasswordField } from "../components/PasswordField";
 import {
   AuthLayout,
@@ -42,7 +42,7 @@ export function SignUp() {
       }
       const problems = readErrors(error);
       setErrors(problems);
-      if (problems.captcha) void captcha.challenge();
+      if (problems.captcha) captcha.challenge();
     },
     onError: () => {
       setErrors({ detail: "Could not reach Baithak. Try again.", fields: {} });
@@ -138,7 +138,12 @@ export function SignUp() {
           meterWith={[about.email, about.username, about.name, "baithak"]}
         />
         <Honeypot />
-        <CaptchaBox box={captchaBox} challenged={captcha.challenged} solved={captcha.solved} />
+        <CaptchaBox
+          box={captchaBox}
+          challenged={captcha.challenged}
+          solved={captcha.solved}
+          failed={captcha.failed}
+        />
         <Button
           type="submit"
           busy={signUp.isPending}
@@ -147,6 +152,7 @@ export function SignUp() {
         >
           Create account
         </Button>
+        {captcha.enabled && <CaptchaNotice />}
       </form>
     </AuthLayout>
   );

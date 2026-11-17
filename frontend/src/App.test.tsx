@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -316,10 +316,16 @@ describe("bot checks", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Please confirm you are a person.");
-    expect(grecaptcha.render).toHaveBeenCalledWith(
-      expect.any(HTMLElement),
-      expect.objectContaining({ sitekey: "v2-site" }),
-    );
+    // Drawn only once its box is visible, and in the page's theme.
+    await waitFor(() => {
+      expect(grecaptcha.render).toHaveBeenCalledWith(
+        expect.any(HTMLElement),
+        expect.objectContaining({ sitekey: "v2-site", theme: "light" }),
+      );
+    });
+    const box = vi.mocked(grecaptcha.render).mock.calls[0]?.[0];
+    expect(box?.closest(".hidden")).toBeNull();
+    expect(screen.getByText(/tick the box/)).toBeInTheDocument();
     act(() => {
       solve("v2-token");
     });
@@ -329,5 +335,7 @@ describe("bot checks", () => {
     const [first, second] = backend.requests.filter((r) => r.url.endsWith("/signin/"));
     expect(await first?.json()).toMatchObject({ captcha: "v3-token" });
     expect(await second?.json()).toMatchObject({ captcha_v2: "v2-token" });
+    // A checkbox token works once at Google, so the box is unticked as soon as it is used.
+    expect(grecaptcha.reset).toHaveBeenCalledWith(0);
   });
 });
