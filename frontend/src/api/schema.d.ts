@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/auth/config/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public settings for auth forms */
+        get: operations["auth_config_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf/": {
         parameters: {
             query?: never;
@@ -266,10 +283,27 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["AuditEvent"][];
         };
+        AuthConfig: {
+            recaptcha_v3_site_key: string;
+            recaptcha_v2_site_key: string;
+        };
+        /**
+         * @description * `v2` - v2
+         * @enum {string}
+         */
+        CaptchaEnum: "v2";
+        CaptchaError: {
+            detail: string;
+            captcha?: components["schemas"]["CaptchaEnum"];
+        };
         Detail: {
             detail: string;
         };
+        /** @description Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot. */
         EmailRequest: {
+            captcha?: string;
+            captcha_v2?: string;
+            website?: string;
             /** Format: email */
             email: string;
         };
@@ -300,12 +334,20 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "member" | "guest";
+        /** @description Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot. */
         SignInRequest: {
+            captcha?: string;
+            captcha_v2?: string;
+            website?: string;
             /** Format: email */
             email: string;
             password: string;
         };
+        /** @description Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot. */
         SignUpRequest: {
+            captcha?: string;
+            captcha_v2?: string;
+            website?: string;
             /** Format: email */
             email: string;
             username: string;
@@ -344,6 +386,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    auth_config_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthConfig"];
+                };
+            };
+        };
+    };
     auth_csrf_retrieve: {
         parameters: {
             query?: never;
@@ -400,6 +461,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaError"];
                 };
             };
         };
@@ -460,6 +529,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["CaptchaError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["Detail"];
                 };
             };
@@ -502,6 +579,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaError"];
                 };
             };
         };

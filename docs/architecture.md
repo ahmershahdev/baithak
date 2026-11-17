@@ -105,6 +105,13 @@ broadcast to the person's other connections so every device agrees.
 | `tests/test_access.py` lists every workspace endpoint and fails on an unlisted one | Each new endpoint is checked for 404 to outsiders and to unknown slugs without anyone remembering to add it |
 | Audit rows written in the same transaction as the change, with `{field: [old, new]}` | The log can't say something happened that was rolled back; unchanged saves write nothing |
 | Member lists don't show emails | Handles are public inside a workspace; emails are not |
+| Argon2id password hashing, PBKDF2 kept second | Argon2id is memory-hard; PBKDF2 stays only so older hashes verify and are rehashed on the next sign-in. No bcrypt: there are no bcrypt hashes to verify |
+| reCAPTCHA v3 on every anonymous auth form, v2 checkbox only when v3 doubts | Most people never see a challenge. Empty keys turn it off locally. If Google is unreachable the request goes through, since the throttles still apply and blocking every sign-in is worse |
+| Honeypot field `website` on anonymous forms | A filled honeypot gets the normal answer and nothing happens, so bots learn nothing |
+| Per-account sign-in limit (5 failures in 15 minutes) next to the per-IP throttle | Stops slow guessing spread over many IPs. Counted under a hash of the email |
+| `NUM_PROXIES` 0 locally, 1 in production | DRF otherwise trusts a client-sent `X-Forwarded-For`, which lets anyone dodge the IP throttle |
+| API responses carry `default-src 'none'` CSP and `no-store` | JSON never needs to load or run anything; the web app's own CSP is set where it is served |
+| reCAPTCHA site keys come from `GET /api/v1/auth/config/` | One `.env` at the root for everything; site keys are public by design |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

@@ -1,5 +1,6 @@
 from typing import Any, cast
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.utils import timezone
@@ -12,9 +13,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts import tasks
+from apps.accounts import captcha, guards, tasks
 from apps.accounts.models import User
 from apps.accounts.serializers import (
+    AuthConfigSerializer,
+    CaptchaErrorSerializer,
     DetailSerializer,
     EmailSerializer,
     PasswordResetConfirmSerializer,
@@ -29,6 +32,9 @@ from apps.accounts.tokens import email_verification_token, password_reset_token,
 CHECK_EMAIL = "If the address can be used, an email is on its way."
 BAD_LINK = "This link is not valid or has expired."
 WRONG_CREDENTIALS = "The email or password is wrong."
+LOCKED = "Too many wrong passwords for this account. Try again in 15 minutes."
+CAPTCHA_DOUBT = "Please confirm you are a person."
+CAPTCHA_FAILED = "The person check failed. Try it again."
 
 
 # DRF's SessionAuthentication checks CSRF only for signed-in requests. Sign-in and sign-up are
@@ -37,6 +43,18 @@ WRONG_CREDENTIALS = "The email or password is wrong."
 class AnonymousAPIView(APIView):
     permission_classes = (AllowAny,)
     throttle_scope = "auth"
+    captcha_action = ""
+
+    def captcha_problem(self, request: Request) -> Response | None:
+        """A 400 asking for (or rejecting) the person check, or None when it passes."""
+        verdict = captcha.verify(request.data, self.captcha_action, request.META.get("REMOTE_ADDR"))
+        if verdict == captcha.Verdict.ALLOW:
+            return None
+        detail = CAPTCHA_DOUBT if verdict == captcha.Verdict.CHALLENGE else CAPTCHA_FAILED
+        body: dict[str, str] = {"detail": detail}
+        if settings.RECAPTCHA_V2_SECRET_KEY:
+            body["captcha"] = "v2"
+        return Response(body, status=status.HTTP_400_BAD_REQUEST)
 
 
 def _send_after_commit(task: Any, user_id: int) -> None:
@@ -52,9 +70,33 @@ class CsrfView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class AuthConfigView(APIView):
+    permission_classes = (AllowAny,)
+
+    @extend_schema(responses={200: AuthConfigSerializer}, summary="Public settings for auth forms")
+    def get(self, request: Request) -> Response:
+        # Site keys are public by design: Google expects them in the page.
+        return Response(
+            {
+                "recaptcha_v3_site_key": settings.RECAPTCHA_V3_SITE_KEY,
+                "recaptcha_v2_site_key": settings.RECAPTCHA_V2_SITE_KEY,
+            }
+        )
+
+
 class SignUpView(AnonymousAPIView):
-    @extend_schema(request=SignUpSerializer, responses={202: DetailSerializer}, summary="Sign up")
+    captcha_action = "signup"
+
+    @extend_schema(
+        request=SignUpSerializer,
+        responses={202: DetailSerializer, 400: CaptchaErrorSerializer},
+        summary="Sign up",
+    )
     def post(self, request: Request) -> Response:
+        if guards.caught_by_honeypot(request.data):
+            return Response({"detail": CHECK_EMAIL}, status=status.HTTP_202_ACCEPTED)
+        if problem := self.captcha_problem(request):
+            return problem
         serializer = SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -74,21 +116,30 @@ class SignUpView(AnonymousAPIView):
 
 
 class SignInView(AnonymousAPIView):
+    captcha_action = "signin"
+
     @extend_schema(
         request=SignInSerializer,
-        responses={200: UserSerializer, 400: DetailSerializer},
+        responses={200: UserSerializer, 400: CaptchaErrorSerializer, 429: DetailSerializer},
         summary="Sign in",
     )
     def post(self, request: Request) -> Response:
+        if guards.caught_by_honeypot(request.data):
+            return Response({"detail": WRONG_CREDENTIALS}, status=status.HTTP_400_BAD_REQUEST)
+        if problem := self.captcha_problem(request):
+            return problem
         serializer = SignInSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        if guards.account_locked(email):
+            return Response({"detail": LOCKED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         user = authenticate(
-            request._request,
-            email=serializer.validated_data["email"],
-            password=serializer.validated_data["password"],
+            request._request, email=email, password=serializer.validated_data["password"]
         )
         if user is None:
+            guards.note_failure(email)
             return Response({"detail": WRONG_CREDENTIALS}, status=status.HTTP_400_BAD_REQUEST)
+        guards.clear_failures(email)
         login(request._request, user)
         return Response(UserSerializer(user).data)
 
@@ -143,10 +194,18 @@ class ResendVerificationView(APIView):
 
 
 class PasswordResetView(AnonymousAPIView):
+    captcha_action = "password_reset"
+
     @extend_schema(
-        request=EmailSerializer, responses={202: DetailSerializer}, summary="Ask for a reset link"
+        request=EmailSerializer,
+        responses={202: DetailSerializer, 400: CaptchaErrorSerializer},
+        summary="Ask for a reset link",
     )
     def post(self, request: Request) -> Response:
+        if guards.caught_by_honeypot(request.data):
+            return Response({"detail": CHECK_EMAIL}, status=status.HTTP_202_ACCEPTED)
+        if problem := self.captcha_problem(request):
+            return problem
         serializer = EmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = User.objects.filter(email=serializer.validated_data["email"], is_active=True).first()
