@@ -347,6 +347,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Message history, or catch-up after a reconnect */
+        get: operations["workspaces_channels_messages_retrieve"];
+        put?: never;
+        /** Send a message */
+        post: operations["workspaces_channels_messages_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a message */
+        delete: operations["workspaces_channels_messages_destroy"];
+        options?: never;
+        head?: never;
+        /** Edit your message */
+        patch: operations["workspaces_channels_messages_partial_update"];
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/invitations/": {
         parameters: {
             query?: never;
@@ -445,6 +481,11 @@ export interface components {
             recaptcha_v3_site_key: string;
             recaptcha_v2_site_key: string;
         };
+        Author: {
+            readonly id: number;
+            readonly username: string;
+            readonly display_name: string;
+        };
         /**
          * @description * `v2` - v2
          * @enum {string}
@@ -533,10 +574,32 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
+        Message: {
+            readonly id: number;
+            readonly seq: number;
+            readonly event: number;
+            readonly author: components["schemas"]["Author"] | null;
+            readonly body: string;
+            readonly client_id: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly edited_at: string | null;
+            readonly deleted: boolean;
+        };
+        MessagePage: {
+            messages: components["schemas"]["Message"][];
+            has_more: boolean;
+            last_seq: number;
+            last_event: number;
+        };
         PasswordResetConfirmRequest: {
             uid: string;
             token: string;
             password: string;
+        };
+        PatchedBodyRequest: {
+            body?: string;
         };
         PatchedChannelUpdateRequest: {
             name?: string;
@@ -557,6 +620,10 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "member" | "guest";
+        SendRequest: {
+            body: string;
+            client_id?: string;
+        };
         SignInRequest: {
             captcha?: string;
             captcha_v2?: string;
@@ -1295,6 +1362,140 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Catch up: everything changed after this event, oldest first. */
+                after_event?: number;
+                /** @description Older messages: seq below this. */
+                before?: number;
+            };
+            header?: never;
+            path: {
+                channel_id: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagePage"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedBodyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

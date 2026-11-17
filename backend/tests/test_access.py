@@ -45,6 +45,10 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("channels:leave", "post", CHANNEL + "leave/", None),
     ("channels:members", "get", CHANNEL + "members/", None),
     ("channels:members", "post", CHANNEL + "members/", {"user_id": 1}),
+    ("channels:messages", "get", CHANNEL + "messages/", None),
+    ("channels:messages", "post", CHANNEL + "messages/", {"body": "Let me in"}),
+    ("channels:message", "patch", CHANNEL + "messages/1/", {"body": "Changed"}),
+    ("channels:message", "delete", CHANNEL + "messages/1/", None),
 ]
 
 # Inside a workspace the person can see, but about one channel: a private channel they are not
@@ -81,6 +85,9 @@ def workspace() -> Workspace:
         workspace=workspace, name="secret", kind=ChannelKind.PRIVATE, created_by=owner
     )
     ChannelMember.objects.create(channel=secret, user=owner)
+    from apps.chat import messages
+
+    messages.post(secret, owner, "Only for the secret channel")
     return workspace
 
 

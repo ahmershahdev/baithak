@@ -46,3 +46,12 @@ def can_manage(role: Role | None, kind: ChannelKind, *, is_creator: bool, is_mem
 def can_add_member(role: Role | None, *, is_member: bool) -> bool:
     """Bring another workspace member into a channel you are in."""
     return role is not None and role != Role.GUEST and is_member
+
+
+def can_edit_message(*, is_author: bool, deleted: bool, archived: bool) -> bool:
+    return is_author and not deleted and not archived
+
+
+def can_delete_message(role: Role | None, *, is_author: bool, deleted: bool) -> bool:
+    """Authors delete their own; admins clean up anyone's. Works in archived channels too."""
+    return role is not None and not deleted and (is_author or is_admin(role))

@@ -27,8 +27,8 @@ in CI, and seed data.
 - [x] Public and private channels, channel members, topics, archive
 - [x] One permission check in `apps/core` for reading a channel, used by REST and WebSockets
 - [ ] WebSocket connection with session auth; one Channels group per channel
-- [ ] Send, edit and delete messages; saved first, then broadcast with a per-channel sequence
-- [ ] Message history with cursor pagination; catch-up from the last sequence after a reconnect
+- [ ] Send, edit and delete messages; saved first, then broadcast with a per-channel sequence (saving done; broadcast with the WebSocket PR)
+- [x] Message history with cursor pagination; catch-up from the last sequence after a reconnect
 - [ ] Reconnect with backoff in the web app; nothing lost or duplicated (test with a dropped socket)
 
 ## M3. Threads, direct messages and presence (target 2027-01-17)

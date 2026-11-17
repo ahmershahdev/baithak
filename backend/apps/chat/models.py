@@ -24,8 +24,11 @@ class Channel(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     archived_at = models.DateTimeField(null=True, blank=True)
-    # The sequence of the newest message; the next one takes last_seq + 1 under a row lock.
+    # Both move only under a lock on this row (apps/chat/messages.py). last_seq numbers messages
+    # (order, unread counts); last_event numbers every change, edits and deletes included, so a
+    # client catching up after a reconnect asks for events after the last one it saw.
     last_seq = models.BigIntegerField(default=0)
+    last_event = models.BigIntegerField(default=0)
 
     objects = WorkspaceScopedManager["Channel"]()
 
@@ -57,3 +60,34 @@ class ChannelMember(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id} in {self.channel_id}"
+
+
+class Message(models.Model):
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="messages")
+    seq = models.BigIntegerField()
+    event = models.BigIntegerField()
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    body = models.TextField(blank=True)
+    # Chosen by the sender's device so a send retried after a dropped connection is stored once.
+    client_id = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=["channel", "seq"], name="message_seq_per_channel"),
+            models.UniqueConstraint(fields=["channel", "event"], name="message_event_per_channel"),
+        ]
+        indexes: ClassVar = [
+            models.Index(fields=["channel", "author", "client_id"], name="message_client_id"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.channel_id}#{self.seq}"
+
+    @property
+    def deleted(self) -> bool:
+        return self.deleted_at is not None
