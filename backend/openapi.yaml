@@ -660,8 +660,6 @@ components:
       - detail
     EmailRequest:
       type: object
-      description: 'Fields every anonymous form sends: reCAPTCHA tokens and the hidden
-        honeypot.'
       properties:
         captcha:
           type: string
@@ -825,8 +823,6 @@ components:
         * `guest` - guest
     SignInRequest:
       type: object
-      description: 'Fields every anonymous form sends: reCAPTCHA tokens and the hidden
-        honeypot.'
       properties:
         captcha:
           type: string
@@ -852,8 +848,6 @@ components:
       - password
     SignUpRequest:
       type: object
-      description: 'Fields every anonymous form sends: reCAPTCHA tokens and the hidden
-        honeypot.'
       properties:
         captcha:
           type: string

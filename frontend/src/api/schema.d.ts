@@ -368,7 +368,6 @@ export interface components {
         Detail: {
             detail: string;
         };
-        /** @description Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot. */
         EmailRequest: {
             captcha?: string;
             captcha_v2?: string;
@@ -433,7 +432,6 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "member" | "guest";
-        /** @description Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot. */
         SignInRequest: {
             captcha?: string;
             captcha_v2?: string;
@@ -442,7 +440,6 @@ export interface components {
             email: string;
             password: string;
         };
-        /** @description Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot. */
         SignUpRequest: {
             captcha?: string;
             captcha_v2?: string;

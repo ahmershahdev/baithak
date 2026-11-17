@@ -10,7 +10,6 @@
 :root {
   color-scheme: light dark;
 
-  /* Sand: warm beige neutrals, the paper of the light theme. */
   --sand-50: #fbf8f2;
   --sand-100: #f4ede1;
   --sand-200: #ebe1cf;
@@ -23,7 +22,6 @@
   --sand-900: #29231c;
   --sand-950: #1f1a15;
 
-  /* Kohl: warm charcoal neutrals for the dark theme, never pure black. */
   --kohl-50: #f3ece0;
   --kohl-100: #e2d8c8;
   --kohl-200: #bfb2a0;
@@ -37,7 +35,6 @@
   --kohl-900: #13110f;
   --kohl-950: #0d0b0a;
 
-  /* Tomato: the brand red. 700 is the action color in both themes. */
   --tomato-50: #fff2ee;
   --tomato-100: #fde6de;
   --tomato-200: #fbc4b5;
@@ -50,7 +47,6 @@
   --tomato-900: #7a2414;
   --tomato-950: #3a1a12;
 
-  /* Ember: orange-red, the second accent (issues, highlights in illustration). */
   --ember-50: #fff4ed;
   --ember-100: #ffe4d2;
   --ember-200: #ffc7a3;
@@ -63,7 +59,6 @@
   --ember-900: #6a2a0f;
   --ember-950: #3a1608;
 
-  /* Mustard: warnings, mentions, "away". */
   --mustard-50: #fdf8e7;
   --mustard-100: #fbf0cf;
   --mustard-200: #f6df96;
@@ -76,7 +71,6 @@
   --mustard-900: #4f380c;
   --mustard-950: #2a1e08;
 
-  /* Emerald: success, "online". */
   --emerald-50: #f0f9f4;
   --emerald-100: #ddf2e7;
   --emerald-200: #b3e3cb;
@@ -89,7 +83,6 @@
   --emerald-900: #0e3f2f;
   --emerald-950: #0a2a20;
 
-  /* Garnet: errors and destructive actions; cooler than tomato so the two never read as one. */
   --garnet-50: #fdf0f3;
   --garnet-100: #fbdde4;
   --garnet-200: #f7b6c4;
@@ -102,7 +95,6 @@
   --garnet-900: #631427;
   --garnet-950: #3a0c17;
 
-  /* Neel: indigo, for information and links inside messages. */
   --neel-50: #f1f4fc;
   --neel-100: #e0e7f8;
   --neel-200: #c2d0f1;
@@ -138,8 +130,6 @@
   --accent-soft: light-dark(var(--tomato-100), var(--tomato-950));
   --accent-soft-text: light-dark(var(--tomato-800), var(--tomato-200));
   --focus-ring: light-dark(var(--tomato-600), var(--tomato-500));
-  /* Selection is turmeric, like a highlighter on paper, so it never looks like an error or the
-     brand red. */
   --selection: light-dark(var(--mustard-200), var(--mustard-800));
   --selection-text: light-dark(var(--sand-950), var(--kohl-50));
 

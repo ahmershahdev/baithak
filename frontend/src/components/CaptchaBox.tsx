@@ -1,10 +1,6 @@
 import type { RefObject } from "react";
 
-/**
- * Where the reCAPTCHA checkbox appears when the API asks for it; nothing until then. The widget
- * is a fixed 304 x 78 px iframe, so it is centered in a framed slot and scaled down on phones
- * narrower than that.
- */
+// The widget is a fixed 304 x 78 px iframe, hence the scale-down on narrow phones.
 export function CaptchaBox({
   box,
   challenged,

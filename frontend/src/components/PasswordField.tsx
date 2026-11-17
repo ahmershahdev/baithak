@@ -3,10 +3,6 @@ import { useEffect, useId, useState, type ComponentProps } from "react";
 import { measure, type Strength } from "../strength";
 import { Field } from "./ui";
 
-/**
- * Show or hide the password. The eye sits behind a little jharoka with two curtains (parda):
- * hidden, the curtains are drawn; shown, they gather to the sides and the eye glances across.
- */
 function PardaToggle({
   shown,
   controls,

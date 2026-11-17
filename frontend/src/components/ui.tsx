@@ -3,7 +3,6 @@ import { Link } from "react-router";
 
 import { Jaali, Scene, Wordmark } from "./brand";
 
-/** Split screen: the brand room on the left (wide screens), the form on the right. */
 export function AuthLayout({
   title,
   intro,

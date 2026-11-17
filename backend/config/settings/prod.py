@@ -20,7 +20,6 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST_PASSWORD = env("RESEND_API_KEY")
 FRONTEND_URL = env("FRONTEND_URL", "https://baithak.ahmershah.dev")
 
-# Production sits behind one reverse proxy unless NUM_PROXIES says otherwise.
 REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": int(env("NUM_PROXIES", "1"))}  # noqa: F405
 RECAPTCHA_V3_SECRET_KEY = env("RECAPTCHA_V3_SECRET_KEY")
 RECAPTCHA_V2_SECRET_KEY = env("RECAPTCHA_V2_SECRET_KEY")

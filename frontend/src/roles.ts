@@ -19,13 +19,11 @@ export function isAdmin(role: Role): boolean {
   return RANK[role] >= RANK.admin;
 }
 
-/** Roles this person may give to someone else. */
 export function grantable(actor: Role): Role[] {
   if (!isAdmin(actor)) return [];
   return ROLES.filter((role) => RANK[role] <= RANK[actor]);
 }
 
-/** Roles this person may invite with: never owner. */
 export function invitable(actor: Role): Role[] {
   return grantable(actor).filter((role) => role !== "owner");
 }

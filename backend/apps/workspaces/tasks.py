@@ -8,8 +8,6 @@ from apps.workspaces.models import Invitation
 
 @email_task
 def send_invitation_email(invitation_id: int) -> None:
-    # The token is made here, in the worker, so it never passes through the broker; a retry
-    # makes a new one and the old link stops working.
     invitation = (
         Invitation.objects.select_related("workspace", "invited_by")
         .filter(pk=invitation_id)

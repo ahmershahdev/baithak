@@ -17,7 +17,6 @@ export function rememberNext(value: string | null) {
   }
 }
 
-/** The remembered path, once; home when there is none. */
 export function takeNext(): string {
   try {
     const path = safePath(sessionStorage.getItem(KEY));

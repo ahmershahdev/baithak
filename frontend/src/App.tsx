@@ -43,7 +43,6 @@ function SignedOutOnly({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Pages that need an account: signed-out visitors go to sign in and come back after. */
 function SignedIn({ children }: { children: (me: User) => ReactNode }) {
   const me = useMe();
   const location = useLocation();
@@ -56,7 +55,6 @@ function SignedIn({ children }: { children: (me: User) => ReactNode }) {
   return children(me.data);
 }
 
-/** Home opens the last workspace used, else the first; with none it offers to create one. */
 function HomeRoute({ me }: { me: User }) {
   const workspaces = useWorkspaces();
   if (workspaces.isPending) return <Loading />;

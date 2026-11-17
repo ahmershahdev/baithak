@@ -1,5 +1,3 @@
-"""Inviting people into a workspace by email, and accepting with the emailed link."""
-
 from datetime import timedelta
 from typing import cast
 

@@ -95,8 +95,7 @@ input:-webkit-autofill:focus {
   transition: background-color 9999s;
 }
 
-/* The floating reCAPTCHA v3 badge would cover the page corner; forms show Google's notice in
-   its place (CaptchaNotice), which the reCAPTCHA FAQ allows. */
+/* Replaced by CaptchaNotice; see there. */
 .grecaptcha-badge {
   visibility: hidden;
 }
@@ -108,10 +107,7 @@ input:-webkit-autofill:focus {
     "WONK" 1;
 }
 
-/*
- * Scrollbars: a slim sand pill that warms to the brand red under the pointer. The transparent
- * border plus background-clip makes the thumb float inside the track.
- */
+/* The transparent border plus background-clip makes the thumb float inside the track. */
 html {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;

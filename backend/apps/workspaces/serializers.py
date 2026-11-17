@@ -4,7 +4,6 @@ from apps.core.roles import Role
 from apps.workspaces.models import AuditEvent, Member
 
 ROLE_CHOICES = [role.value for role in Role]
-# Ownership is never given by invitation (apps/core/roles.can_invite).
 INVITABLE_ROLE_CHOICES = [role.value for role in Role if role != Role.OWNER]
 
 
