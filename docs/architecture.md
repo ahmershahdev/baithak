@@ -91,6 +91,17 @@ group; each of their sockets works out its channels again and drops the ones it 
 read (or closes with 4404 if they left the workspace). Messages are only ever sent through the
 REST API, so they are saved before anyone hears them.
 
+## The web app's side
+
+`frontend/src/chat/timeline.ts` keeps each open channel as `{messages, lastEvent, hasMore}`. A
+live event is applied only if it is `lastEvent + 1`; an older one is ignored, and a skipped
+number means the socket missed something, so the tab asks for `?after_event=lastEvent` instead
+of guessing. Messages are merged by `seq`, and the copy with the newer `event` wins, so a late
+page can't undo an edit that already arrived. After a reconnect (exponential backoff from 1 s to
+30 s with jitter; 4401 and 4404 are final), every open channel catches up the same way. Sends
+carry a `client_id`; the message shows as "Sending" at once and is replaced by the stored copy,
+whichever comes first, the API's answer or the live event, and a retry reuses the id.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`. Unread = `channel.last_seq - last_read_seq` (minus

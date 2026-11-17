@@ -29,7 +29,7 @@ in CI, and seed data.
 - [x] WebSocket connection with session auth; one Channels group per channel
 - [x] Send, edit and delete messages; saved first, then broadcast with a per-channel sequence
 - [x] Message history with cursor pagination; catch-up from the last sequence after a reconnect
-- [ ] Reconnect with backoff in the web app; nothing lost or duplicated (test with a dropped socket)
+- [x] Reconnect with backoff in the web app; nothing lost or duplicated (test with a dropped socket)
 
 ## M3. Threads, direct messages and presence (target 2027-01-17)
 

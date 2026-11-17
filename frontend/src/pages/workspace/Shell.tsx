@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router";
 
+import { useChannels } from "../../api/chat";
 import { api, type User } from "../../api/client";
 import { useWorkspace, useWorkspaces, type Workspace } from "../../api/workspaces";
 import { ME } from "../../auth";
+import { useLive } from "../../chat/live";
 import { Wordmark } from "../../components/brand";
-import { Avatar, RoleBadge } from "../../components/workspace";
+import { Avatar, ChannelIcon, RoleBadge } from "../../components/workspace";
 import { rememberWorkspace } from "../../lastWorkspace";
 import { isAdmin } from "../../roles";
 
@@ -84,6 +86,43 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-surface text-text shadow-sm" : "text-text-muted hover:bg-surface hover:text-text"
   }`;
 
+function ChannelList({ slug }: { slug: string }) {
+  const channels = useChannels(slug);
+  const mine = channels.data?.filter((channel) => channel.is_member) ?? [];
+  return (
+    <section aria-labelledby="channels-heading" className="flex flex-col gap-1">
+      <div className="flex items-center justify-between px-3">
+        <h2
+          id="channels-heading"
+          className="text-xs font-semibold tracking-wide text-text-subtle uppercase"
+        >
+          Channels
+        </h2>
+        <Link
+          to={`/w/${slug}/channels`}
+          className="rounded-md px-1.5 text-xs font-semibold text-accent-text hover:bg-surface focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+        >
+          Browse
+        </Link>
+      </div>
+      <ul className="flex flex-col gap-0.5">
+        {mine.map((channel) => (
+          <li key={channel.id}>
+            <NavLink to={`/w/${slug}/c/${String(channel.id)}`} className={linkClass}>
+              <ChannelIcon kind={channel.kind} />
+              <span
+                className={`truncate ${channel.archived ? "text-text-subtle line-through" : ""}`}
+              >
+                {channel.name}
+              </span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Nav({ workspace }: { workspace: Workspace }) {
   const base = `/w/${workspace.slug}`;
   const admin = isAdmin(workspace.role);
@@ -149,6 +188,7 @@ function Account({ me }: { me: User }) {
 export function WorkspaceShell({ me }: { me: User }) {
   const { slug = "" } = useParams();
   const workspace = useWorkspace(slug);
+  const live = useLive(slug);
 
   useEffect(() => {
     if (workspace.data) rememberWorkspace(workspace.data.slug);
@@ -167,7 +207,7 @@ export function WorkspaceShell({ me }: { me: User }) {
   const context: WorkspaceContext = { workspace: workspace.data, me };
   return (
     <div className="grid min-h-dvh bg-bg md:grid-cols-[17rem_minmax(0,1fr)]">
-      <aside className="flex flex-col gap-6 border-b border-border bg-bg-subtle p-4 md:sticky md:top-0 md:h-dvh md:border-r md:border-b-0">
+      <aside className="flex flex-col gap-6 border-b border-border bg-bg-subtle p-4 md:sticky md:top-0 md:h-dvh md:overflow-y-auto md:border-r md:border-b-0">
         <Link
           to="/"
           className="self-start rounded-md px-2 pt-1 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
@@ -180,6 +220,7 @@ export function WorkspaceShell({ me }: { me: User }) {
           <span className="text-xs text-text-subtle">Your role</span>
           <RoleBadge role={workspace.data.role} />
         </div>
+        <ChannelList slug={workspace.data.slug} />
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">
           <Account me={me} />
@@ -187,6 +228,14 @@ export function WorkspaceShell({ me }: { me: User }) {
       </aside>
       <main className="min-w-0 px-5 py-8 sm:px-10 lg:px-14">
         <div className="mx-auto max-w-4xl">
+          {live === "reconnecting" && (
+            <p
+              role="status"
+              className="settle mb-4 rounded-xl bg-warning-soft px-4 py-2 text-sm text-warning-soft-text"
+            >
+              Reconnecting. Messages sent meanwhile will appear when the connection is back.
+            </p>
+          )}
           <Outlet context={context} />
         </div>
         <div className="mt-12 border-t border-border pt-4 md:hidden">

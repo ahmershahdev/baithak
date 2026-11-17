@@ -1,5 +1,6 @@
 import { Link, useOutletContext } from "react-router";
 
+import { useChannels } from "../../api/chat";
 import { useMembers } from "../../api/workspaces";
 import { Scene } from "../../components/brand";
 import { PageHeader, Panel } from "../../components/workspace";
@@ -9,6 +10,8 @@ import type { WorkspaceContext } from "./Shell";
 export function Overview() {
   const { workspace, me } = useOutletContext<WorkspaceContext>();
   const members = useMembers(workspace.slug);
+  const channels = useChannels(workspace.slug);
+  const general = channels.data?.find((channel) => channel.is_default && channel.is_member);
   const count = members.data?.length;
   const base = `/w/${workspace.slug}`;
 
@@ -31,14 +34,22 @@ export function Overview() {
         <div>
           <h2 className="wonky font-display text-2xl font-semibold">The room is ready</h2>
           <p className="mt-2 text-text-muted">
-            Channels, threads and live messages arrive next. Until then, bring your people in so the
-            conversation can start the moment they do.
+            Pull up a cushion in #general, open a channel for each thing your team works on, and
+            bring your people in.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
+            {general && (
+              <Link
+                to={`${base}/c/${String(general.id)}`}
+                className="btn-lamp inline-flex h-11 items-center rounded-xl bg-accent px-5 font-semibold text-on-accent hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+              >
+                Open #general
+              </Link>
+            )}
             {isAdmin(workspace.role) && (
               <Link
                 to={`${base}/invitations`}
-                className="btn-lamp inline-flex h-11 items-center rounded-xl bg-accent px-5 font-semibold text-on-accent hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+                className="inline-flex h-11 items-center rounded-xl border border-border-strong px-5 font-semibold hover:bg-bg-subtle focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
               >
                 Invite people
               </Link>

@@ -14,6 +14,8 @@ import { SignIn } from "./pages/SignIn";
 import { SignUp } from "./pages/SignUp";
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { Audit } from "./pages/workspace/Audit";
+import { Channels } from "./pages/workspace/Channels";
+import { ChannelView } from "./pages/workspace/ChannelView";
 import { Invitations } from "./pages/workspace/Invitations";
 import { Members } from "./pages/workspace/Members";
 import { Overview } from "./pages/workspace/Overview";
@@ -72,6 +74,8 @@ export function App() {
       <Route path="/w/new" element={<SignedIn>{(me) => <Home user={me} adding />}</SignedIn>} />
       <Route path="/w/:slug" element={<SignedIn>{(me) => <WorkspaceShell me={me} />}</SignedIn>}>
         <Route index element={<Overview />} />
+        <Route path="channels" element={<Channels />} />
+        <Route path="c/:channelId" element={<ChannelView />} />
         <Route path="members" element={<Members />} />
         <Route path="invitations" element={<Invitations />} />
         <Route path="settings" element={<Settings />} />
