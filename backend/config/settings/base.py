@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "apps.accounts",
     "apps.workspaces",
+    "apps.chat",
 ]
 
 MIDDLEWARE = [

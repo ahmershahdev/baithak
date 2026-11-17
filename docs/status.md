@@ -55,11 +55,18 @@ M1 in progress. Merged so far:
   previews the invitation, sends signed-out people through sign-in or sign-up and back, and
   accepts. M1 is complete.
 
+- M1 released as `v0.1.0` (pre-release) and its milestone closed. Comments trimmed and the rule
+  tightened in AGENTS.md.
+- M2 started: channels API (public and private, topic, archive, join, leave, add members) under
+  `/api/v1/workspaces/{slug}/channels/`, rules in `apps/core/channels.py`, `#general` with every
+  workspace. Private channels are 404 to workspace members outside them, in the access test.
+
 ## Next session
 
-1. Tag `v0.1.0` for M1 (`gh release create v0.1.0 --verify-tag --generate-notes --prerelease`).
-2. M2: public and private channels, the read-channel permission in `apps/core`, WebSocket
-   connection with session auth, messages saved then broadcast with a per-channel sequence.
+1. Messages: send, edit, delete (soft), saved with the next per-channel `seq` under a row lock;
+   history with cursor pagination and catch-up after a `seq`.
+2. WebSockets: session auth, one Channels group per channel, broadcast after commit.
+3. Chat screens with reconnect and backoff.
 
 ## Open questions
 
