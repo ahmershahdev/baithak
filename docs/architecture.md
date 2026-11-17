@@ -83,6 +83,9 @@ broadcast to the person's other connections so every device agrees.
 | One permission function for REST, sockets, search and notifications | A private message must not leak through a second code path |
 | Soft delete for messages | Threads, reply counts and sequences stay intact; the text is removed |
 | Signed, expiring file links | Files are never public URLs |
+| Daphne as the ASGI server | Comes with Channels and makes `runserver` serve ASGI in development, so dev and prod run the same server |
+| Custom user model from the first migration | Django can't swap the user model after tables exist |
+| uv with exact pins and `uv.lock` | One lock file for the image and CI; installs are fast and repeatable |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions
