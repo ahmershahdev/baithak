@@ -146,12 +146,16 @@ class TestCreating:
 
     @pytest.mark.parametrize("name", ["", "-dash", "has space", "x" * 81, "Ünicode!"])
     def test_bad_names_are_rejected(self, api: APIClient, workspace: Workspace, name: str) -> None:
-        assert api.post(CHANNELS, {"name": name}, format="json").status_code == 400
+        response = api.post(CHANNELS, {"name": name}, format="json")
+
+        assert response.status_code == 400
 
     def test_guests_cannot_create(self, api: APIClient, workspace: Workspace) -> None:
         api.force_authenticate(join(workspace, Role.GUEST, "guest"))
 
-        assert api.post(CHANNELS, {"name": "nope"}, format="json").status_code == 403
+        response = api.post(CHANNELS, {"name": "nope"}, format="json")
+
+        assert response.status_code == 403
 
 
 class TestManaging:

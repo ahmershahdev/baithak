@@ -85,7 +85,9 @@ class TestSending:
     def test_empty_or_long_bodies_are_rejected(
         self, api: APIClient, general: Channel, body: str
     ) -> None:
-        assert api.post(url(general), {"body": body}, format="json").status_code == 400
+        response = api.post(url(general), {"body": body}, format="json")
+
+        assert response.status_code == 400
 
     def test_bad_client_ids_are_rejected(self, api: APIClient, general: Channel) -> None:
         response = api.post(url(general), {"body": "Hi", "client_id": "no spaces"}, format="json")
@@ -122,7 +124,7 @@ def test_concurrent_sends_get_distinct_gap_free_seqs(owner: User) -> None:
     """Saved first under a row lock: parallel senders never share or skip a number."""
     workspace = Workspace.objects.create(name="Race", slug="race")
     channel = Channel.objects.create(workspace=workspace, name="race", kind=ChannelKind.PUBLIC)
-    errors: list[BaseException] = []
+    errors: list[Exception] = []
 
     def worker(n: int) -> None:
         try:
@@ -230,10 +232,14 @@ class TestEditingAndDeleting:
         send(api, general, "Owner's words")
         api.force_authenticate(join(workspace, Role.MEMBER, "bilal"))
 
-        assert api.delete(url(general, "1/")).status_code == 403
+        response = api.delete(url(general, "1/"))
+
+        assert response.status_code == 403
 
     def test_unknown_messages_are_404(self, api: APIClient, general: Channel) -> None:
-        assert api.patch(url(general, "99/"), {"body": "x"}, format="json").status_code == 404
+        response = api.patch(url(general, "99/"), {"body": "x"}, format="json")
+
+        assert response.status_code == 404
 
 
 class TestHistory:
