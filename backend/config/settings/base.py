@@ -107,6 +107,20 @@ FRONTEND_URL = env("FRONTEND_URL", "http://localhost:5173")
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Baithak <no-reply@ahmershah.dev>")
 
+# Email goes out through Resend's SMTP relay; the API key is the SMTP password. Without a key
+# (local development) mail is printed to the console instead.
+EMAIL_HOST = "smtp.resend.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "resend"
+EMAIL_HOST_PASSWORD = env("RESEND_API_KEY", "")
+EMAIL_TIMEOUT = 10
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST_PASSWORD
+    else "django.core.mail.backends.console.EmailBackend"
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],

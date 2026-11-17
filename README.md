@@ -52,7 +52,8 @@ npm run dev
 Docker, waits until they are healthy, then starts the web app at <http://localhost:5173>. Vite
 proxies `/api`, `/ws`, `/admin` and `/health` to the backend at <http://localhost:8000>.
 `npm run stop` stops the containers. Compose has local defaults for every setting; copy
-`.env.example` to `.env` only to change one.
+`.env.example` to `.env` only to change one. Email is printed to the worker log
+(`npm run logs`) unless `RESEND_API_KEY` is set in `.env`.
 
 Backend checks run against the MySQL from Compose (never SQLite):
 
