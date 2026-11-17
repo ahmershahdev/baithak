@@ -44,9 +44,20 @@ const UI = 3;
 const backgrounds = ["bg", "bg-subtle", "surface", "surface-raised", "surface-sunken"];
 
 const pairs = [
-  ...["text", "text-muted", "text-subtle", "accent-text", "ember", "success", "warning", "danger", "info"]
-    .flatMap((fg) => backgrounds.map((bg) => [fg, bg, TEXT])),
-  ...["border-strong", "focus-ring", "accent"].flatMap((fg) => ["bg", "surface"].map((bg) => [fg, bg, UI])),
+  ...[
+    "text",
+    "text-muted",
+    "text-subtle",
+    "accent-text",
+    "ember",
+    "success",
+    "warning",
+    "danger",
+    "info",
+  ].flatMap((fg) => backgrounds.map((bg) => [fg, bg, TEXT])),
+  ...["border-strong", "focus-ring", "accent"].flatMap((fg) =>
+    ["bg", "surface"].map((bg) => [fg, bg, UI]),
+  ),
   ["on-accent", "accent", TEXT],
   ["on-accent", "accent-hover", TEXT],
   ["on-danger", "danger-fill", TEXT],
@@ -73,7 +84,9 @@ for (const theme of ["light", "dark"]) {
     const r = ratio(a, b);
     const ok = r >= min;
     if (!ok) failures += 1;
-    console.log(`  ${ok ? "ok  " : "FAIL"} ${r.toFixed(2).padStart(5)}  ${fg} on ${bg} (${a} / ${b}, needs ${min})`);
+    console.log(
+      `  ${ok ? "ok  " : "FAIL"} ${r.toFixed(2).padStart(5)}  ${fg} on ${bg} (${a} / ${b}, needs ${min})`,
+    );
   }
 }
 

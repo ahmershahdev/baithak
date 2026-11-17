@@ -58,6 +58,12 @@ would need dark text, which reads as a different brand.
 applied before first paint. `light-dark()` needs Chrome 123, Firefox 120, Safari 17.5 (all 2024),
 which is the browser floor for Baithak.
 
+## Tailwind
+
+`frontend/src/index.css` clears Tailwind's default palette and maps only the semantic tokens into
+the theme (`bg-surface`, `text-text-muted`, `border-border`, `bg-presence-online`). Ramp steps are
+not Tailwind colors, so a component can't reach past the themes.
+
 ## Contrast
 
 `node frontend/scripts/check-contrast.mjs` checks every text pair at 4.5:1 and every UI part

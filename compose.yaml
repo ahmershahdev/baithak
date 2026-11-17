@@ -1,13 +1,20 @@
 name: baithak
 
+# Every default below is for local development only. Put overrides in .env (see .env.example).
+x-mysql-env: &mysql-env
+  MYSQL_DATABASE: ${MYSQL_DATABASE:-baithak}
+  MYSQL_USER: ${MYSQL_USER:-baithak}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD:-baithak}
+
 x-backend: &backend
   build:
     context: ./backend
     args:
       DEV: "true"
-  env_file: .env
   environment:
+    <<: *mysql-env
     DJANGO_SETTINGS_MODULE: config.settings.dev
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only-not-a-secret}
     MYSQL_HOST: mysql
     REDIS_URL: redis://redis:6379/0
     CELERY_BROKER_URL: redis://redis:6379/1
@@ -22,7 +29,9 @@ x-backend: &backend
 services:
   mysql:
     image: mysql:8.4.13
-    env_file: .env
+    environment:
+      <<: *mysql-env
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me}
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
     ports:
       - "127.0.0.1:3306:3306"
@@ -47,9 +56,15 @@ services:
 
   backend:
     <<: *backend
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]
     ports:
       - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   worker:
     <<: *backend

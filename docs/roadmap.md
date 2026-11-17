@@ -13,7 +13,7 @@ in CI, and seed data.
 - [x] Django project, settings per environment (`dev`, `test`, `prod`), health endpoint
 - [x] ASGI with Django Channels, MySQL 8.4, Redis and one Celery worker in Docker Compose (MySQL in
       tests too, never SQLite)
-- [ ] pytest with coverage and pytest-asyncio, Ruff, mypy (strict); Vite + React + TypeScript app
+- [x] pytest with coverage and pytest-asyncio, Ruff, mypy (strict); Vite + React + TypeScript app
       with Vitest, ESLint
 - [ ] GitHub Actions: `backend`, `frontend`, CodeQL; add them as required checks in the ruleset
 - [ ] Dependabot for Actions, Python, npm and Docker
