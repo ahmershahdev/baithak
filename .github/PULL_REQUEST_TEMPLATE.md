@@ -10,3 +10,4 @@ Fixes #
 
 - [ ] Tests pass locally
 - [ ] Linters pass locally
+- [ ] Every new comment is one a reader needs (AGENTS.md, Comments)

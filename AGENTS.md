@@ -64,10 +64,21 @@ docs/                  roadmap, architecture, status
 
 ## Comments
 
-Default is no comment. Write one only for what the code can't say: why it's done this way, a
-protocol or ordering rule with its source, or a trap for the next person. Not: restating the code,
-section banners, history, owner-less TODOs, or filler (simply, robust, seamless, ensure, leverage,
-comprehensive).
+No comments unless important. A comment is important only if someone reading the code would
+otherwise get it wrong or undo it: why it's done this way, a security or protocol rule with its
+source, an ordering or locking rule, or a trap for the next person. Everything else is deleted in
+review.
+
+Never:
+
+- restate the code, a function name or a type (`/** Roles this person may invite with. */`)
+- section banners or labels (`/* Loading state */`, `# --- helpers`)
+- the same reason in two places; say it once where it applies, or in `docs/`, and link
+- what `docs/design.md` or `docs/architecture.md` already explains
+- history, owner-less TODOs, commented-out code, or filler (simply, robust, seamless, ensure,
+  leverage, comprehensive)
+
+Keep it to one or two lines. If it needs a paragraph, it belongs in `docs/`.
 
 ## Workflow
 

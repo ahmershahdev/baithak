@@ -9,7 +9,6 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* The diya flame never sits still, but it never jumps either. */
 @keyframes flame-flicker {
   0%,
   100% {
@@ -50,7 +49,6 @@
   animation: glow-breathe 3.2s var(--ease-in-out) infinite;
 }
 
-/* The arch rises, then the two people sit down one after the other. */
 @keyframes arch-rise {
   from {
     clip-path: inset(100% 0 0 0);
@@ -80,7 +78,6 @@
   animation: sit-down 700ms var(--ease-spring) both;
 }
 
-/* Little messages float up between the two people, one at a time. */
 @keyframes bubble-say {
   0% {
     opacity: 0;
@@ -103,7 +100,6 @@
   animation: bubble-say 9s var(--ease-out) infinite;
 }
 
-/* Page content settles in from below. */
 @keyframes settle {
   from {
     opacity: 0;
@@ -119,10 +115,6 @@
   animation: settle 600ms var(--ease-out) both;
 }
 
-/*
- * Primary button: a band of lamplight passes across on hover, the arrow steps forward, and the
- * button gives a little under the finger.
- */
 .btn-lamp {
   position: relative;
   isolation: isolate;
@@ -168,7 +160,6 @@
   transform: translateX(4px);
 }
 
-/* Loading: three people taking turns to speak. */
 @keyframes take-turns {
   0%,
   60%,
@@ -194,10 +185,6 @@
   animation-delay: 280ms;
 }
 
-/*
- * Password toggle: the eye sits behind a jharoka with two curtains (parda). Hidden: the curtains
- * are drawn. Shown: they gather to the sides and the eye glances across once.
- */
 .parda-curtain {
   transform-box: view-box;
   transition: transform 420ms var(--ease-out);
@@ -246,7 +233,6 @@
   opacity: 1;
 }
 
-/* Strength meter segments fill from the left. */
 .meter-fill {
   transform-origin: left;
   transition:

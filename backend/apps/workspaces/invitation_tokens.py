@@ -1,5 +1,3 @@
-"""Invitation link tokens. Only the SHA-256 of a token is ever stored."""
-
 import hashlib
 import secrets
 

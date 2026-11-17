@@ -8,7 +8,6 @@ from apps.accounts.models import User
 from apps.accounts.tokens import email_verification_token, encode_uid, password_reset_token
 
 # Tasks take a user id and make the token themselves, so no token passes through the broker.
-# A failed send (Resend down, timeout) is retried with backoff; a retry builds a fresh token.
 email_task = shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=5)
 
 

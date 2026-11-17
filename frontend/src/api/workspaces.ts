@@ -17,7 +17,6 @@ export const keys = {
   audit: (slug: string) => ["workspaces", slug, "audit"] as const,
 };
 
-/** A failed call, with the API's messages for the screen. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,

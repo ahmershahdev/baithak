@@ -1,4 +1,3 @@
-// The workspace home opens: the last one used on this device.
 const KEY = "baithak:last-workspace";
 
 export function rememberWorkspace(slug: string) {

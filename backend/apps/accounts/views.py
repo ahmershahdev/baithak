@@ -46,7 +46,6 @@ class AnonymousAPIView(APIView):
     captcha_action = ""
 
     def captcha_problem(self, request: Request) -> Response | None:
-        """A 400 asking for (or rejecting) the person check, or None when it passes."""
         verdict = captcha.verify(request.data, self.captcha_action, request.META.get("REMOTE_ADDR"))
         if verdict == captcha.Verdict.ALLOW:
             return None

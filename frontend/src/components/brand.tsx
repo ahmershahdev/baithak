@@ -6,7 +6,6 @@ const RIGHT_PERSON = "M112 168V140C112 123 123 116 135 116C147 116 158 123 158 1
 const FLAME = "M100 132C106 140 107 146 100 152C93 146 94 140 100 132Z";
 const BOWL = "M89 156H111C111 163 106 167 100 167C94 167 89 163 89 156Z";
 
-/** The static mark, for headers and small places. */
 export function Mark({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 200 200" className={className} aria-hidden="true">
@@ -42,7 +41,6 @@ const SAYINGS = [
   { text: "Standup moved to ten", delay: "[animation-delay:6s]" },
 ];
 
-/** The brand panel scene: the arch rises, two people sit, the diya burns, they talk. */
 export function Scene() {
   return (
     <div className="relative mx-auto w-full max-w-[22rem]">
@@ -87,7 +85,6 @@ export function Scene() {
   );
 }
 
-/** A jaali (carved lattice) of eight-point stars, as a faint texture behind the scene. */
 export function Jaali() {
   return (
     <svg className="absolute inset-0 size-full text-border opacity-50" aria-hidden="true">

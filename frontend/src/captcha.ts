@@ -54,7 +54,6 @@ function loadScript(v3Key: string): Promise<Grecaptcha> {
   });
 }
 
-/** The theme the page is showing: the data-theme override, else the system setting. */
 function pageTheme(): "light" | "dark" {
   const chosen = document.documentElement.dataset.theme;
   if (chosen === "light" || chosen === "dark") return chosen;

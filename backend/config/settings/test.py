@@ -6,7 +6,7 @@ os.environ.setdefault("MYSQL_PASSWORD", "baithak")
 from config.settings.base import *  # noqa: F403
 
 ALLOWED_HOSTS = ["testserver", "localhost"]
-# Fast hashing keeps the suite quick; tests/accounts/test_hashing.py checks the real list.
+# Fast hashing keeps the suite quick; tests/accounts/test_hardening.py checks the real list.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 CELERY_TASK_ALWAYS_EAGER = True

@@ -30,8 +30,6 @@ class HandleField(serializers.CharField):
 
 
 class BotCheckFields(serializers.Serializer[None]):
-    """Fields every anonymous form sends: reCAPTCHA tokens and the hidden honeypot."""
-
     captcha = serializers.CharField(required=False, allow_blank=True, max_length=4000)
     captcha_v2 = serializers.CharField(required=False, allow_blank=True, max_length=4000)
     website = serializers.CharField(required=False, allow_blank=True, max_length=200)

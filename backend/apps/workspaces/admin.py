@@ -15,7 +15,6 @@ class MemberAdmin(admin.ModelAdmin[Member]):
     list_filter = ("role",)
 
 
-# The audit log is read-only everywhere, the admin included.
 @admin.register(AuditEvent)
 class AuditEventAdmin(admin.ModelAdmin[AuditEvent]):
     list_display = ("at", "workspace", "actor", "action", "model", "object_id")

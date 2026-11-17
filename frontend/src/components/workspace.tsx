@@ -158,7 +158,6 @@ const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60],
 ];
 
-/** "3 days ago", "in 6 days", "now", with the exact time on hover. */
 export function When({ iso }: { iso: string }) {
   // Read once when shown; lists are refetched often enough that "3 minutes ago" stays honest.
   const [now] = useState(() => Date.now());

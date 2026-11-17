@@ -141,11 +141,10 @@ REST_FRAMEWORK = {
     "NUM_PROXIES": int(env("NUM_PROXIES", "0")),
 }
 
-# Five wrong passwords for one email lock sign-in for that email for 15 minutes, from any IP.
 SIGNIN_MAX_FAILURES = 5
 SIGNIN_LOCKOUT_SECONDS = 15 * 60
 
-# Google reCAPTCHA. Empty keys turn the check off (local development and tests).
+# Empty reCAPTCHA keys turn the check off.
 RECAPTCHA_V3_SITE_KEY = env("RECAPTCHA_V3_SITE_KEY", "")
 RECAPTCHA_V3_SECRET_KEY = env("RECAPTCHA_V3_SECRET_KEY", "")
 RECAPTCHA_V2_SITE_KEY = env("RECAPTCHA_V2_SITE_KEY", "")

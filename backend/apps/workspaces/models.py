@@ -82,8 +82,7 @@ class Invitation(models.Model):
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
-    # SHA-256 of the token in the emailed link. The token itself is never stored, so a leaked
-    # database can't be used to join workspaces. Empty until the email task has run.
+    # Only the hash: a leaked database can't be used to join. Empty until the email is sent.
     token_hash = models.CharField(max_length=64, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
