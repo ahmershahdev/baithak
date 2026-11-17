@@ -70,11 +70,17 @@ M1 in progress. Merged so far:
   channel; messages and channel changes broadcast after commit; subscriptions follow access
   (join, leave, add, role change, removal) without reconnecting.
 
+- Chat screens: channels in the sidebar, a channel browser with create and join, and the
+  channel view with history paging, grouped messages, edit and delete, and a composer whose
+  sends show at once and are never doubled. The socket reconnects with backoff and every open
+  channel catches up; a test drops the socket and checks nothing is lost or shown twice. Tried
+  with two real tabs: a message from one appeared live in the other. M2 is complete.
+
 ## Next session
 
-1. Chat screens: channel list, messages with history paging, composer; the socket with
-   reconnect, exponential backoff and catch-up by `after_event`, gaps detected by `event`.
-2. The dropped-socket test (nothing lost or duplicated), then M2 is done.
+1. Tag `v0.2.0` for M2 and close the milestone.
+2. M3: threads, direct and group messages, mentions, reactions, typing and presence, unread
+   counts and read markers.
 
 ## Open questions
 

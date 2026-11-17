@@ -171,3 +171,25 @@ export function When({ iso }: { iso: string }) {
     </time>
   );
 }
+
+/** "#" for public channels, a lock for private ones; labelled for screen readers. */
+export function ChannelIcon({ kind }: { kind: "public" | "private" }) {
+  if (kind === "public") {
+    return (
+      <span aria-hidden="true" className="w-3.5 shrink-0 text-center text-text-subtle">
+        #
+      </span>
+    );
+  }
+  return (
+    <svg viewBox="0 0 16 16" className="size-3.5 shrink-0" role="img" aria-label="Private">
+      <path
+        d="M4.5 7V5.2a3.5 3.5 0 0 1 7 0V7M3.5 7h9v6.5h-9z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
