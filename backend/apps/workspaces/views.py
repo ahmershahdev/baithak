@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
+from apps.chat.events import access_changed
 from apps.chat.services import create_default_channel
 from apps.core import roles
 from apps.core.roles import Role
@@ -164,6 +165,7 @@ class MemberDetailView(APIView):
                 target.role = new
                 target.save(update_fields=["role"])
                 audit.record(workspace, user, "member.update", target, {"role": [old, new]})
+                access_changed(target.user_id)
         return Response(MemberSerializer(target).data)
 
     @extend_schema(
@@ -183,6 +185,7 @@ class MemberDetailView(APIView):
                 raise PermissionDenied("You can't remove this person.")
             audit.record(workspace, user, "member.remove", target, {"user": target.user.username})
             target.delete()
+            access_changed(target.user_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

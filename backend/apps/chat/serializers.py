@@ -2,7 +2,8 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.chat.models import Channel, ChannelMember, channel_name_validator
+from apps.accounts.models import User
+from apps.chat.models import Channel, ChannelMember, Message, channel_name_validator
 from apps.core.channels import ChannelKind
 
 KIND_CHOICES = [kind.value for kind in ChannelKind]
@@ -60,3 +61,41 @@ class ChannelMemberSerializer(serializers.ModelSerializer[ChannelMember]):
 
 class AddChannelMemberSerializer(serializers.Serializer[None]):
     user_id = serializers.IntegerField()
+
+
+class AuthorSerializer(serializers.Serializer[User]):
+    id = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    display_name = serializers.CharField(read_only=True)
+
+
+class MessageSerializer(serializers.ModelSerializer[Message]):
+    author = AuthorSerializer(read_only=True, allow_null=True)
+    deleted = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = (
+            "id",
+            "seq",
+            "event",
+            "author",
+            "body",
+            "client_id",
+            "created_at",
+            "edited_at",
+            "deleted",
+        )
+        read_only_fields = fields
+
+
+class ChannelEventSerializer(serializers.ModelSerializer[Channel]):
+    """A channel as broadcast to everyone in it: without `is_member`, which differs per reader."""
+
+    kind = serializers.ChoiceField(choices=KIND_CHOICES, read_only=True)
+    archived = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Channel
+        fields = ("id", "name", "kind", "topic", "is_default", "archived", "last_seq", "created_at")
+        read_only_fields = fields
