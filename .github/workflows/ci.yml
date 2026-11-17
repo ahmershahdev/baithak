@@ -62,6 +62,12 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
       - run: pytest
+      - name: OpenAPI schema is up to date
+        run: |
+          python manage.py spectacular --file openapi.yaml --validate --fail-on-warn
+          git diff --exit-code openapi.yaml
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
 
   frontend:
     runs-on: ubuntu-24.04
@@ -79,6 +85,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --ignore-scripts
+      - name: API types match the OpenAPI schema
+        run: |
+          npm run api:types
+          git diff --exit-code src/api/schema.d.ts
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

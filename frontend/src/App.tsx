@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchHealth, type HealthStatus } from "./api";
+import { fetchHealth, type HealthStatus } from "./api/health";
 
 function StatusRow({ label, status }: { label: string; status: HealthStatus | undefined }) {
   const text = status === undefined ? "Checking" : status === "ok" ? "Running" : "Not reachable";
