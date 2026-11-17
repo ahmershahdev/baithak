@@ -1,9 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState, type SubmitEvent } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
-import { AuthCard, Button, ErrorMessage, Field, Notice } from "../components/ui";
+import { PasswordField } from "../components/PasswordField";
+import { AuthLayout, Button, ErrorMessage, Notice, TextLink } from "../components/ui";
 import { textField } from "../forms";
 
 export function ResetPassword() {
@@ -33,41 +34,36 @@ export function ResetPassword() {
 
   if (done) {
     return (
-      <AuthCard title="Password changed">
+      <AuthLayout title="Password changed">
         <Notice>Your password is changed. Other devices are signed out.</Notice>
-        <p className="mt-5 text-sm">
-          <Link className="text-accent-text underline" to="/signin">
-            Sign in
-          </Link>
+        <p className="mt-6">
+          <TextLink to="/signin">Sign in</TextLink>
         </p>
-      </AuthCard>
+      </AuthLayout>
     );
   }
 
   return (
-    <AuthCard title="Choose a new password">
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+    <AuthLayout title="Choose a new password">
+      <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
         {errors.detail && (
           <ErrorMessage>
-            {errors.detail}{" "}
-            <Link className="underline" to="/forgot-password">
-              Ask for a new link
-            </Link>
+            {errors.detail} <TextLink to="/forgot-password">Ask for a new link</TextLink>
           </ErrorMessage>
         )}
-        <Field
+        <PasswordField
           label="New password"
           name="password"
-          type="password"
           autoComplete="new-password"
+          placeholder="At least 8 characters"
           required
-          hint="At least 8 characters, not only digits, not a common password."
           errors={errors.fields.password}
+          meterWith={["baithak"]}
         />
-        <Button type="submit" disabled={reset.isPending || !uid || !token}>
-          {reset.isPending ? "Saving" : "Save password"}
+        <Button type="submit" busy={reset.isPending} busyLabel="Saving" disabled={!uid || !token}>
+          Save password
         </Button>
       </form>
-    </AuthCard>
+    </AuthLayout>
   );
 }

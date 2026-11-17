@@ -1,27 +1,48 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState, type SubmitEvent } from "react";
-import { Link } from "react-router";
+import { useRef, useState, type SubmitEvent } from "react";
 
 import { api, readErrors, type ApiErrors } from "../api/client";
-import { AuthCard, Button, ErrorMessage, Field, Notice } from "../components/ui";
-import { textField } from "../forms";
+import { useCaptcha } from "../captcha";
+import { CaptchaBox } from "../components/CaptchaBox";
+import { PasswordField } from "../components/PasswordField";
+import {
+  AuthLayout,
+  Button,
+  ErrorMessage,
+  Field,
+  Honeypot,
+  Notice,
+  TextLink,
+} from "../components/ui";
+import { honeypot, textField } from "../forms";
 
 interface SignUpBody {
   email: string;
   username: string;
   display_name: string;
   password: string;
+  website: string;
 }
 
 export function SignUp() {
+  const captchaBox = useRef<HTMLDivElement>(null);
+  const captcha = useCaptcha("signup", captchaBox);
   const [errors, setErrors] = useState<ApiErrors>({ fields: {} });
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // Kept as the person types so the strength meter can mark a password built from them.
+  const [about, setAbout] = useState({ email: "", username: "", name: "" });
 
   const signUp = useMutation({
-    mutationFn: async (body: SignUpBody) => api.POST("/api/v1/auth/signup/", { body }),
+    mutationFn: async (body: SignUpBody) =>
+      api.POST("/api/v1/auth/signup/", { body: { ...body, ...(await captcha.tokens()) } }),
     onSuccess: ({ response, error }, body) => {
-      if (response.status === 202) setSentTo(body.email);
-      else setErrors(readErrors(error));
+      if (response.status === 202) {
+        setSentTo(body.email);
+        return;
+      }
+      const problems = readErrors(error);
+      setErrors(problems);
+      if (problems.captcha) void captcha.challenge();
     },
     onError: () => {
       setErrors({ detail: "Could not reach Baithak. Try again.", fields: {} });
@@ -37,72 +58,96 @@ export function SignUp() {
       username: textField(form, "username"),
       display_name: textField(form, "display_name"),
       password: textField(form, "password"),
+      ...honeypot(form),
     });
   }
 
   if (sentTo !== null) {
     return (
-      <AuthCard title="Check your email">
+      <AuthLayout title="Check your email">
         <Notice>
           We sent a link to <strong>{sentTo}</strong>. Open it to confirm your email and sign in.
         </Notice>
-        <p className="mt-5 text-sm text-text-muted">
-          Already confirmed?{" "}
-          <Link className="text-accent-text underline" to="/signin">
-            Sign in
-          </Link>
+        <p className="mt-6 text-text-muted">
+          Already confirmed? <TextLink to="/signin">Sign in</TextLink>
         </p>
-      </AuthCard>
+      </AuthLayout>
     );
   }
 
   return (
-    <AuthCard title="Create an account">
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+    <AuthLayout
+      title="Make yourself at home"
+      intro={
+        <>
+          Have an account? <TextLink to="/signin">Sign in</TextLink>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="relative flex flex-col gap-5" noValidate>
         {errors.detail && <ErrorMessage>{errors.detail}</ErrorMessage>}
         <Field
           label="Email"
           name="email"
           type="email"
+          inputMode="email"
           autoComplete="email"
+          placeholder="you@company.com"
           required
           errors={errors.fields.email}
+          onChange={(event) => {
+            setAbout((now) => ({ ...now, email: event.target.value }));
+          }}
         />
-        <Field
-          label="Handle"
-          name="username"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          hint="What people type after @ to mention you. Lowercase letters, digits, dots, hyphens and underscores."
-          errors={errors.fields.username}
-        />
-        <Field
-          label="Display name (optional)"
-          name="display_name"
-          autoComplete="name"
-          errors={errors.fields.display_name}
-        />
-        <Field
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            label="Handle"
+            name="username"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="amna"
+            required
+            errors={errors.fields.username}
+            onChange={(event) => {
+              setAbout((now) => ({ ...now, username: event.target.value }));
+            }}
+          />
+          <Field
+            label="Display name"
+            name="display_name"
+            autoComplete="name"
+            placeholder="Amna Khan"
+            errors={errors.fields.display_name}
+            onChange={(event) => {
+              setAbout((now) => ({ ...now, name: event.target.value }));
+            }}
+          />
+        </div>
+        <p className="-mt-3 text-sm text-text-subtle">
+          Your handle is what people type after @. Lowercase letters, digits, dots, hyphens and
+          underscores. The display name is optional.
+        </p>
+        <PasswordField
           label="Password"
           name="password"
-          type="password"
           autoComplete="new-password"
+          placeholder="At least 8 characters"
           required
-          hint="At least 8 characters, not only digits, not a common password."
           errors={errors.fields.password}
+          meterWith={[about.email, about.username, about.name, "baithak"]}
         />
-        <Button type="submit" disabled={signUp.isPending}>
-          {signUp.isPending ? "Creating account" : "Create account"}
+        <Honeypot />
+        <CaptchaBox box={captchaBox} challenged={captcha.challenged} solved={captcha.solved} />
+        <Button
+          type="submit"
+          busy={signUp.isPending}
+          busyLabel="Creating your account"
+          className="mt-1"
+        >
+          Create account
         </Button>
       </form>
-      <p className="mt-5 text-sm text-text-muted">
-        Have an account?{" "}
-        <Link className="text-accent-text underline" to="/signin">
-          Sign in
-        </Link>
-      </p>
-    </AuthCard>
+    </AuthLayout>
   );
 }

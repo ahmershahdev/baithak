@@ -39,6 +39,11 @@ M1 in progress. Merged so far:
   `.env`), honeypot, per-account sign-in lock, spoof-proof IP throttle, CSP and `no-store` on
   API responses. The local `.env` exists (git ignores it) with a generated secret key.
 
+- Brand (#16): logo, favicons, Fraunces and Instrument Sans, turmeric selection, custom
+  scrollbars. Auth screens redesigned: split layout with the animated arch scene, parda password
+  toggle, lamplight button, strength meter, placeholders, honeypot and reCAPTCHA wiring, web app
+  CSP in the build.
+
 ## Next session
 
 1. Invitations: invite by email with a role, accept by link (the signed-in email must match),

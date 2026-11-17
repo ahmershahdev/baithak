@@ -1,6 +1,6 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import type { User } from "./api/client";
 import { renderAt } from "./test/render";
@@ -21,7 +21,7 @@ describe("home", () => {
     fakeBackend(signedOut);
     renderAt("/");
 
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
   });
 
   test("greets a signed-in person", async () => {
@@ -57,7 +57,7 @@ describe("home", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
 
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
   });
 
   test("says so when the backend does not answer", async () => {
@@ -204,5 +204,130 @@ describe("email links", () => {
       token: "abc",
       password: "a-new-long-password",
     });
+  });
+});
+
+describe("password field", () => {
+  test("the curtain button shows and hides the password", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signin");
+
+    const password = await screen.findByLabelText("Password");
+    expect(password).toHaveAttribute("type", "password");
+
+    await userEvent.click(screen.getByRole("button", { name: "Show password" }));
+    expect(password).toHaveAttribute("type", "text");
+
+    await userEvent.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(password).toHaveAttribute("type", "password");
+  });
+
+  test("sign up rates the password as it is typed", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signup");
+
+    const password = await screen.findByLabelText("Password");
+    await userEvent.type(password, "password1");
+    expect(
+      await screen.findByText(
+        /Password strength: (Too easy to guess|Weak)\./,
+        {},
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.clear(password);
+    await userEvent.type(password, "copper-lantern-mango-river-71");
+    expect(
+      await screen.findByText("Password strength: Strong.", {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
+  });
+
+  test("a password made from the handle scores low", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signup");
+
+    await userEvent.type(await screen.findByLabelText("Handle"), "zarqawi_basharat");
+    await userEvent.type(screen.getByLabelText("Password"), "zarqawi_basharat");
+
+    expect(
+      await screen.findByText(
+        /Password strength: (Too easy to guess|Weak)\./,
+        {},
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("bot checks", () => {
+  test("the honeypot is out of reach and sent empty", async () => {
+    const backend = fakeBackend({
+      ...signedOut,
+      "POST /api/v1/auth/signin/": () => json(200, amna),
+    });
+    const { container } = renderAt("/signin");
+    const email = await screen.findByLabelText("Email");
+
+    const trap = container.querySelector<HTMLInputElement>('input[name="website"]');
+    expect(trap).not.toBeNull();
+    expect(trap).toHaveAttribute("tabindex", "-1");
+    expect(screen.queryByRole("textbox", { name: "Website" })).not.toBeInTheDocument();
+
+    await userEvent.type(email, "amna@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByRole("heading", { name: "Welcome, Amna Khan" });
+
+    const sent = backend.requests.find((r) => r.url.endsWith("/signin/"));
+    expect(await sent?.json()).toMatchObject({ website: "" });
+  });
+
+  test("when the API doubts, the checkbox appears and its token is sent next time", async () => {
+    let attempts = 0;
+    const backend = fakeBackend({
+      ...signedOut,
+      "GET /api/v1/auth/config/": () =>
+        json(200, { recaptcha_v3_site_key: "v3-site", recaptcha_v2_site_key: "v2-site" }),
+      "POST /api/v1/auth/signin/": () => {
+        attempts += 1;
+        return attempts === 1
+          ? json(400, { detail: "Please confirm you are a person.", captcha: "v2" })
+          : json(200, amna);
+      },
+    });
+    let solve: (token: string) => void = () => undefined;
+    const grecaptcha = {
+      ready: (callback: () => void) => {
+        callback();
+      },
+      execute: vi.fn(() => Promise.resolve("v3-token")),
+      render: vi.fn((_box: HTMLElement, options: { callback: (token: string) => void }) => {
+        solve = options.callback;
+        return 0;
+      }),
+      reset: vi.fn(),
+    };
+    vi.stubGlobal("grecaptcha", grecaptcha);
+    renderAt("/signin");
+
+    await userEvent.type(await screen.findByLabelText("Email"), "amna@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Please confirm you are a person.");
+    expect(grecaptcha.render).toHaveBeenCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ sitekey: "v2-site" }),
+    );
+    act(() => {
+      solve("v2-token");
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Welcome, Amna Khan" })).toBeInTheDocument();
+    const [first, second] = backend.requests.filter((r) => r.url.endsWith("/signin/"));
+    expect(await first?.json()).toMatchObject({ captcha: "v3-token" });
+    expect(await second?.json()).toMatchObject({ captcha_v2: "v2-token" });
   });
 });
