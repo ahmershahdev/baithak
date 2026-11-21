@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { merge, type Message, type Timeline } from "../chat/timeline";
+import { applyRead } from "../chat/unread";
 import { api, readErrors } from "./client";
 import type { components } from "./schema";
 import { ApiError } from "./workspaces";
@@ -138,6 +139,33 @@ export function useLeaveChannel(slug: string) {
     },
     onSuccess: () => client.invalidateQueries({ queryKey: chatKeys.channels(slug) }),
   });
+}
+
+export function updateChannel(
+  client: QueryClient,
+  slug: string,
+  id: number,
+  change: (channel: Channel) => Channel,
+) {
+  client.setQueryData<Channel[]>(chatKeys.channels(slug), (now) =>
+    now?.map((channel) => (channel.id === id ? change(channel) : channel)),
+  );
+}
+
+/** Report reading up to `seq`. The server's answer is the truth for the count. */
+export async function markRead(client: QueryClient, slug: string, id: number, seq: number) {
+  updateChannel(client, slug, id, (channel) => applyRead(channel, seq) ?? channel);
+  const marker = unwrap(
+    await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/read/", {
+      params: path(slug, id),
+      body: { seq },
+    }),
+  );
+  updateChannel(client, slug, id, (channel) =>
+    (channel.last_read_seq ?? 0) > marker.last_read_seq
+      ? channel
+      : { ...channel, last_read_seq: marker.last_read_seq, unread: marker.unread },
+  );
 }
 
 export async function sendMessage(slug: string, id: number, body: string, clientId: string) {

@@ -29,6 +29,8 @@ def join_default_channels(workspace: Workspace, user: User, role: Role) -> None:
     for channel in Channel.objects.for_workspace(workspace).filter(
         is_default=True, archived_at=None
     ):
-        _, created = ChannelMember.objects.get_or_create(channel=channel, user=user)
+        _, created = ChannelMember.objects.get_or_create(
+            channel=channel, user=user, defaults={"last_read_seq": channel.last_seq}
+        )
         if created:
             audit.record(workspace, user, "channel.join", channel, {"name": channel.name})

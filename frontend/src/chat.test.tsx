@@ -26,6 +26,8 @@ const general: Channel = {
   archived: false,
   is_member: true,
   last_seq: 2,
+  last_read_seq: 2,
+  unread: 0,
   created_at: "2026-11-01T10:00:00Z",
 };
 
@@ -249,5 +251,72 @@ describe("a channel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "This channel does not exist, or it is private.",
     );
+  });
+});
+
+describe("unread", () => {
+  const random: Channel = {
+    ...general,
+    id: 6,
+    name: "random",
+    is_default: false,
+    last_seq: 0,
+    last_read_seq: 0,
+  };
+
+  test("opening a channel marks it read and puts a line above what is new", async () => {
+    const reads: unknown[] = [];
+    fakeBackend({
+      "GET /api/v1/auth/me/": () => json(200, amna),
+      "GET /api/v1/workspaces/team/": () =>
+        json(200, {
+          slug: "team",
+          name: "Team",
+          created_at: "2026-11-01T10:00:00Z",
+          role: "member",
+        }),
+      "GET /api/v1/workspaces/team/channels/": () =>
+        json(200, [{ ...general, last_read_seq: 1, unread: 1 }]),
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Salaam"), message(2, 2, "Walaikum salaam")], 2)),
+      "POST /api/v1/workspaces/team/channels/5/read/": async (request) => {
+        reads.push(await request.json());
+        return json(200, { channel: 5, last_read_seq: 2, unread: 0 });
+      },
+    });
+    await openChannel();
+
+    const line = await screen.findByRole("separator", { name: "New messages" });
+    expect(line.nextElementSibling).toHaveTextContent("Walaikum salaam");
+    await waitFor(() => {
+      expect(reads).toEqual([{ seq: 2 }]);
+    });
+  });
+
+  test("a message elsewhere shows a count, and reading it on another device clears it", async () => {
+    backend({
+      "GET /api/v1/workspaces/team/channels/": () => json(200, [general, random]),
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Salaam"), message(2, 2, "Walaikum salaam")], 2)),
+    });
+    await openChannel();
+    await screen.findByText("Walaikum salaam");
+
+    act(() => {
+      FakeSocket.latest().receive({
+        type: "message",
+        channel: 6,
+        event: 1,
+        message: message(2, 2, "Psst"),
+      });
+    });
+    expect(await screen.findByRole("link", { name: /random, 1 unread/ })).toBeInTheDocument();
+
+    act(() => {
+      FakeSocket.latest().receive({ type: "read", channel: 6, last_read_seq: 2 });
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(/1 unread/)).not.toBeInTheDocument();
+    });
   });
 });

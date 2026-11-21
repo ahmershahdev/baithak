@@ -104,9 +104,19 @@ whichever comes first, the API's answer or the live event, and a retry reuses th
 
 ## Unread counts
 
-Each `channel_member` keeps `last_read_seq`. Unread = `channel.last_seq - last_read_seq` (minus
-deleted messages counted by a query only when shown). A read marker sent from one device is
-broadcast to the person's other connections so every device agrees.
+Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =
+`channel.last_seq - last_read_seq` minus the deleted messages after the marker (rules in
+`apps/core/unread.py`; the channel list counts the deleted ones in one subquery). The marker only
+moves forward: `POST .../channels/{id}/read/` with a `seq` updates the row only where the stored
+marker is lower, so two devices reporting at once can't move it back. Posting moves the author's
+marker to their own message, and joining or being added starts it at the channel's `last_seq`, so
+old history is not unread. Every move is sent to the person's user group as a `read` event, so
+all their devices agree. Someone reading a public channel they are not in has no marker.
+
+The web app counts live: a new message from someone else past the marker adds one, deleting
+one takes it off, and the list fetched after a reconnect replaces the count. An open channel is
+reported read while the tab is visible and scrolled to the bottom. The "New" line is placed
+when the channel opens and stays there while the marker moves past it.
 
 ## Decisions
 
@@ -137,6 +147,7 @@ broadcast to the person's other connections so every device agrees.
 | Email links confirm on a click, not on page load | Mail scanners open links, and the verification link works only once |
 | Role rules in `apps/core/roles.py`, compared by rank | Owner > admin > member > guest; nobody acts on or grants a rank above their own; the last owner can't step down or leave. Plain functions, so every rule is one table of test cases |
 | Membership changes lock the workspace row | Two owners demoting each other at once can't leave a workspace without an owner |
+| Read markers are not in the audit log | They are one person's place in a channel, not workspace data, and they change on every read |
 | `WorkspaceScopedManager.for_workspace()` on every workspace-owned model | One way to read workspace rows, so a query can't forget its workspace |
 | `tests/test_access.py` lists every workspace endpoint and fails on an unlisted one | Each new endpoint is checked for 404 to outsiders and to unknown slugs without anyone remembering to add it |
 | Audit rows written in the same transaction as the change, with `{field: [old, new]}` | The log can't say something happened that was rolled back; unchanged saves write nothing |
