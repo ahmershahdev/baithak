@@ -78,6 +78,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My email settings */
+        get: operations["auth_notifications_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change my email settings and quiet hours */
+        patch: operations["auth_notifications_partial_update"];
+        trace?: never;
+    };
     "/api/v1/auth/password-reset/": {
         parameters: {
             query?: never;
@@ -1000,6 +1018,15 @@ export interface components {
             results: components["schemas"]["Notification"][];
             next: number | null;
         };
+        NotificationSettings: {
+            notify_by_email?: boolean;
+            /** Format: time */
+            quiet_start?: string | null;
+            /** Format: time */
+            quiet_end?: string | null;
+            /** @description An IANA name, like Asia/Karachi. */
+            time_zone: string;
+        };
         /** @description The code from the email, and who it is for: `uid` from the emailed link, or `email`. */
         PasswordResetConfirmRequest: {
             uid?: string;
@@ -1015,6 +1042,15 @@ export interface components {
             name?: string;
             topic?: string;
             archived?: boolean;
+        };
+        PatchedNotificationSettingsRequest: {
+            notify_by_email?: boolean;
+            /** Format: time */
+            quiet_start?: string | null;
+            /** Format: time */
+            quiet_end?: string | null;
+            /** @description An IANA name, like Asia/Karachi. */
+            time_zone?: string;
         };
         PatchedRoleRequest: {
             role?: components["schemas"]["RoleEnum"];
@@ -1207,6 +1243,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    auth_notifications_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+        };
+    };
+    auth_notifications_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedNotificationSettingsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
             };
         };
     };

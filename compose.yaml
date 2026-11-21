@@ -74,7 +74,9 @@ services:
 
   worker:
     <<: *backend
-    command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
+    # --beat runs the schedule (CELERY_BEAT_SCHEDULE) in this one worker; production runs a
+    # separate beat so a second worker can't start a second schedule.
+    command: ["celery", "-A", "config", "worker", "--beat", "--loglevel=info", "--concurrency=2"]
 
 volumes:
   mysql-data:

@@ -1,6 +1,7 @@
 """Who hears about a new message, and why."""
 
 from collections.abc import Iterable
+from datetime import time, timedelta
 from enum import StrEnum
 
 
@@ -31,3 +32,19 @@ def recipients(
     if author_id is not None:
         found.pop(author_id, None)
     return found
+
+
+# Emails go out for these only; @channel would mail everyone for every announcement.
+EMAILED_KINDS = frozenset({Kind.MENTION, Kind.DIRECT})
+# Unread this long before an email: someone at their desk reads it in the app first.
+EMAIL_AFTER = timedelta(minutes=10)
+
+
+def in_quiet_hours(now: time, start: time | None, end: time | None) -> bool:
+    """`now` is the person's local time. Quiet hours may cross midnight (22:00 to 07:00);
+    the start is inside them and the end is not."""
+    if start is None or end is None or start == end:
+        return False
+    if start < end:
+        return start <= now < end
+    return now >= start or now < end

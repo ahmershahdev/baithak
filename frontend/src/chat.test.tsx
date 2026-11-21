@@ -816,3 +816,34 @@ describe("notifications", () => {
     expect(marked).toEqual([{ all: true }]);
   });
 });
+
+describe("your settings", () => {
+  test("turn on quiet hours in your time zone and save", async () => {
+    const saved: unknown[] = [];
+    backend({
+      "GET /api/v1/auth/notifications/": () =>
+        json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" }),
+      "PATCH /api/v1/auth/notifications/": async (request) => {
+        const body: unknown = await request.json();
+        saved.push(body);
+        return json(200, body);
+      },
+    });
+    renderAt("/w/team/me");
+
+    await userEvent.click(await screen.findByLabelText("No emails between"));
+    await userEvent.click(screen.getByRole("combobox", { name: "Time zone" }));
+    await userEvent.click(screen.getByRole("option", { name: "Asia/Karachi" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
+    expect(saved).toEqual([
+      {
+        notify_by_email: true,
+        quiet_start: "22:00",
+        quiet_end: "08:00",
+        time_zone: "Asia/Karachi",
+      },
+    ]);
+  });
+});

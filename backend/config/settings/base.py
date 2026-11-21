@@ -112,6 +112,12 @@ PRESENCE_KEY_PREFIX = "presence"
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", "redis://127.0.0.1:6379/1")
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_BEAT_SCHEDULE = {
+    "email-unread-notifications": {
+        "task": "apps.notifications.tasks.email_unread",
+        "schedule": 300.0,
+    },
+}
 
 AUTH_USER_MODEL = "accounts.User"
 # Sign-in throttling counts attempts here, so it has to be shared by every process.

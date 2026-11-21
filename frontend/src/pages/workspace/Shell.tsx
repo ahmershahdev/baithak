@@ -276,7 +276,7 @@ function Nav({ workspace }: { workspace: Workspace }) {
   );
 }
 
-function Account({ me }: { me: User }) {
+function Account({ me, slug }: { me: User; slug: string }) {
   const client = useQueryClient();
   const navigate = useNavigate();
   const signOut = useMutation({
@@ -296,6 +296,12 @@ function Account({ me }: { me: User }) {
         </span>
         <span className="block truncate text-xs text-text-subtle">@{me.username}</span>
       </span>
+      <Link
+        to={`/w/${slug}/me`}
+        className="rounded-lg px-2 py-1 text-xs font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+      >
+        Settings
+      </Link>
       <button
         type="button"
         onClick={() => {
@@ -352,7 +358,7 @@ export function WorkspaceShell({ me }: { me: User }) {
         <ChannelList slug={workspace.data.slug} meId={me.id} />
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">
-          <Account me={me} />
+          <Account me={me} slug={slug} />
           <Link to="/contact" className="mt-1 block px-2 text-xs text-text-subtle hover:text-text">
             Help and contact
           </Link>
@@ -373,7 +379,7 @@ export function WorkspaceShell({ me }: { me: User }) {
           </TypingContext>
         </div>
         <div className="mt-12 border-t border-border pt-4 md:hidden">
-          <Account me={me} />
+          <Account me={me} slug={slug} />
         </div>
       </main>
     </div>

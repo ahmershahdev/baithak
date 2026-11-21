@@ -18,6 +18,7 @@ class Notification(models.Model):
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="notifications")
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
+    emailed_at = models.DateTimeField(null=True, blank=True)
 
     objects = WorkspaceScopedManager["Notification"]()
 
