@@ -143,7 +143,9 @@ def test_concurrent_sends_get_distinct_gap_free_seqs(owner: User) -> None:
         thread.join()
 
     assert errors == []
-    seqs = sorted(Message.objects.filter(channel=channel).values_list("seq", flat=True))
+    seqs = sorted(
+        s for s in Message.objects.filter(channel=channel).values_list("seq", flat=True) if s
+    )
     assert seqs == list(range(1, 21))
     channel.refresh_from_db()
     assert (channel.last_seq, channel.last_event) == (20, 20)

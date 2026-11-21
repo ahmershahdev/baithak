@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
-import { merge, type Message, type Timeline } from "../chat/timeline";
+import { merge, updateThread, type Message, type Thread, type Timeline } from "../chat/timeline";
 import { applyRead } from "../chat/unread";
 import { api, readErrors } from "./client";
 import type { components } from "./schema";
@@ -12,12 +12,19 @@ export type ChannelKind = components["schemas"]["KindEnum"];
 export const chatKeys = {
   channels: (slug: string) => ["workspaces", slug, "channels"] as const,
   timeline: (slug: string, id: number) => ["workspaces", slug, "timeline", id] as const,
+  threads: (slug: string) => ["workspaces", slug, "thread"] as const,
+  thread: (slug: string, id: number, seq: number) =>
+    ["workspaces", slug, "thread", id, seq] as const,
 };
 
 function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): T {
   if (result.data === undefined)
     throw new ApiError(result.response.status, readErrors(result.error));
   return result.data;
+}
+
+function expectOk(result: { error?: unknown; response: Response }) {
+  if (!result.response.ok) throw new ApiError(result.response.status, readErrors(result.error));
 }
 
 const path = (slug: string, channel_id: number) => ({ path: { slug, channel_id } });
@@ -49,11 +56,50 @@ export function useTimeline(slug: string, id: number) {
   });
 }
 
+async function wholeThread(slug: string, id: number, seq: number): Promise<Thread> {
+  const params = { path: { slug, channel_id: id, seq } };
+  const url = "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/" as const;
+  const first = unwrap(await api.GET(url, { params }));
+  const thread: Thread = { parent: first.parent, replies: first.replies };
+  let more = first.has_more;
+  while (more) {
+    const after = thread.replies.at(-1)?.thread_seq ?? 0;
+    const page = unwrap(await api.GET(url, { params: { ...params, query: { after } } }));
+    thread.replies.push(...page.replies);
+    more = page.has_more;
+  }
+  return thread;
+}
+
+export function useThread(slug: string, id: number, seq: number) {
+  return useQuery({
+    queryKey: chatKeys.thread(slug, id, seq),
+    queryFn: () => wholeThread(slug, id, seq),
+    // The channel's events keep it current (routeMessages), as with timelines.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+}
+
+/** Put messages from the channel (live, catch-up or an API answer) into every open thread. */
+export function routeMessages(client: QueryClient, slug: string, id: number, messages: Message[]) {
+  for (const query of client
+    .getQueryCache()
+    .findAll({ queryKey: ["workspaces", slug, "thread", id] })) {
+    const seq = query.queryKey[4];
+    if (typeof seq !== "number") continue;
+    client.setQueryData<Thread>(query.queryKey, (now) =>
+      now ? updateThread(now, seq, messages) : now,
+    );
+  }
+}
+
 export async function loadOlder(client: QueryClient, slug: string, id: number) {
   const key = chatKeys.timeline(slug, id);
   const current = client.getQueryData<Timeline>(key);
   const first = current?.messages[0];
-  if (!current || !first) return;
+  if (!current || first?.seq == null) return;
   const page = unwrap(
     await api.GET("/api/v1/workspaces/{slug}/channels/{channel_id}/messages/", {
       params: { ...path(slug, id), query: { before: first.seq } },
@@ -90,6 +136,7 @@ export async function catchUp(client: QueryClient, slug: string, id: number) {
             }
           : now,
       );
+      routeMessages(client, slug, id, page.messages);
       if (!page.has_more) return;
     }
   } finally {
@@ -97,11 +144,12 @@ export async function catchUp(client: QueryClient, slug: string, id: number) {
   }
 }
 
-/** Put a message this tab got from the API into its timeline. Live events advance lastEvent. */
+/** Put a message this tab got from the API where it is shown. Live events advance lastEvent. */
 export function remember(client: QueryClient, slug: string, id: number, message: Message) {
   client.setQueryData<Timeline>(chatKeys.timeline(slug, id), (now) =>
     now ? { ...now, messages: merge(now.messages, [message]) } : now,
   );
+  routeMessages(client, slug, id, [message]);
 }
 
 export function useCreateChannel(slug: string) {
@@ -132,10 +180,11 @@ export function useLeaveChannel(slug: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const result = await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/leave/", {
-        params: path(slug, id),
-      });
-      if (!result.response.ok) throw new ApiError(result.response.status, readErrors(result.error));
+      expectOk(
+        await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/leave/", {
+          params: path(slug, id),
+        }),
+      );
     },
     onSuccess: () => client.invalidateQueries({ queryKey: chatKeys.channels(slug) }),
   });
@@ -177,19 +226,48 @@ export async function sendMessage(slug: string, id: number, body: string, client
   );
 }
 
-export async function editMessage(slug: string, id: number, seq: number, body: string) {
+export async function sendReply(
+  slug: string,
+  id: number,
+  seq: number,
+  body: string,
+  clientId: string,
+  alsoInChannel: boolean,
+) {
   return unwrap(
-    await api.PATCH("/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/", {
+    await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/", {
       params: { path: { slug, channel_id: id, seq } },
-      body: { body },
+      body: { body, client_id: clientId, also_in_channel: alsoInChannel },
     }),
   );
 }
 
-export async function deleteMessage(slug: string, id: number, seq: number) {
-  const result = await api.DELETE(
-    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/",
-    { params: { path: { slug, channel_id: id, seq } } },
-  );
-  if (!result.response.ok) throw new ApiError(result.response.status, readErrors(result.error));
+const MESSAGE = "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/";
+const REPLY =
+  "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/{thread_seq}/";
+
+// A message with a channel seq is addressed by it; a reply kept in its thread, inside the thread.
+const replyPath = (slug: string, id: number, message: Message) => ({
+  slug,
+  channel_id: id,
+  seq: message.parent_seq ?? 0,
+  thread_seq: message.thread_seq ?? 0,
+});
+
+export async function editMessage(slug: string, id: number, message: Message, body: string) {
+  if (message.seq !== null) {
+    const seqPath = { slug, channel_id: id, seq: message.seq };
+    return unwrap(await api.PATCH(MESSAGE, { params: { path: seqPath }, body: { body } }));
+  }
+  const params = { path: replyPath(slug, id, message) };
+  return unwrap(await api.PATCH(REPLY, { params, body: { body } }));
+}
+
+export async function deleteMessage(slug: string, id: number, message: Message) {
+  if (message.seq !== null) {
+    const seqPath = { slug, channel_id: id, seq: message.seq };
+    expectOk(await api.DELETE(MESSAGE, { params: { path: seqPath } }));
+    return;
+  }
+  expectOk(await api.DELETE(REPLY, { params: { path: replyPath(slug, id, message) } }));
 }

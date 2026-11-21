@@ -20,6 +20,7 @@ from apps.core import channels as rules
 from apps.workspaces import audit
 
 PAGE_SIZE = 50
+THREAD_PAGE_SIZE = 100
 CATCH_UP_LIMIT = 500
 MAX_BODY = 4000
 
@@ -37,6 +38,16 @@ class BodySerializer(serializers.Serializer[None]):
 
 class SendSerializer(BodySerializer):
     client_id = serializers.RegexField(r"^[A-Za-z0-9_-]{1,64}$", required=False, allow_blank=True)
+
+
+class ReplySerializer(SendSerializer):
+    also_in_channel = serializers.BooleanField(default=False)
+
+
+class ThreadPageSerializer(serializers.Serializer[None]):
+    parent = MessageSerializer()
+    replies = MessageSerializer(many=True)
+    has_more = serializers.BooleanField()
 
 
 def _user(request: Request) -> User:
@@ -67,6 +78,29 @@ def _int_param(request: Request, name: str) -> int | None:
     return value
 
 
+def _check_can_post(access: ChannelAccess) -> None:
+    allowed = rules.can_post(
+        access.role, access.kind, is_member=access.is_member, archived=access.channel.archived
+    )
+    if not allowed:
+        raise PermissionDenied(
+            "This channel is archived."
+            if access.channel.archived
+            else "Join the channel to post in it."
+        )
+
+
+def _channel_message(access: ChannelAccess, seq: int) -> Message:
+    message = (
+        Message.objects.filter(channel=access.channel, seq=seq)
+        .select_related("author", "channel", "parent")
+        .first()
+    )
+    if message is None:
+        raise Http404
+    return message
+
+
 class MessageListView(APIView):
     throttle_classes = (SendThrottle,)
     throttle_scope = "post"
@@ -85,13 +119,14 @@ class MessageListView(APIView):
     )
     def get(self, request: Request, slug: str, channel_id: int) -> Response:
         access = channel_access(_user(request), slug, channel_id)
-        found = Message.objects.filter(channel=access.channel).select_related("author")
+        found = Message.objects.filter(channel=access.channel).select_related("author", "parent")
         after_event = _int_param(request, "after_event")
         if after_event is not None:
             changed = list(
                 found.filter(event__gt=after_event).order_by("event")[: CATCH_UP_LIMIT + 1]
             )
             return _page(access, changed[:CATCH_UP_LIMIT], len(changed) > CATCH_UP_LIMIT)
+        found = found.filter(seq__isnull=False)
         before = _int_param(request, "before")
         if before is not None:
             found = found.filter(seq__lt=before)
@@ -107,15 +142,7 @@ class MessageListView(APIView):
     def post(self, request: Request, slug: str, channel_id: int) -> Response:
         user = _user(request)
         access = channel_access(user, slug, channel_id)
-        allowed = rules.can_post(
-            access.role, access.kind, is_member=access.is_member, archived=access.channel.archived
-        )
-        if not allowed:
-            raise PermissionDenied(
-                "This channel is archived."
-                if access.channel.archived
-                else "Join the channel to post in it."
-            )
+        _check_can_post(access)
         serializer = SendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         message, created = messages.post(
@@ -130,26 +157,16 @@ class MessageListView(APIView):
         )
 
 
-class MessageDetailView(APIView):
-    def _message(self, access: ChannelAccess, seq: int) -> Message:
-        message = (
-            Message.objects.filter(channel=access.channel, seq=seq)
-            .select_related("author", "channel")
-            .first()
-        )
-        if message is None:
-            raise Http404
-        return message
+class _EditDeleteView(APIView):
+    """Edit and delete, for a message found by `_message`."""
 
-    @extend_schema(
-        request=BodySerializer,
-        responses={200: MessageSerializer, 403: DetailSerializer},
-        summary="Edit your message",
-    )
-    def patch(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
+    def _message(self, access: ChannelAccess, **kwargs: int) -> Message:
+        raise NotImplementedError
+
+    def _edit(self, request: Request, slug: str, channel_id: int, **kwargs: int) -> Response:
         user = _user(request)
         access = channel_access(user, slug, channel_id)
-        message = self._message(access, seq)
+        message = self._message(access, **kwargs)
         allowed = rules.can_edit_message(
             is_author=message.author_id == user.pk,
             deleted=message.deleted,
@@ -163,11 +180,10 @@ class MessageDetailView(APIView):
             messages.edit(message, serializer.validated_data["body"])
         return Response(MessageSerializer(message).data)
 
-    @extend_schema(responses={204: None, 403: DetailSerializer}, summary="Delete a message")
-    def delete(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
+    def _delete(self, request: Request, slug: str, channel_id: int, **kwargs: int) -> Response:
         user = _user(request)
         access = channel_access(user, slug, channel_id)
-        message = self._message(access, seq)
+        message = self._message(access, **kwargs)
         allowed = rules.can_delete_message(
             access.role, is_author=message.author_id == user.pk, deleted=message.deleted
         )
@@ -178,11 +194,117 @@ class MessageDetailView(APIView):
             # Removing someone else's words is moderation, so it is audited; authors deleting
             # their own messages are not.
             if message.author_id != user.pk:
-                audit.record(
-                    access.member.workspace,
-                    user,
-                    "message.delete",
-                    message,
-                    {"channel": access.channel.name, "seq": message.seq},
-                )
+                where: dict[str, object] = {"channel": access.channel.name, "seq": message.seq}
+                if message.parent is not None:
+                    where = {
+                        "channel": access.channel.name,
+                        "thread": message.parent.seq,
+                        "reply": message.thread_seq,
+                    }
+                audit.record(access.member.workspace, user, "message.delete", message, where)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MessageDetailView(_EditDeleteView):
+    def _message(self, access: ChannelAccess, **kwargs: int) -> Message:
+        return _channel_message(access, kwargs["seq"])
+
+    @extend_schema(
+        request=BodySerializer,
+        responses={200: MessageSerializer, 403: DetailSerializer},
+        summary="Edit your message",
+    )
+    def patch(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
+        return self._edit(request, slug, channel_id, seq=seq)
+
+    @extend_schema(responses={204: None, 403: DetailSerializer}, summary="Delete a message")
+    def delete(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
+        return self._delete(request, slug, channel_id, seq=seq)
+
+
+def _thread_parent(access: ChannelAccess, seq: int) -> Message:
+    parent = _channel_message(access, seq)
+    # One level of threads: a reply also sent to the channel has a seq but takes no replies.
+    if parent.parent_id is not None:
+        raise Http404
+    return parent
+
+
+class ThreadView(APIView):
+    throttle_classes = (SendThrottle,)
+    throttle_scope = "post"
+
+    @extend_schema(
+        parameters=[OpenApiParameter("after", int, description="Replies after this thread_seq.")],
+        responses={200: ThreadPageSerializer},
+        summary="A thread: its first message and replies, oldest first",
+    )
+    def get(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
+        access = channel_access(_user(request), slug, channel_id)
+        parent = _thread_parent(access, seq)
+        found = Message.objects.filter(parent=parent).select_related("author", "parent")
+        after = _int_param(request, "after")
+        if after is not None:
+            found = found.filter(thread_seq__gt=after)
+        replies = list(found.order_by("thread_seq")[: THREAD_PAGE_SIZE + 1])
+        return Response(
+            {
+                "parent": MessageSerializer(parent).data,
+                "replies": MessageSerializer(replies[:THREAD_PAGE_SIZE], many=True).data,
+                "has_more": len(replies) > THREAD_PAGE_SIZE,
+            }
+        )
+
+    @extend_schema(
+        request=ReplySerializer,
+        responses={201: MessageSerializer, 200: MessageSerializer, 403: DetailSerializer},
+        summary="Reply in a thread",
+    )
+    def post(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
+        user = _user(request)
+        access = channel_access(user, slug, channel_id)
+        _check_can_post(access)
+        parent = _thread_parent(access, seq)
+        serializer = ReplySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        message, created = messages.post(
+            access.channel,
+            user,
+            serializer.validated_data["body"],
+            serializer.validated_data.get("client_id", ""),
+            parent=parent,
+            also_in_channel=serializer.validated_data["also_in_channel"],
+        )
+        return Response(
+            MessageSerializer(message).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class ReplyDetailView(_EditDeleteView):
+    def _message(self, access: ChannelAccess, **kwargs: int) -> Message:
+        parent = _thread_parent(access, kwargs["seq"])
+        reply = (
+            Message.objects.filter(parent=parent, thread_seq=kwargs["thread_seq"])
+            .select_related("author", "channel", "parent")
+            .first()
+        )
+        if reply is None:
+            raise Http404
+        return reply
+
+    @extend_schema(
+        request=BodySerializer,
+        responses={200: MessageSerializer, 403: DetailSerializer},
+        summary="Edit your reply",
+    )
+    def patch(
+        self, request: Request, slug: str, channel_id: int, seq: int, thread_seq: int
+    ) -> Response:
+        return self._edit(request, slug, channel_id, seq=seq, thread_seq=thread_seq)
+
+    @extend_schema(responses={204: None, 403: DetailSerializer}, summary="Delete a reply")
+    def delete(
+        self, request: Request, slug: str, channel_id: int, seq: int, thread_seq: int
+    ) -> Response:
+        return self._delete(request, slug, channel_id, seq=seq, thread_seq=thread_seq)

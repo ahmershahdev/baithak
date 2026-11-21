@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -36,6 +36,11 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     id: seq,
     seq,
     event,
+    parent_seq: null,
+    thread_seq: null,
+    also_in_channel: false,
+    reply_count: 0,
+    last_reply_at: null,
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -318,5 +323,69 @@ describe("unread", () => {
     await waitFor(() => {
       expect(screen.queryByText(/1 unread/)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("threads", () => {
+  test("replies open beside the channel, and a reply can also go to the channel", async () => {
+    const parent = { ...message(2, 3, "Who is bringing samosas?"), reply_count: 1 };
+    const first = { ...message(1, 2, "I will"), seq: null, parent_seq: 2, thread_seq: 1 };
+    const posted: unknown[] = [];
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Salaam"), parent], 3)),
+      "GET /api/v1/workspaces/team/channels/5/messages/2/replies/": () =>
+        json(200, { parent, replies: [first], has_more: false }),
+      "POST /api/v1/workspaces/team/channels/5/messages/2/replies/": async (request) => {
+        const body = (await request.json()) as { body: string; client_id: string };
+        posted.push(body);
+        return json(201, {
+          ...message(3, 4, body.body, body.client_id),
+          parent_seq: 2,
+          thread_seq: 2,
+          also_in_channel: true,
+        });
+      },
+    });
+    await openChannel();
+
+    await userEvent.click(await screen.findByRole("button", { name: "1 reply" }));
+    const thread = await screen.findByRole("complementary", { name: "Thread" });
+    expect(await within(thread).findByText("I will")).toBeInTheDocument();
+
+    await userEvent.click(within(thread).getByLabelText("Also send to #general"));
+    await userEvent.type(within(thread).getByLabelText("Reply"), "With chutney{Enter}");
+
+    expect(await within(thread).findByText("With chutney")).toBeInTheDocument();
+    expect(posted).toMatchObject([{ body: "With chutney", also_in_channel: true }]);
+    // Also sent to the channel, so the channel shows it too.
+    expect(await screen.findAllByText("With chutney")).toHaveLength(2);
+  });
+
+  test("a live reply lands in the open thread and the count in the channel goes up", async () => {
+    const parent = message(2, 2, "Lunch?");
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Salaam"), parent], 2)),
+      "GET /api/v1/workspaces/team/channels/5/messages/2/replies/": () =>
+        json(200, { parent, replies: [], has_more: false }),
+    });
+    renderAt("/w/team/c/5?thread=2");
+    await waitFor(() => {
+      expect(FakeSocket.all.length).toBeGreaterThan(0);
+    });
+    act(() => {
+      FakeSocket.latest().open();
+    });
+    const thread = await screen.findByRole("complementary", { name: "Thread" });
+    await within(thread).findByText("0 replies");
+
+    live(3, { ...message(4, 3, "Biryani"), seq: null, parent_seq: 2, thread_seq: 1 });
+    live(4, { ...parent, event: 4, reply_count: 1 });
+
+    expect(await within(thread).findByText("Biryani")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "1 reply" })).toBeInTheDocument();
+    // Kept in the thread: the channel does not show it.
+    expect(screen.getAllByText("Biryani")).toHaveLength(1);
   });
 });

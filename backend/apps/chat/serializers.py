@@ -84,8 +84,13 @@ class AuthorSerializer(serializers.Serializer[User]):
 
 
 class MessageSerializer(serializers.ModelSerializer[Message]):
+    """Needs `author` and `parent` loaded (select_related) to avoid a query per message."""
+
     author = AuthorSerializer(read_only=True, allow_null=True)
     deleted = serializers.BooleanField(read_only=True)
+    parent_seq = serializers.IntegerField(
+        source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
+    )
 
     class Meta:
         model = Message
@@ -93,6 +98,11 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "id",
             "seq",
             "event",
+            "parent_seq",
+            "thread_seq",
+            "also_in_channel",
+            "reply_count",
+            "last_reply_at",
             "author",
             "body",
             "client_id",

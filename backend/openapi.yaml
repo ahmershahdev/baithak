@@ -788,6 +788,7 @@ paths:
   /api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/:
     patch:
       operationId: workspaces_channels_messages_partial_update
+      description: Edit and delete, for a message found by `_message`.
       summary: Edit your message
       parameters:
       - in: path
@@ -829,6 +830,7 @@ paths:
           description: ''
     delete:
       operationId: workspaces_channels_messages_destroy
+      description: Edit and delete, for a message found by `_message`.
       summary: Delete a message
       parameters:
       - in: path
@@ -845,6 +847,176 @@ paths:
         name: slug
         schema:
           type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/:
+    get:
+      operationId: workspaces_channels_messages_replies_retrieve
+      summary: 'A thread: its first message and replies, oldest first'
+      parameters:
+      - in: query
+        name: after
+        schema:
+          type: integer
+        description: Replies after this thread_seq.
+      - in: path
+        name: channel_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: seq
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadPage'
+          description: ''
+    post:
+      operationId: workspaces_channels_messages_replies_create
+      summary: Reply in a thread
+      parameters:
+      - in: path
+        name: channel_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: seq
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/{thread_seq}/:
+    patch:
+      operationId: workspaces_channels_messages_replies_partial_update
+      description: Edit and delete, for a message found by `_message`.
+      summary: Edit your reply
+      parameters:
+      - in: path
+        name: channel_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: seq
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: thread_seq
+        schema:
+          type: integer
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBodyRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+    delete:
+      operationId: workspaces_channels_messages_replies_destroy
+      description: Edit and delete, for a message found by `_message`.
+      summary: Delete a reply
+      parameters:
+      - in: path
+        name: channel_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: seq
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: thread_seq
+        schema:
+          type: integer
         required: true
       tags:
       - workspaces
@@ -1455,6 +1627,8 @@ components:
       - username
     Message:
       type: object
+      description: Needs `author` and `parent` loaded (select_related) to avoid a
+        query per message.
       properties:
         id:
           type: integer
@@ -1462,9 +1636,30 @@ components:
         seq:
           type: integer
           readOnly: true
+          nullable: true
         event:
           type: integer
           readOnly: true
+        parent_seq:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: The thread's seq.
+        thread_seq:
+          type: integer
+          readOnly: true
+          nullable: true
+        also_in_channel:
+          type: boolean
+          readOnly: true
+        reply_count:
+          type: integer
+          readOnly: true
+        last_reply_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         author:
           allOf:
           - $ref: '#/components/schemas/Author'
@@ -1489,6 +1684,7 @@ components:
           type: boolean
           readOnly: true
       required:
+      - also_in_channel
       - author
       - body
       - client_id
@@ -1497,7 +1693,11 @@ components:
       - edited_at
       - event
       - id
+      - last_reply_at
+      - parent_seq
+      - reply_count
       - seq
+      - thread_seq
     MessagePage:
       type: object
       properties:
@@ -1596,6 +1796,24 @@ components:
           minimum: 0
       required:
       - seq
+    ReplyRequest:
+      type: object
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        client_id:
+          oneOf:
+          - type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+          - type: string
+            maxLength: 0
+        also_in_channel:
+          type: boolean
+          default: false
+      required:
+      - body
     RoleEnum:
       enum:
       - owner
@@ -1682,6 +1900,21 @@ components:
       - email
       - password
       - username
+    ThreadPage:
+      type: object
+      properties:
+        parent:
+          $ref: '#/components/schemas/Message'
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        has_more:
+          type: boolean
+      required:
+      - has_more
+      - parent
+      - replies
     TokenRequest:
       type: object
       properties:

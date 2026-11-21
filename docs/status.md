@@ -89,15 +89,20 @@ M1 in progress. Merged so far:
   `apps/core/unread.py`. The sidebar shows a count per channel, an open channel is marked read
   at the bottom of a visible tab, and a "New" line marks where unread messages began.
 
+- Threads: replies under `.../messages/{seq}/replies/`, one level deep, with reply counts and
+  "also send to channel". A reply kept in its thread has no channel seq; each reply and the
+  parent's new count are channel events, so catch-up covers threads. The web app opens a thread
+  beside the channel (`?thread=<seq>`, full screen on small widths), with "N replies" and a
+  Reply action on messages and a composer with "Also send to #channel".
+
 ## Next session
 
 M3, in this order:
 
-1. Threads with reply counts and "also send to channel".
-2. Mentions parsed in `apps/core` (`@person`, `@channel`) with autocomplete.
-3. Reactions.
-4. Direct and group messages.
-5. Typing indicator and online status in Redis with expiry.
+1. Mentions parsed in `apps/core` (`@person`, `@channel`) with autocomplete.
+2. Reactions.
+3. Direct and group messages.
+4. Typing indicator and online status in Redis with expiry.
 
 ## Open questions
 
