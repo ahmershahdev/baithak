@@ -51,8 +51,8 @@ in CI, and seed data.
 
 ## M5. Issue tracker (target 2027-03-07)
 
-- [ ] Projects in a workspace, issues with labels, assignees, priority and due date
-- [ ] Issue numbers per project, without gaps
+- [x] Projects in a workspace, issues with labels, assignees, priority and due date
+- [x] Issue numbers per project, without gaps
 - [ ] Board view with columns by status; drag to change status
 - [ ] Create an issue from a message; the issue's discussion is a thread linked both ways
 - [ ] Issue changes posted into the linked channel; issue history in the audit log

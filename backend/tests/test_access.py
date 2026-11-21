@@ -13,6 +13,8 @@ from rest_framework.test import APIClient
 from apps.chat.models import Channel, ChannelMember
 from apps.core.channels import ChannelKind
 from apps.core.roles import Role
+from apps.issues.models import Label, Project
+from apps.issues.services import create_issue
 from apps.workspaces.models import Member, Workspace
 from tests.accounts.factories import make_user
 
@@ -20,6 +22,7 @@ pytestmark = pytest.mark.django_db
 
 MEMBER = "/api/v1/workspaces/{slug}/members/{user_id}/"
 CHANNEL = "/api/v1/workspaces/{slug}/channels/{channel_id}/"
+PROJECT = "/api/v1/workspaces/{slug}/projects/SEC/"
 THUMBS_UP = "\U0001f44d"
 
 # (url name, method, path with {slug}, {user_id} and {channel_id}, body)
@@ -52,6 +55,18 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("channels:leave", "post", CHANNEL + "leave/", None),
     ("channels:read", "post", CHANNEL + "read/", {"seq": 1}),
     ("channels:files", "post", CHANNEL + "files/", None),
+    ("projects:list", "get", "/api/v1/workspaces/{slug}/projects/", None),
+    ("projects:list", "post", "/api/v1/workspaces/{slug}/projects/", {"key": "NEW", "name": "N"}),
+    ("projects:detail", "get", PROJECT, None),
+    ("projects:detail", "patch", PROJECT, {"name": "Taken over"}),
+    ("projects:labels", "get", PROJECT + "labels/", None),
+    ("projects:labels", "post", PROJECT + "labels/", {"name": "x", "color": "danger"}),
+    ("projects:label", "patch", PROJECT + "labels/{label_id}/", {"name": "y"}),
+    ("projects:label", "delete", PROJECT + "labels/{label_id}/", None),
+    ("projects:issues", "get", PROJECT + "issues/", None),
+    ("projects:issues", "post", PROJECT + "issues/", {"title": "Let me in"}),
+    ("projects:issue", "get", PROJECT + "issues/1/", None),
+    ("projects:issue", "patch", PROJECT + "issues/1/", {"title": "Changed"}),
     ("notifications:list", "get", "/api/v1/workspaces/{slug}/notifications/", None),
     ("notifications:read", "post", "/api/v1/workspaces/{slug}/notifications/read/", {"all": True}),
     ("search:messages", "get", "/api/v1/workspaces/{slug}/search/messages/?q=secret", None),
@@ -89,7 +104,14 @@ CHANNEL_ENDPOINTS = [entry for entry in ENDPOINTS if "{channel_id}" in entry[2]]
 
 # Endpoints that are not inside one workspace, so the rule above does not apply.
 NOT_WORKSPACE_SCOPED = {"workspaces:list"}
-SCOPED_NAMESPACES = ("workspaces:", "channels:", "files:", "search:", "notifications:")
+SCOPED_NAMESPACES = (
+    "workspaces:",
+    "channels:",
+    "files:",
+    "search:",
+    "notifications:",
+    "projects:",
+)
 
 
 def _names(resolver: URLResolver, namespace: str = "") -> set[str]:
@@ -121,14 +143,21 @@ def workspace() -> Workspace:
 
     first, _ = messages.post(secret, owner, "Only for the secret channel")
     messages.post(secret, owner, "A reply", parent=first)
+    project = Project.objects.create(workspace=workspace, key="SEC", name="Secret")
+    Label.objects.create(workspace=workspace, project=project, name="bug", color="danger")
+    create_issue(project, owner, {"title": "Only for members"})
     return workspace
 
 
 def _path(template: str, workspace: Workspace, slug: str | None = None) -> str:
     channel = Channel.objects.for_workspace(workspace).get()
     owner = Member.objects.for_workspace(workspace).get(role=Role.OWNER)
+    label = Label.objects.for_workspace(workspace).get()
     return template.format(
-        slug=slug or workspace.slug, user_id=owner.user_id, channel_id=channel.pk
+        slug=slug or workspace.slug,
+        user_id=owner.user_id,
+        channel_id=channel.pk,
+        label_id=label.pk,
     )
 
 

@@ -156,10 +156,20 @@ M1 in progress. Merged so far:
   about one message a second (`presence_changes`), instead of one per person to everyone. The
   load check now also checks every client's online list: 500 of 500 right with 500 online.
 
+- M5 started: projects and issues. Projects (key like `BAI`, admins manage), labels in the six
+  brand hues, issues numbered `BAI-1` without gaps (project row lock, never deleted), status,
+  priority, assignee, due date, labels; all audited. Screens: Projects in the workspace nav, a
+  project's issues with Open and Closed, filters and quick add, label editing for admins, and an
+  issue page with editable fields. Guests don't see projects.
+
 ## Next session
 
-Release M4 as `v0.4.0` and close its milestone, then start M5 (issue tracker). Rerun the load
-check on the production setup at deploy.
+M5, in this order:
+
+1. Board view with columns by status; drag to change status.
+2. Create an issue from a message; the issue's discussion is a thread linked both ways.
+3. Issue changes posted into the linked channel; issue history in the audit log.
+4. Notify people when an issue is assigned to them (the in-app notifications from M4).
 
 ## Open questions
 

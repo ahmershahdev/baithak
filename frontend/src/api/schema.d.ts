@@ -729,6 +729,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/projects/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projects */
+        get: operations["workspaces_projects_list"];
+        put?: never;
+        /** Create a project */
+        post: operations["workspaces_projects_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/projects/{key}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One project */
+        get: operations["workspaces_projects_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename, describe, archive or unarchive a project */
+        patch: operations["workspaces_projects_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/projects/{key}/issues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A project's issues, newest first */
+        get: operations["workspaces_projects_issues_list"];
+        put?: never;
+        /** Open an issue */
+        post: operations["workspaces_projects_issues_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/projects/{key}/issues/{number}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One issue */
+        get: operations["workspaces_projects_issues_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change an issue */
+        patch: operations["workspaces_projects_issues_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/projects/{key}/labels/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A project's labels */
+        get: operations["workspaces_projects_labels_list"];
+        put?: never;
+        /** Add a label */
+        post: operations["workspaces_projects_labels_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/projects/{key}/labels/{label_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a label */
+        delete: operations["workspaces_projects_labels_destroy"];
+        options?: never;
+        head?: never;
+        /** Rename or recolor a label */
+        patch: operations["workspaces_projects_labels_partial_update"];
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/search/files/": {
         parameters: {
             query?: never;
@@ -873,6 +981,16 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
+        /**
+         * @description * `accent` - accent
+         *     * `ember` - ember
+         *     * `warning` - warning
+         *     * `success` - success
+         *     * `danger` - danger
+         *     * `info` - info
+         * @enum {string}
+         */
+        ColorEnum: "accent" | "ember" | "warning" | "success" | "danger" | "info";
         ContactRequest: {
             captcha?: string;
             captcha_v2?: string;
@@ -939,6 +1057,51 @@ export interface components {
             /** Format: email */
             email: string;
             role: components["schemas"]["InvitableRoleEnum"];
+        };
+        /** @description Needs `project`, `assignee`, `created_by` loaded and `labels` prefetched. */
+        Issue: {
+            readonly number: number;
+            /** @description KEY-12 */
+            readonly ref: string;
+            readonly title: string;
+            readonly description: string;
+            readonly status: components["schemas"]["StatusEnum"];
+            readonly priority: components["schemas"]["PriorityEnum"];
+            readonly assignee: components["schemas"]["Author"] | null;
+            /** Format: date */
+            readonly due: string | null;
+            readonly labels: components["schemas"]["Label"][];
+            readonly created_by: components["schemas"]["Author"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** Format: date-time */
+            readonly closed_at: string | null;
+        };
+        IssuePage: {
+            results: components["schemas"]["Issue"][];
+            /** @description `before` for the next page. */
+            next: number | null;
+        };
+        IssueWriteRequest: {
+            title: string;
+            description?: string;
+            status?: components["schemas"]["StatusEnum"];
+            priority?: components["schemas"]["PriorityEnum"];
+            assignee_id?: number | null;
+            /** Format: date */
+            due?: string | null;
+            label_ids?: number[];
+        };
+        Label: {
+            readonly id: number;
+            name: string;
+            color: components["schemas"]["ColorEnum"];
+        };
+        LabelRequest: {
+            name: string;
+            color: components["schemas"]["ColorEnum"];
         };
         MarkReadRequest: {
             ids?: number[];
@@ -1043,6 +1206,20 @@ export interface components {
             topic?: string;
             archived?: boolean;
         };
+        PatchedIssueWriteRequest: {
+            title?: string;
+            description?: string;
+            status?: components["schemas"]["StatusEnum"];
+            priority?: components["schemas"]["PriorityEnum"];
+            assignee_id?: number | null;
+            /** Format: date */
+            due?: string | null;
+            label_ids?: number[];
+        };
+        PatchedLabelRequest: {
+            name?: string;
+            color?: components["schemas"]["ColorEnum"];
+        };
         PatchedNotificationSettingsRequest: {
             notify_by_email?: boolean;
             /** Format: time */
@@ -1052,11 +1229,41 @@ export interface components {
             /** @description An IANA name, like Asia/Karachi. */
             time_zone?: string;
         };
+        PatchedProjectUpdateRequest: {
+            name?: string;
+            description?: string;
+            archived?: boolean;
+        };
         PatchedRoleRequest: {
             role?: components["schemas"]["RoleEnum"];
         };
         PatchedWorkspaceWriteRequest: {
             name?: string;
+        };
+        /**
+         * @description * `none` - none
+         *     * `low` - low
+         *     * `medium` - medium
+         *     * `high` - high
+         *     * `urgent` - urgent
+         * @enum {string}
+         */
+        PriorityEnum: "none" | "low" | "medium" | "high" | "urgent";
+        Project: {
+            readonly key: string;
+            readonly name: string;
+            readonly description: string;
+            readonly archived: boolean;
+            /** @default 0 */
+            readonly open_issues: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        ProjectCreateRequest: {
+            /** @description 2 to 10 letters or digits; KEY-12. */
+            key: string;
+            name: string;
+            description?: string;
         };
         Reaction: {
             emoji: string;
@@ -1113,6 +1320,15 @@ export interface components {
             display_name?: string;
             password: string;
         };
+        /**
+         * @description * `backlog` - backlog
+         *     * `todo` - todo
+         *     * `in_progress` - in_progress
+         *     * `done` - done
+         *     * `canceled` - canceled
+         * @enum {string}
+         */
+        StatusEnum: "backlog" | "todo" | "in_progress" | "done" | "canceled";
         ThreadPage: {
             parent: components["schemas"]["Message"];
             replies: components["schemas"]["Message"][];
@@ -2738,6 +2954,403 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Unread"];
+                };
+            };
+        };
+    };
+    workspaces_projects_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"][];
+                };
+            };
+        };
+    };
+    workspaces_projects_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+        };
+    };
+    workspaces_projects_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProjectUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_issues_list: {
+        parameters: {
+            query?: {
+                /** @description A @handle, or 'none'. */
+                assignee?: string;
+                /** @description Issues numbered below this. */
+                before?: number;
+                /** @description A label id. */
+                label?: number;
+                /** @description Only open (true) or closed (false). */
+                open?: boolean;
+                priority?: string;
+                /** @description Comma-separated statuses. */
+                status?: string;
+            };
+            header?: never;
+            path: {
+                key: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuePage"];
+                };
+            };
+        };
+    };
+    workspaces_projects_issues_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_issues_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                number: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+        };
+    };
+    workspaces_projects_issues_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                number: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedIssueWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Issue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_labels_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"][];
+                };
+            };
+        };
+    };
+    workspaces_projects_labels_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_labels_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                label_id: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_labels_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                label_id: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLabelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
                 };
             };
         };

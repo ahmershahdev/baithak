@@ -1631,6 +1631,456 @@ paths:
               schema:
                 $ref: '#/components/schemas/Unread'
           description: ''
+  /api/v1/workspaces/{slug}/projects/:
+    get:
+      operationId: workspaces_projects_list
+      summary: Projects
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+          description: ''
+    post:
+      operationId: workspaces_projects_create
+      summary: Create a project
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/projects/{key}/:
+    get:
+      operationId: workspaces_projects_retrieve
+      summary: One project
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    patch:
+      operationId: workspaces_projects_partial_update
+      summary: Rename, describe, archive or unarchive a project
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectUpdateRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/projects/{key}/issues/:
+    get:
+      operationId: workspaces_projects_issues_list
+      summary: A project's issues, newest first
+      parameters:
+      - in: query
+        name: assignee
+        schema:
+          type: string
+        description: A @handle, or 'none'.
+      - in: query
+        name: before
+        schema:
+          type: integer
+        description: Issues numbered below this.
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: label
+        schema:
+          type: integer
+        description: A label id.
+      - in: query
+        name: open
+        schema:
+          type: boolean
+        description: Only open (true) or closed (false).
+      - in: query
+        name: priority
+        schema:
+          type: string
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Comma-separated statuses.
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuePage'
+          description: ''
+    post:
+      operationId: workspaces_projects_issues_create
+      summary: Open an issue
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueWriteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/projects/{key}/issues/{number}/:
+    get:
+      operationId: workspaces_projects_issues_retrieve
+      summary: One issue
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: number
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+    patch:
+      operationId: workspaces_projects_issues_partial_update
+      summary: Change an issue
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: number
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIssueWriteRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/projects/{key}/labels/:
+    get:
+      operationId: workspaces_projects_labels_list
+      summary: A project's labels
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Label'
+          description: ''
+    post:
+      operationId: workspaces_projects_labels_create
+      summary: Add a label
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Label'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/projects/{key}/labels/{label_id}/:
+    patch:
+      operationId: workspaces_projects_labels_partial_update
+      summary: Rename or recolor a label
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: label_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLabelRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Label'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+    delete:
+      operationId: workspaces_projects_labels_destroy
+      summary: Delete a label
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: label_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
   /api/v1/workspaces/{slug}/search/files/:
     get:
       operationId: workspaces_search_files_retrieve
@@ -2032,6 +2482,22 @@ components:
       - joined_at
       - user_id
       - username
+    ColorEnum:
+      enum:
+      - accent
+      - ember
+      - warning
+      - success
+      - danger
+      - info
+      type: string
+      description: |-
+        * `accent` - accent
+        * `ember` - ember
+        * `warning` - warning
+        * `success` - success
+        * `danger` - danger
+        * `info` - info
     ContactRequest:
       type: object
       properties:
@@ -2217,6 +2683,147 @@ components:
       required:
       - email
       - role
+    Issue:
+      type: object
+      description: Needs `project`, `assignee`, `created_by` loaded and `labels` prefetched.
+      properties:
+        number:
+          type: integer
+          readOnly: true
+        ref:
+          type: string
+          readOnly: true
+          description: KEY-12
+        title:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/PriorityEnum'
+          readOnly: true
+        assignee:
+          allOf:
+          - $ref: '#/components/schemas/Author'
+          readOnly: true
+          nullable: true
+        due:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+          readOnly: true
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/Author'
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - assignee
+      - closed_at
+      - created_at
+      - created_by
+      - description
+      - due
+      - labels
+      - number
+      - priority
+      - ref
+      - status
+      - title
+      - updated_at
+    IssuePage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        next:
+          type: integer
+          nullable: true
+          description: '`before` for the next page.'
+      required:
+      - next
+      - results
+    IssueWriteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        assignee_id:
+          type: integer
+          nullable: true
+        due:
+          type: string
+          format: date
+          nullable: true
+        label_ids:
+          type: array
+          items:
+            type: integer
+          maxItems: 20
+      required:
+      - title
+    Label:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 40
+        color:
+          $ref: '#/components/schemas/ColorEnum'
+      required:
+      - color
+      - id
+      - name
+    LabelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        color:
+          $ref: '#/components/schemas/ColorEnum'
+      required:
+      - color
+      - name
     MarkReadRequest:
       type: object
       properties:
@@ -2519,6 +3126,41 @@ components:
           maxLength: 250
         archived:
           type: boolean
+    PatchedIssueWriteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        assignee_id:
+          type: integer
+          nullable: true
+        due:
+          type: string
+          format: date
+          nullable: true
+        label_ids:
+          type: array
+          items:
+            type: integer
+          maxItems: 20
+    PatchedLabelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        color:
+          $ref: '#/components/schemas/ColorEnum'
     PatchedNotificationSettingsRequest:
       type: object
       properties:
@@ -2537,6 +3179,18 @@ components:
           minLength: 1
           description: An IANA name, like Asia/Karachi.
           maxLength: 64
+    PatchedProjectUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 2000
+        archived:
+          type: boolean
     PatchedRoleRequest:
       type: object
       properties:
@@ -2549,6 +3203,68 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+    PriorityEnum:
+      enum:
+      - none
+      - low
+      - medium
+      - high
+      - urgent
+      type: string
+      description: |-
+        * `none` - none
+        * `low` - low
+        * `medium` - medium
+        * `high` - high
+        * `urgent` - urgent
+    Project:
+      type: object
+      properties:
+        key:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+        open_issues:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - archived
+      - created_at
+      - description
+      - key
+      - name
+      - open_issues
+    ProjectCreateRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          description: 2 to 10 letters or digits; KEY-12.
+          maxLength: 10
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 2000
+      required:
+      - key
+      - name
     Reaction:
       type: object
       properties:
@@ -2700,6 +3416,20 @@ components:
       - email
       - password
       - username
+    StatusEnum:
+      enum:
+      - backlog
+      - todo
+      - in_progress
+      - done
+      - canceled
+      type: string
+      description: |-
+        * `backlog` - backlog
+        * `todo` - todo
+        * `in_progress` - in_progress
+        * `done` - done
+        * `canceled` - canceled
     ThreadPage:
       type: object
       properties:

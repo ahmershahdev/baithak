@@ -47,9 +47,10 @@ reaction          message_id, user_id, emoji (one per person and emoji)
 attachment        workspace_id, channel_id, message_id (null until sent), uploader_id, name,
                   content_type, size, storage_key, preview_key, width, height
 
-project           workspace_id, key, name, next_number
-issue             project_id, number, title, status, priority, assignee_id, due, thread_message_id
-label / issue_label
+project           workspace_id, key (unique per workspace), name, description, next_number, archived_at
+issue             workspace_id, project_id, number (unique per project), title, description, status,
+                  priority, assignee_id, due, labels, created_by, closed_at, thread_message_id (M5)
+label             workspace_id, project_id, name, color (one of the six brand hues)
 webhook           workspace_id, channel_id, kind (github, incoming), secret, repo
 webhook_delivery  webhook_id, received_at, event, status, error
 notification      user_id, kind, object_id, read_at
@@ -252,6 +253,19 @@ pub/sub publishes once per process. Connecting is limited by per-socket setup (s
 channel queries on Django's single database thread, presence in Redis) and by join
 announcements, which grow with the square of the crowd. These are development numbers; rerun on
 the production setup.
+
+## Issues
+
+Projects belong to a workspace and are for members and up; guests, who only see channels they are
+added to, get 404 like outsiders. Admins and owners create, rename and archive projects and keep
+their labels; members open and change issues; an archived project is read only
+(`apps/core/issues.py`). An issue is `KEY-number`: the number comes from `project.next_number`,
+taken under a lock on the project row in the same transaction that saves the issue, and issues
+are never deleted (they are canceled), so numbers have no gaps; a 4-thread race test checks it.
+Done and canceled are closed and set `closed_at`; reopening clears it. Assignees must be members
+of the workspace who can see projects; labels must belong to the issue's project. Every project,
+label and issue change is audited with what changed (an issue's description only as "changed",
+so the log doesn't copy it).
 
 ## Unread counts
 
