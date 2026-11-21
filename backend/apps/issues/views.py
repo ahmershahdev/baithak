@@ -1,7 +1,7 @@
 from typing import Any, cast
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Case, Count, IntegerField, Q, QuerySet, Value, When
 from django.http import Http404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
 from apps.core import issues as rules
-from apps.core.issues import CLOSED
+from apps.core.issues import CLOSED, Priority
 from apps.core.roles import Role
 from apps.issues import services
 from apps.issues.access import project_access, projects_member
@@ -32,6 +32,7 @@ from apps.workspaces import audit
 from apps.workspaces.models import Member
 
 PAGE_SIZE = 50
+BOARD_COLUMN_SIZE = 100
 KEY_TAKEN = "A project with this key already exists."
 LABEL_TAKEN = "This project already has a label with that name."
 
@@ -264,6 +265,12 @@ class IssueListView(APIView):
             OpenApiParameter("label", int, description="A label id."),
             OpenApiParameter("priority", str),
             OpenApiParameter("before", int, description="Issues numbered below this."),
+            OpenApiParameter(
+                "order",
+                str,
+                enum=["number", "priority"],
+                description="priority: most pressing first, up to 100 (a board column).",
+            ),
         ],
         responses={200: IssuePageSerializer},
         summary="A project's issues, newest first",
@@ -288,6 +295,19 @@ class IssueListView(APIView):
             found = found.filter(labels__pk=int(params["label"]))
         if params.get("priority"):
             found = found.filter(priority=params["priority"])
+        total = found.count()
+        if params.get("order") == "priority":
+            # A board column: the most pressing first, one page, and the total for "N more".
+            ranked = found.annotate(
+                rank=Case(
+                    *[When(priority=p, then=Value(rules.priority_rank(p))) for p in Priority],
+                    output_field=IntegerField(),
+                )
+            )
+            column = list(ranked.order_by("-rank", "-number")[:BOARD_COLUMN_SIZE])
+            return Response(
+                {"results": IssueSerializer(column, many=True).data, "next": None, "total": total}
+            )
         if params.get("before", "").isdigit():
             found = found.filter(number__lt=int(params["before"]))
         page = list(found.order_by("-number")[: PAGE_SIZE + 1])
@@ -297,6 +317,7 @@ class IssueListView(APIView):
             {
                 "results": IssueSerializer(page, many=True).data,
                 "next": page[-1].number if more else None,
+                "total": total,
             }
         )
 

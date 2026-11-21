@@ -17,6 +17,7 @@ import { VerifyEmail } from "./pages/VerifyEmail";
 import { Audit } from "./pages/workspace/Audit";
 import { Channels } from "./pages/workspace/Channels";
 import { ChannelView } from "./pages/workspace/ChannelView";
+import { Board } from "./pages/workspace/Board";
 import { IssuePage } from "./pages/workspace/IssuePage";
 import { MySettings } from "./pages/workspace/MySettings";
 import { Project } from "./pages/workspace/Project";
@@ -94,6 +95,7 @@ export function App() {
         <Route path="me" element={<MySettings />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:key" element={<Project />} />
+        <Route path="projects/:key/board" element={<Board />} />
         <Route path="projects/:key/issues/:number" element={<IssuePage />} />
         <Route path="members" element={<Members />} />
         <Route path="invitations" element={<Invitations />} />

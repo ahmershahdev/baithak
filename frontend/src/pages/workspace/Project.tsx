@@ -1,5 +1,5 @@
 import { useState, type SubmitEvent } from "react";
-import { Link, useOutletContext, useParams, useSearchParams } from "react-router";
+import { Link, NavLink, useOutletContext, useParams, useSearchParams } from "react-router";
 
 import {
   useCreateIssue,
@@ -8,6 +8,7 @@ import {
   useLabels,
   useProject,
   type IssueFilters,
+  type Project as ProjectData,
 } from "../../api/issues";
 import { useMembers } from "../../api/workspaces";
 import { Select } from "../../components/Select";
@@ -25,6 +26,44 @@ import {
 } from "../../issues";
 import { isAdmin } from "../../roles";
 import type { WorkspaceContext } from "./Shell";
+
+const viewClass = ({ isActive }: { isActive: boolean }) =>
+  `rounded-lg px-3 py-1.5 text-sm font-semibold ${
+    isActive ? "bg-surface text-text shadow-sm" : "text-text-muted hover:bg-surface"
+  }`;
+
+/** A project's name, what it is for, and the switch between its list and its board. */
+export function ProjectHeader({
+  slug,
+  projectKey,
+  project,
+}: {
+  slug: string;
+  projectKey: string;
+  project: ProjectData | undefined;
+}) {
+  const base = `/w/${slug}/projects/${projectKey}`;
+  return (
+    <PageHeader
+      title={project ? project.name : "Project"}
+      intro={
+        project?.archived
+          ? "Archived: read only."
+          : project?.description || `Issues numbered ${projectKey}-1, ${projectKey}-2 and on.`
+      }
+      action={
+        <nav aria-label="Project view" className="flex gap-1">
+          <NavLink end to={base} className={viewClass}>
+            List
+          </NavLink>
+          <NavLink to={`${base}/board`} className={viewClass}>
+            Board
+          </NavLink>
+        </nav>
+      }
+    />
+  );
+}
 
 function readFilters(search: URLSearchParams): IssueFilters {
   const label = Number(search.get("label"));
@@ -80,10 +119,7 @@ export function Project() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={project.data ? project.data.name : "Project"}
-        intro={project.data?.description || `Issues numbered ${key}-1, ${key}-2 and on.`}
-      />
+      <ProjectHeader slug={slug} projectKey={key} project={project.data} />
       {project.data && !project.data.archived && (
         <form onSubmit={add} className="flex gap-2">
           <label htmlFor="new-issue" className="sr-only">

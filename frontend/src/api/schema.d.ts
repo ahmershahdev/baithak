@@ -1083,6 +1083,8 @@ export interface components {
             results: components["schemas"]["Issue"][];
             /** @description `before` for the next page. */
             next: number | null;
+            /** @description How many match the filters, on every page. */
+            total: number;
         };
         IssueWriteRequest: {
             title: string;
@@ -3087,6 +3089,8 @@ export interface operations {
                 label?: number;
                 /** @description Only open (true) or closed (false). */
                 open?: boolean;
+                /** @description priority: most pressing first, up to 100 (a board column). */
+                order?: "number" | "priority";
                 priority?: string;
                 /** @description Comma-separated statuses. */
                 status?: string;

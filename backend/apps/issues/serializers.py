@@ -95,3 +95,4 @@ class IssueWriteSerializer(serializers.Serializer[None]):
 class IssuePageSerializer(serializers.Serializer[None]):
     results = IssueSerializer(many=True)
     next = serializers.IntegerField(allow_null=True, help_text="`before` for the next page.")
+    total = serializers.IntegerField(help_text="How many match the filters, on every page.")

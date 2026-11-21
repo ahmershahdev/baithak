@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -127,5 +127,82 @@ describe("issues", () => {
     });
     expect(changes).toEqual([{ status: "done" }, { assignee_id: 2 }, { label_ids: [3] }]);
     expect(screen.getByRole("combobox", { name: "Status" })).toHaveTextContent("Done");
+  });
+});
+
+describe("board", () => {
+  function columns(byStatus: Record<string, Issue[]>, onPatch?: (body: unknown) => Response) {
+    const patched: unknown[] = [];
+    backend({
+      "GET /api/v1/workspaces/team/projects/BAI/issues/": (request) => {
+        const status = new URL(request.url).searchParams.get("status") ?? "";
+        const results = byStatus[status] ?? [];
+        return json(200, { results, next: null, total: results.length });
+      },
+      "PATCH /api/v1/workspaces/team/projects/BAI/issues/1/": async (request) => {
+        const body = (await request.json()) as { status: Issue["status"] };
+        patched.push(body);
+        if (onPatch) return onPatch(body);
+        const moved = issue({ status: body.status });
+        for (const key of Object.keys(byStatus)) {
+          byStatus[key] = (byStatus[key] ?? []).filter((i) => i.number !== 1);
+        }
+        byStatus[body.status] = [moved, ...(byStatus[body.status] ?? [])];
+        return json(200, moved);
+      },
+    });
+    return patched;
+  }
+
+  test("a card moves to another column from its status menu", async () => {
+    const patched = columns({ todo: [issue()] });
+    renderAt("/w/team/projects/BAI/board");
+
+    const todo = await screen.findByRole("list", { name: "To do" });
+    await within(todo).findByText("Search misses Urdu words");
+    await userEvent.click(within(todo).getByRole("combobox", { name: "Status of BAI-1" }));
+    await userEvent.click(screen.getByRole("option", { name: "In progress" }));
+
+    const doing = screen.getByRole("list", { name: "In progress" });
+    expect(await within(doing).findByText("Search misses Urdu words")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(todo).queryByText("Search misses Urdu words")).not.toBeInTheDocument();
+    });
+    expect(patched).toEqual([{ status: "in_progress" }]);
+  });
+
+  test("dragging a card onto a column moves it there", async () => {
+    const patched = columns({ todo: [issue()] });
+    renderAt("/w/team/projects/BAI/board");
+    const todo = await screen.findByRole("list", { name: "To do" });
+    const card = (await within(todo).findByText("Search misses Urdu words")).closest("li");
+    const done = screen.getByRole("region", { name: /^Done/ });
+    const transfer = {
+      types: ["application/x-baithak-issue"],
+      setData: () => undefined,
+      effectAllowed: "",
+    };
+
+    fireEvent.dragStart(card as HTMLElement, { dataTransfer: transfer });
+    fireEvent.dragOver(done, { dataTransfer: transfer });
+    fireEvent.drop(done, { dataTransfer: transfer });
+
+    expect(await within(done).findByText("Search misses Urdu words")).toBeInTheDocument();
+    expect(patched).toEqual([{ status: "done" }]);
+  });
+
+  test("a move the server refuses puts the card back", async () => {
+    columns({ todo: [issue()] }, () => json(403, { detail: "This project is archived." }));
+    renderAt("/w/team/projects/BAI/board");
+    const todo = await screen.findByRole("list", { name: "To do" });
+    await within(todo).findByText("Search misses Urdu words");
+
+    await userEvent.click(within(todo).getByRole("combobox", { name: "Status of BAI-1" }));
+    await userEvent.click(screen.getByRole("option", { name: "Done" }));
+
+    expect(
+      await screen.findByText("That move did not save, so the card went back."),
+    ).toBeInTheDocument();
+    expect(within(todo).getByText("Search misses Urdu words")).toBeInTheDocument();
   });
 });

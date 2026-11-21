@@ -1785,6 +1785,14 @@ paths:
           type: boolean
         description: Only open (true) or closed (false).
       - in: query
+        name: order
+        schema:
+          type: string
+          enum:
+          - number
+          - priority
+        description: 'priority: most pressing first, up to 100 (a board column).'
+      - in: query
         name: priority
         schema:
           type: string
@@ -2766,9 +2774,13 @@ components:
           type: integer
           nullable: true
           description: '`before` for the next page.'
+        total:
+          type: integer
+          description: How many match the filters, on every page.
       required:
       - next
       - results
+      - total
     IssueWriteRequest:
       type: object
       properties:
