@@ -53,7 +53,7 @@ in CI, and seed data.
 
 - [x] Projects in a workspace, issues with labels, assignees, priority and due date
 - [x] Issue numbers per project, without gaps
-- [ ] Board view with columns by status; drag to change status
+- [x] Board view with columns by status; drag to change status
 - [ ] Create an issue from a message; the issue's discussion is a thread linked both ways
 - [ ] Issue changes posted into the linked channel; issue history in the audit log
 

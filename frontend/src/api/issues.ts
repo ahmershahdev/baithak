@@ -155,3 +155,66 @@ export function useUpdateIssue(slug: string, key: string, number: number) {
     },
   });
 }
+
+export function useBoardColumn(slug: string, key: string, status: Issue["status"]) {
+  return useQuery({
+    queryKey: [...keys.issues(slug, key), "board", status],
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/api/v1/workspaces/{slug}/projects/{key}/issues/", {
+          params: { path: { slug, key }, query: { status, order: "priority" } },
+        }),
+      ),
+  });
+}
+
+type Column = { results: Issue[]; total: number; next?: number | null };
+
+/** Move an issue to another status. The card moves at once and moves back if the server says
+ * no; the columns are fetched again either way. */
+export function useMoveIssue(slug: string, key: string) {
+  const client = useQueryClient();
+  const columnKey = (status: Issue["status"]) => [...keys.issues(slug, key), "board", status];
+  return useMutation({
+    mutationFn: async ({ issue, status }: { issue: Issue; status: Issue["status"] }) =>
+      unwrap(
+        await api.PATCH("/api/v1/workspaces/{slug}/projects/{key}/issues/{number}/", {
+          params: { path: { slug, key, number: issue.number } },
+          body: { status },
+        }),
+      ),
+    onMutate: async ({ issue, status }) => {
+      const from = columnKey(issue.status);
+      const to = columnKey(status);
+      await client.cancelQueries({ queryKey: keys.issues(slug, key) });
+      const before = {
+        from: client.getQueryData<Column>(from),
+        to: client.getQueryData<Column>(to),
+      };
+      client.setQueryData<Column>(from, (now) =>
+        now
+          ? {
+              ...now,
+              results: now.results.filter((i) => i.number !== issue.number),
+              total: now.total - 1,
+            }
+          : now,
+      );
+      client.setQueryData<Column>(to, (now) =>
+        now
+          ? { ...now, results: [{ ...issue, status }, ...now.results], total: now.total + 1 }
+          : now,
+      );
+      return before;
+    },
+    onError: (_error, { issue, status }, before) => {
+      if (!before) return;
+      client.setQueryData(columnKey(issue.status), before.from);
+      client.setQueryData(columnKey(status), before.to);
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.issues(slug, key) });
+      void client.invalidateQueries({ queryKey: keys.projects(slug) });
+    },
+  });
+}

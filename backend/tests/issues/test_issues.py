@@ -258,3 +258,36 @@ class TestListing:
         assert len(first["results"]) == 50
         assert [i["number"] for i in second["results"]] == [3, 2, 1]
         assert second["next"] is None
+
+
+class TestBoard:
+    def test_a_column_puts_the_most_pressing_first_and_counts_them_all(
+        self, api: APIClient, project: Project
+    ) -> None:
+        open_issue(api, title="low", priority="low")
+        open_issue(api, title="urgent", priority="urgent")
+        open_issue(api, title="none")
+        open_issue(api, title="high", priority="high")
+        open_issue(api, title="also urgent", priority="urgent")
+        open_issue(api, title="done", priority="urgent", status="done")
+
+        column = api.get(f"{BASE}BAI/issues/", {"status": "todo", "order": "priority"}).json()
+
+        assert [i["title"] for i in column["results"]] == [
+            "also urgent",
+            "urgent",
+            "high",
+            "low",
+            "none",
+        ]
+        assert (column["total"], column["next"]) == (5, None)
+
+    def test_a_long_column_shows_the_first_hundred_and_the_total(
+        self, project: Project, owner: User, api: APIClient
+    ) -> None:
+        for number in range(103):
+            create_issue(project, owner, {"title": f"issue {number}"})
+
+        column = api.get(f"{BASE}BAI/issues/", {"order": "priority"}).json()
+
+        assert (len(column["results"]), column["total"]) == (100, 103)

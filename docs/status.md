@@ -162,14 +162,17 @@ M1 in progress. Merged so far:
   project's issues with Open and Closed, filters and quick add, label editing for admins, and an
   issue page with editable fields. Guests don't see projects.
 
+- Board: a column per status, most pressing first, drag a card to change its status (moves at
+  once, goes back if refused), and a status menu on every card for the keyboard and phones.
+  List and Board switch at the top of a project.
+
 ## Next session
 
 M5, in this order:
 
-1. Board view with columns by status; drag to change status.
-2. Create an issue from a message; the issue's discussion is a thread linked both ways.
-3. Issue changes posted into the linked channel; issue history in the audit log.
-4. Notify people when an issue is assigned to them (the in-app notifications from M4).
+1. Create an issue from a message; the issue's discussion is a thread linked both ways.
+2. Issue changes posted into the linked channel; issue history in the audit log.
+3. Notify people when an issue is assigned to them (the in-app notifications from M4).
 
 ## Open questions
 

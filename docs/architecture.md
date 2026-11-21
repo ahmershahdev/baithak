@@ -267,6 +267,12 @@ of the workspace who can see projects; labels must belong to the issue's project
 label and issue change is audited with what changed (an issue's description only as "changed",
 so the log doesn't copy it).
 
+The board is a column per status, each fetched with `order=priority` (most pressing first, up
+to 100, with `total` so a long column says how many more are in the list). Dropping a card on
+another column changes its status: the card moves at once, goes back if the API refuses, and
+the columns are fetched again either way. Dragging uses the browser's own drag and drop, which
+needs a mouse, so every card also has a status menu for the keyboard and phones.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =
