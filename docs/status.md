@@ -132,15 +132,18 @@ M1 in progress. Merged so far:
   WebP previews. The composer attaches by button, paste or drop; messages show images and file
   cards. New dependency: Pillow 13.0.0.
 
+- Search: messages and file names through MySQL FULLTEXT, always through `readable_channels`,
+  every word as a prefix, newest first with a cursor, filters for channel, person and day. A
+  search box tops the sidebar; `/w/<slug>/search` has filters, Messages and Files tabs,
+  highlighted words and links into the channel or thread. Issues join search in M5.
+
 ## Next session
 
 M4, in this order:
 
-1. Full-text search (MySQL FULLTEXT) over messages and files, filtered by the read rule, with
-   channel, person and date filters.
-2. In-app notifications for mentions and direct messages.
-3. Email notifications for unread mentions, with quiet hours.
-4. Load check: 500 clients in one channel.
+1. In-app notifications for mentions and direct messages.
+2. Email notifications for unread mentions, with quiet hours.
+3. Load check: 500 clients in one channel.
 
 Production needs a volume for `FILES_ROOT` and a request body limit of at least 25 MB at the
 proxy.

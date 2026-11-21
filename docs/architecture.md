@@ -189,6 +189,19 @@ anything over 40 million pixels, then gives the message a new event so open tabs
 preview. Deleting a message deletes its files after the commit. Uploads are not audited, like
 messages; deleting someone else's message still is.
 
+## Search
+
+`GET .../search/messages/` and `.../search/files/` use MySQL FULLTEXT indexes on
+`chat_message.body` and `files_attachment.name` (raw SQL migrations; Django has no FULLTEXT index
+for MySQL). Every query starts from `readable_channels`, so nothing in a channel or conversation
+the person can't open is ever found, admins included. `apps/core/search.py` keeps only word
+characters from the input and drops words InnoDB never indexes (under 3 letters, its default
+stopwords), then requires every word as a prefix (`+deploy* +notes*`, bound as a parameter of a
+`MATCH ... AGAINST ... IN BOOLEAN MODE` expression). Results are newest first, 20 a page, with a
+`before_id` cursor, and can be narrowed by channel, author and day. Deleted messages and files
+not yet sent are never found. InnoDB adds rows to a FULLTEXT index at commit, so search tests use
+real transactions.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =
