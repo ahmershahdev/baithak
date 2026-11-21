@@ -1,4 +1,5 @@
 from typing import Any
+from zoneinfo import available_timezones
 
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -16,6 +17,28 @@ class UserSerializer(serializers.ModelSerializer[User]):
         model = User
         fields = ("id", "email", "username", "display_name", "email_verified")
         read_only_fields = fields
+
+
+class NotificationSettingsSerializer(serializers.ModelSerializer[User]):
+    time_zone = serializers.CharField(max_length=64, help_text="An IANA name, like Asia/Karachi.")
+
+    class Meta:
+        model = User
+        fields = ("notify_by_email", "quiet_start", "quiet_end", "time_zone")
+
+    def validate_time_zone(self, value: str) -> str:
+        if value not in available_timezones():
+            raise serializers.ValidationError("Pick a time zone from the list.")
+        return value
+
+    def validate(self, data: dict[str, Any]) -> dict[str, Any]:
+        start = data.get("quiet_start", getattr(self.instance, "quiet_start", None))
+        end = data.get("quiet_end", getattr(self.instance, "quiet_end", None))
+        if (start is None) != (end is None):
+            raise serializers.ValidationError(
+                {"quiet_end": ["Set both ends of quiet hours, or neither."]}
+            )
+        return data
 
 
 def check_password_rules(password: str, user: User) -> None:

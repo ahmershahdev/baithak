@@ -75,6 +75,40 @@ paths:
           description: ''
         '204':
           description: No response body
+  /api/v1/auth/notifications/:
+    get:
+      operationId: auth_notifications_retrieve
+      summary: My email settings
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+          description: ''
+    patch:
+      operationId: auth_notifications_partial_update
+      summary: Change my email settings and quiet hours
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationSettingsRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+          description: ''
   /api/v1/auth/password-reset/:
     post:
       operationId: auth_password_reset_create
@@ -2420,6 +2454,25 @@ components:
       - next
       - results
       - unread
+    NotificationSettings:
+      type: object
+      properties:
+        notify_by_email:
+          type: boolean
+        quiet_start:
+          type: string
+          format: time
+          nullable: true
+        quiet_end:
+          type: string
+          format: time
+          nullable: true
+        time_zone:
+          type: string
+          description: An IANA name, like Asia/Karachi.
+          maxLength: 64
+      required:
+      - time_zone
     PasswordResetConfirmRequest:
       type: object
       description: 'The code from the email, and who it is for: `uid` from the emailed
@@ -2466,6 +2519,24 @@ components:
           maxLength: 250
         archived:
           type: boolean
+    PatchedNotificationSettingsRequest:
+      type: object
+      properties:
+        notify_by_email:
+          type: boolean
+        quiet_start:
+          type: string
+          format: time
+          nullable: true
+        quiet_end:
+          type: string
+          format: time
+          nullable: true
+        time_zone:
+          type: string
+          minLength: 1
+          description: An IANA name, like Asia/Karachi.
+          maxLength: 64
     PatchedRoleRequest:
       type: object
       properties:

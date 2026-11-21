@@ -23,6 +23,11 @@ class User(AbstractUser):
     lock_level = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
     banned_at = models.DateTimeField(null=True, blank=True)
+    # Emails about unread mentions and direct messages (apps/notifications/tasks.py).
+    notify_by_email = models.BooleanField(default=True)
+    quiet_start = models.TimeField(null=True, blank=True)
+    quiet_end = models.TimeField(null=True, blank=True)
+    time_zone = models.CharField(max_length=64, default="UTC")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: ClassVar[list[str]] = ["username"]

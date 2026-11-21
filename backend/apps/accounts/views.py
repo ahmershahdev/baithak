@@ -24,6 +24,7 @@ from apps.accounts.serializers import (
     ContactSerializer,
     DetailSerializer,
     EmailSerializer,
+    NotificationSettingsSerializer,
     PasswordResetConfirmSerializer,
     SignInSerializer,
     SignUpSerializer,
@@ -335,3 +336,22 @@ class ContactView(AnonymousAPIView):
             )
             _send_after_commit(tasks.send_contact_message, message.pk)
         return Response(thanks, status=status.HTTP_202_ACCEPTED)
+
+
+class NotificationSettingsView(APIView):
+    @extend_schema(responses={200: NotificationSettingsSerializer}, summary="My email settings")
+    def get(self, request: Request) -> Response:
+        return Response(NotificationSettingsSerializer(cast(User, request.user)).data)
+
+    @extend_schema(
+        request=NotificationSettingsSerializer,
+        responses={200: NotificationSettingsSerializer},
+        summary="Change my email settings and quiet hours",
+    )
+    def patch(self, request: Request) -> Response:
+        serializer = NotificationSettingsSerializer(
+            cast(User, request.user), data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

@@ -1,4 +1,8 @@
-from apps.core.notifications import Kind, recipients
+from datetime import time
+
+import pytest
+
+from apps.core.notifications import Kind, in_quiet_hours, recipients
 
 AUTHOR, BILAL, SARA, ZAIN = 1, 2, 3, 4
 
@@ -49,3 +53,22 @@ def test_a_message_whose_author_is_gone_still_tells_people() -> None:
     )
 
     assert found == {BILAL: Kind.MENTION}
+
+
+@pytest.mark.parametrize(
+    ("now", "start", "end", "quiet"),
+    [
+        (time(23, 0), None, None, False),
+        (time(23, 0), time(22, 0), None, False),
+        (time(23, 0), time(9, 0), time(9, 0), False),
+        (time(13, 0), time(12, 0), time(14, 0), True),
+        (time(12, 0), time(12, 0), time(14, 0), True),
+        (time(14, 0), time(12, 0), time(14, 0), False),
+        (time(23, 30), time(22, 0), time(7, 0), True),
+        (time(3, 0), time(22, 0), time(7, 0), True),
+        (time(7, 0), time(22, 0), time(7, 0), False),
+        (time(12, 0), time(22, 0), time(7, 0), False),
+    ],
+)
+def test_in_quiet_hours(now: time, start: time | None, end: time | None, quiet: bool) -> None:
+    assert in_quiet_hours(now, start, end) is quiet

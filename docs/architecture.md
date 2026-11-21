@@ -215,6 +215,16 @@ change sends `notifications` to the person's sockets, which refetch. The list on
 notifications from channels the person can still read. Deleting a message deletes its
 notifications. These rows also drive the email notifications.
 
+Celery beat runs `email_unread` every 5 minutes. A mention or direct message (not `@channel`)
+still unread after 10 minutes and not yet emailed is mailed to a confirmed address, one email
+per person for everything waiting, unless the person turned emails off, is in their quiet hours
+(start and end times in their own time zone, which may cross midnight;
+`apps/core/notifications.py`), is online in that workspace (presence), or can no longer read the
+channel. Notifications are claimed (`emailed_at`) before the mail goes out so two runs can't
+both send, and handed back if sending fails so the retry sends them. Settings live on the
+account (`/api/v1/auth/notifications/`), the same in every workspace. Development runs beat
+inside the one worker (`--beat`); production runs one separate beat process.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =

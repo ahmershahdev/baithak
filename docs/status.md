@@ -142,13 +142,20 @@ M1 in progress. Merged so far:
   person can still read. A Notifications link with an unread count in the sidebar, and a page
   with Mark all read. Assigned issues join in M5.
 
+- Email notifications: Celery beat mails mentions and direct messages left unread for 10
+  minutes, one digest per person, skipping quiet hours (in their time zone), people online in
+  that workspace and channels they can no longer read. `/w/<slug>/me` has the settings (email
+  on or off, quiet hours, time zone), linked as Settings next to Sign out.
+
 ## Next session
 
-M4, in this order:
+M4: load check, one channel with 500 connected clients, with message delivery time measured.
+Then release `v0.4.0`.
 
-1. Email notifications for unread mentions and direct messages (Celery), with quiet hours per
-   person.
-2. Load check: 500 clients in one channel.
+The local Docker image still lacks Pillow (network timeouts while rebuilding); the running
+backend and worker had it copied in by hand. Rebuild with `docker compose build backend worker`
+before recreating them, or the worker fails to start. The worker needs recreating once to pick
+up `--beat`.
 
 Production needs a volume for `FILES_ROOT` and a request body limit of at least 25 MB at the
 proxy.
