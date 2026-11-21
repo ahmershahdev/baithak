@@ -43,6 +43,7 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("channels:detail", "patch", CHANNEL, {"topic": "Taken over"}),
     ("channels:join", "post", CHANNEL + "join/", None),
     ("channels:leave", "post", CHANNEL + "leave/", None),
+    ("channels:read", "post", CHANNEL + "read/", {"seq": 1}),
     ("channels:members", "get", CHANNEL + "members/", None),
     ("channels:members", "post", CHANNEL + "members/", {"user_id": 1}),
     ("channels:messages", "get", CHANNEL + "messages/", None),

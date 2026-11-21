@@ -423,6 +423,23 @@ export interface paths {
         patch: operations["workspaces_channels_messages_partial_update"];
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the channel read up to a seq */
+        post: operations["workspaces_channels_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/invitations/": {
         parameters: {
             query?: never;
@@ -556,6 +573,8 @@ export interface components {
             readonly archived: boolean;
             readonly is_member: boolean;
             readonly last_seq: number;
+            readonly last_read_seq: number | null;
+            readonly unread: number | null;
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -675,6 +694,14 @@ export interface components {
         };
         PatchedWorkspaceWriteRequest: {
             name?: string;
+        };
+        ReadMarker: {
+            channel: number;
+            last_read_seq: number;
+            unread: number | null;
+        };
+        ReadRequest: {
+            seq: number;
         };
         /**
          * @description * `owner` - owner
@@ -1618,6 +1645,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadMarker"];
                 };
             };
             403: {

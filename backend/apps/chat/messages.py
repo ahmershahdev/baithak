@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.chat import events
-from apps.chat.models import Channel, Message
+from apps.chat.models import Channel, ChannelMember, Message
 
 
 def _lock(channel: Channel) -> Channel:
@@ -36,6 +36,11 @@ def post(channel: Channel, author: User, body: str, client_id: str = "") -> tupl
             client_id=client_id,
         )
         events.message_changed(message)
+        # Posting means the author has seen the channel up to here.
+        if ChannelMember.objects.filter(
+            channel=locked, user=author, last_read_seq__lt=message.seq
+        ).update(last_read_seq=message.seq):
+            events.read_moved(author.pk, locked.pk, message.seq)
     return message, True
 
 

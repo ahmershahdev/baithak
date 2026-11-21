@@ -2,6 +2,7 @@ export type ServerEvent =
   | { type: "subscribed"; channels: number[] }
   | { type: "message"; channel: number; event: number; message: unknown }
   | { type: "channel"; channel: number; data: unknown }
+  | { type: "read"; channel: number; last_read_seq: number }
   | { type: "pong" };
 
 export type Status = "connecting" | "open" | "reconnecting" | "closed";

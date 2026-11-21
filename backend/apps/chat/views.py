@@ -14,12 +14,15 @@ from apps.accounts.serializers import DetailSerializer
 from apps.chat import events
 from apps.chat.access import channel_access, readable_channels
 from apps.chat.models import Channel, ChannelMember
+from apps.chat.reads import mark_read, unread_of, with_read_state
 from apps.chat.serializers import (
     AddChannelMemberSerializer,
     ChannelCreateSerializer,
     ChannelMemberSerializer,
     ChannelSerializer,
     ChannelUpdateSerializer,
+    ReadMarkerSerializer,
+    ReadSerializer,
 )
 from apps.core import channels as rules
 from apps.core.roles import Role
@@ -34,17 +37,25 @@ def _user(request: Request) -> User:
     return cast(User, request.user)
 
 
-def _serialize(channel: Channel, *, is_member: bool) -> dict[str, object]:
-    channel.is_member = is_member  # type: ignore[attr-defined]
-    return dict(ChannelSerializer(channel).data)
+def _with_state(channel: Channel) -> Channel:
+    last_read = getattr(channel, "last_read_seq", None)
+    channel.is_member = last_read is not None  # type: ignore[attr-defined]
+    channel.unread = unread_of(channel)  # type: ignore[attr-defined]
+    return channel
+
+
+def _serialize(channel: Channel, user: User) -> dict[str, object]:
+    fresh = with_read_state(Channel.objects.filter(pk=channel.pk), user.pk).get()
+    return dict(ChannelSerializer(_with_state(fresh)).data)
 
 
 class ChannelListView(APIView):
     @extend_schema(responses={200: ChannelSerializer(many=True)}, summary="Channels I can see")
     def get(self, request: Request, slug: str) -> Response:
-        member = membership(_user(request), slug)
-        channels = readable_channels(member).order_by("name")
-        return Response(ChannelSerializer(channels, many=True).data)
+        user = _user(request)
+        member = membership(user, slug)
+        channels = with_read_state(readable_channels(member), user.pk).order_by("name")
+        return Response(ChannelSerializer([_with_state(c) for c in channels], many=True).data)
 
     @extend_schema(
         request=ChannelCreateSerializer,
@@ -79,14 +90,15 @@ class ChannelListView(APIView):
                 )
         except IntegrityError as error:
             raise ValidationError({"name": [NAME_TAKEN]}) from error
-        return Response(_serialize(channel, is_member=True), status=status.HTTP_201_CREATED)
+        return Response(_serialize(channel, user), status=status.HTTP_201_CREATED)
 
 
 class ChannelDetailView(APIView):
     @extend_schema(responses={200: ChannelSerializer}, summary="One channel")
     def get(self, request: Request, slug: str, channel_id: int) -> Response:
-        access = channel_access(_user(request), slug, channel_id)
-        return Response(_serialize(access.channel, is_member=access.is_member))
+        user = _user(request)
+        access = channel_access(user, slug, channel_id)
+        return Response(_serialize(access.channel, user))
 
     @extend_schema(
         request=ChannelUpdateSerializer,
@@ -127,7 +139,7 @@ class ChannelDetailView(APIView):
                     events.channel_changed(channel)
         except IntegrityError as error:
             raise ValidationError({"name": [NAME_TAKEN]}) from error
-        return Response(_serialize(channel, is_member=access.is_member))
+        return Response(_serialize(channel, user))
 
 
 class ChannelJoinView(APIView):
@@ -140,12 +152,14 @@ class ChannelJoinView(APIView):
             if not rules.can_join(access.role, access.kind, archived=channel.archived):
                 raise PermissionDenied("You can't join this channel.")
             with transaction.atomic():
-                ChannelMember.objects.get_or_create(channel=channel, user=user)
+                ChannelMember.objects.get_or_create(
+                    channel=channel, user=user, defaults={"last_read_seq": channel.last_seq}
+                )
                 audit.record(
                     access.member.workspace, user, "channel.join", channel, {"name": channel.name}
                 )
                 events.access_changed(user.pk)
-        return Response(_serialize(channel, is_member=True))
+        return Response(_serialize(channel, user))
 
 
 class ChannelLeaveView(APIView):
@@ -206,7 +220,9 @@ class ChannelMembersView(APIView):
             )
         with transaction.atomic():
             added, created = ChannelMember.objects.get_or_create(
-                channel=access.channel, user=target.user
+                channel=access.channel,
+                user=target.user,
+                defaults={"last_read_seq": access.channel.last_seq},
             )
             if created:
                 audit.record(
@@ -220,4 +236,24 @@ class ChannelMembersView(APIView):
         return Response(
             ChannelMemberSerializer(added).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class ChannelReadView(APIView):
+    @extend_schema(
+        request=ReadSerializer,
+        responses={200: ReadMarkerSerializer, 403: DetailSerializer},
+        summary="Mark the channel read up to a seq",
+    )
+    def post(self, request: Request, slug: str, channel_id: int) -> Response:
+        user = _user(request)
+        access = channel_access(user, slug, channel_id)
+        serializer = ReadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        marker = mark_read(access.channel, user.pk, serializer.validated_data["seq"])
+        if marker is None:
+            raise PermissionDenied("Join the channel to keep your place in it.")
+        channel = with_read_state(Channel.objects.filter(pk=access.channel.pk), user.pk).get()
+        return Response(
+            {"channel": channel.pk, "last_read_seq": marker, "unread": unread_of(channel)}
         )

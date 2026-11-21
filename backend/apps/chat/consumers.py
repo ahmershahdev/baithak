@@ -89,6 +89,16 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
                 {"type": "channel", "channel": event["channel"], "data": event["data"]}
             )
 
+    async def chat_read(self, event: dict[str, Any]) -> None:
+        if event["channel"] in self.subscribed:
+            await self.send_json(
+                {
+                    "type": "read",
+                    "channel": event["channel"],
+                    "last_read_seq": event["last_read_seq"],
+                }
+            )
+
     async def chat_access(self, event: dict[str, Any]) -> None:
         channels = await self._readable()
         if channels is None:

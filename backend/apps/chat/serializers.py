@@ -13,6 +13,8 @@ class ChannelSerializer(serializers.ModelSerializer[Channel]):
     kind = serializers.ChoiceField(choices=KIND_CHOICES, read_only=True)
     archived = serializers.BooleanField(read_only=True)
     is_member = serializers.BooleanField(read_only=True)
+    last_read_seq = serializers.IntegerField(read_only=True, allow_null=True)
+    unread = serializers.IntegerField(read_only=True, allow_null=True)
 
     class Meta:
         model = Channel
@@ -25,6 +27,8 @@ class ChannelSerializer(serializers.ModelSerializer[Channel]):
             "archived",
             "is_member",
             "last_seq",
+            "last_read_seq",
+            "unread",
             "created_at",
         )
         read_only_fields = fields
@@ -61,6 +65,16 @@ class ChannelMemberSerializer(serializers.ModelSerializer[ChannelMember]):
 
 class AddChannelMemberSerializer(serializers.Serializer[None]):
     user_id = serializers.IntegerField()
+
+
+class ReadSerializer(serializers.Serializer[None]):
+    seq = serializers.IntegerField(min_value=0)
+
+
+class ReadMarkerSerializer(serializers.Serializer[None]):
+    channel = serializers.IntegerField()
+    last_read_seq = serializers.IntegerField()
+    unread = serializers.IntegerField(allow_null=True)
 
 
 class AuthorSerializer(serializers.Serializer[User]):

@@ -859,6 +859,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+  /api/v1/workspaces/{slug}/channels/{channel_id}/read/:
+    post:
+      operationId: workspaces_channels_read_create
+      summary: Mark the channel read up to a seq
+      parameters:
+      - in: path
+        name: channel_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadMarker'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
   /api/v1/workspaces/{slug}/invitations/:
     get:
       operationId: workspaces_invitations_list
@@ -1190,6 +1228,14 @@ components:
         last_seq:
           type: integer
           readOnly: true
+        last_read_seq:
+          type: integer
+          readOnly: true
+          nullable: true
+        unread:
+          type: integer
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -1201,9 +1247,11 @@ components:
       - is_default
       - is_member
       - kind
+      - last_read_seq
       - last_seq
       - name
       - topic
+      - unread
     ChannelCreateRequest:
       type: object
       properties:
@@ -1526,6 +1574,28 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+    ReadMarker:
+      type: object
+      properties:
+        channel:
+          type: integer
+        last_read_seq:
+          type: integer
+        unread:
+          type: integer
+          nullable: true
+      required:
+      - channel
+      - last_read_seq
+      - unread
+    ReadRequest:
+      type: object
+      properties:
+        seq:
+          type: integer
+          minimum: 0
+      required:
+      - seq
     RoleEnum:
       enum:
       - owner

@@ -12,6 +12,7 @@ from apps.accounts.models import User
 from apps.chat import messages
 from apps.chat.consumers import NOT_A_MEMBER, NOT_SIGNED_IN
 from apps.chat.models import Channel, ChannelMember
+from apps.chat.reads import mark_read
 from apps.chat.services import create_default_channel
 from apps.core.channels import ChannelKind
 from apps.core.roles import Role
@@ -196,6 +197,7 @@ class TestBroadcast:
         await socket.receive_json_from()
         message, _ = await post(general, owner, "Teh plan")
         await socket.receive_json_from()
+        assert (await socket.receive_json_from())["type"] == "read"
 
         await database_sync_to_async(messages.edit)(message, "The plan")
         edited = await socket.receive_json_from()
@@ -334,3 +336,31 @@ class TestBroadcast:
         )
         ChannelMember.objects.create(channel=secret, user=owner)
         return secret
+
+
+class TestReadMarkers:
+    async def test_a_marker_reaches_every_device_of_that_person_only(
+        self,
+        owner: User,
+        workspace: Workspace,
+        general: Channel,
+        sockets: list[WebsocketCommunicator],
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        phone, laptop = await open_socket(owner, sockets), await open_socket(owner, sockets)
+        other = await open_socket(bilal, sockets)
+        for socket in (phone, laptop, other):
+            await socket.receive_json_from()
+        await post(general, bilal, "Salaam")
+        for socket in (phone, laptop, other):
+            assert (await socket.receive_json_from())["type"] == "message"
+
+        await database_sync_to_async(mark_read)(general, owner.pk, 1)
+
+        for socket in (phone, laptop):
+            assert await socket.receive_json_from() == {
+                "type": "read",
+                "channel": general.pk,
+                "last_read_seq": 1,
+            }
+        assert await other.receive_nothing()

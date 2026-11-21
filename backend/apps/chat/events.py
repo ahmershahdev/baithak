@@ -49,6 +49,12 @@ def channel_changed(channel: Channel) -> None:
     transaction.on_commit(lambda: _send(channel_group(channel.pk), payload))
 
 
+def read_moved(user_id: int, channel_id: int, last_read_seq: int) -> None:
+    """Sent to every socket of the person, so all their devices agree on what is unread."""
+    payload = {"type": "chat.read", "channel": channel_id, "last_read_seq": last_read_seq}
+    transaction.on_commit(lambda: _send(user_group(user_id), payload))
+
+
 def access_changed(user_id: int) -> None:
     """The person joined, left or was added to or removed from something: their open sockets
     work out again which channels they may hear."""

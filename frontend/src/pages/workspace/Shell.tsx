@@ -7,6 +7,7 @@ import { api, type User } from "../../api/client";
 import { useWorkspace, useWorkspaces, type Workspace } from "../../api/workspaces";
 import { ME } from "../../auth";
 import { useLive } from "../../chat/live";
+import { badge } from "../../chat/unread";
 import { Wordmark } from "../../components/brand";
 import { Avatar, ChannelIcon, RoleBadge } from "../../components/workspace";
 import { rememberWorkspace } from "../../lastWorkspace";
@@ -111,10 +112,23 @@ function ChannelList({ slug }: { slug: string }) {
             <NavLink to={`/w/${slug}/c/${String(channel.id)}`} className={linkClass}>
               <ChannelIcon kind={channel.kind} />
               <span
-                className={`truncate ${channel.archived ? "text-text-subtle line-through" : ""}`}
+                className={`truncate ${channel.archived ? "text-text-subtle line-through" : ""} ${
+                  channel.unread ? "font-semibold text-text" : ""
+                }`}
               >
                 {channel.name}
               </span>
+              {channel.unread ? (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto rounded-full bg-accent px-1.5 text-xs font-semibold text-on-accent tabular-nums"
+                  >
+                    {badge(channel.unread)}
+                  </span>
+                  <span className="sr-only">, {channel.unread} unread</span>
+                </>
+              ) : null}
             </NavLink>
           </li>
         ))}
@@ -188,7 +202,7 @@ function Account({ me }: { me: User }) {
 export function WorkspaceShell({ me }: { me: User }) {
   const { slug = "" } = useParams();
   const workspace = useWorkspace(slug);
-  const live = useLive(slug);
+  const live = useLive(slug, me.id);
 
   useEffect(() => {
     if (workspace.data) rememberWorkspace(workspace.data.slug);

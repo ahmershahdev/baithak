@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useOutletContext, useParams } from "react-router";
 
 import {
   deleteMessage,
   editMessage,
   loadOlder,
+  markRead,
   remember,
   sendMessage,
   useChannels,
@@ -16,6 +17,7 @@ import {
 import type { User } from "../../api/client";
 import { ApiError } from "../../api/workspaces";
 import { startsGroup, type Message } from "../../chat/timeline";
+import { firstUnread } from "../../chat/unread";
 import { ErrorMessage } from "../../components/ui";
 import { Avatar, ChannelIcon, ConfirmButton } from "../../components/workspace";
 import type { WorkspaceContext } from "./Shell";
@@ -295,15 +297,85 @@ export function ChannelView() {
   return <Conversation key={channel.id} slug={workspace.slug} channel={channel} me={me} />;
 }
 
+/** Report the newest message as read while the reader is at the bottom of a visible tab. */
+function useReadMarker(
+  slug: string,
+  channel: Channel,
+  newest: number | undefined,
+  atBottom: boolean,
+) {
+  const client = useQueryClient();
+  const reported = useRef(0);
+  const lastRead = channel.last_read_seq;
+
+  useEffect(() => {
+    if (lastRead === null || newest === undefined) return;
+    const report = () => {
+      if (document.hidden || !atBottom || newest <= lastRead || newest <= reported.current) return;
+      reported.current = newest;
+      markRead(client, slug, channel.id, newest).catch(() => {
+        reported.current = 0;
+      });
+    };
+    report();
+    document.addEventListener("visibilitychange", report);
+    return () => {
+      document.removeEventListener("visibilitychange", report);
+    };
+  }, [client, slug, channel.id, lastRead, newest, atBottom]);
+}
+
+function Messages({
+  messages,
+  channel,
+  me,
+  slug,
+}: {
+  messages: Message[];
+  channel: Channel;
+  me: User;
+  slug: string;
+}) {
+  // Fixed when the channel is opened, so the line stays put while the marker moves past it.
+  const [newFrom] = useState(() => firstUnread(messages, channel.last_read_seq, me.id));
+  return (
+    <ol>
+      {messages.map((message, index) => (
+        <Fragment key={message.seq}>
+          {message.seq === newFrom && (
+            <li
+              role="separator"
+              aria-label="New messages"
+              className="my-2 flex items-center gap-3 text-xs font-semibold text-accent-text"
+            >
+              <span className="h-px flex-1 bg-accent" />
+              New
+            </li>
+          )}
+          <MessageRow
+            message={message}
+            grouped={message.seq !== newFrom && !startsGroup(messages[index - 1], message)}
+            mine={message.author?.id === me.id}
+            slug={slug}
+            channel={channel}
+          />
+        </Fragment>
+      ))}
+    </ol>
+  );
+}
+
 function Conversation({ slug, channel, me }: { slug: string; channel: Channel; me: User }) {
   const client = useQueryClient();
   const timeline = useTimeline(slug, channel.id);
   const joinChannel = useJoinChannel(slug);
   const scroller = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
+  const [atBottom, setAtBottom] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const messages = timeline.data?.messages ?? [];
   const newest = messages.at(-1)?.seq;
+  useReadMarker(slug, channel, newest, atBottom);
 
   // Follow new messages only when the reader is already at the bottom, never yank them away
   // from something older they are reading.
@@ -317,6 +389,7 @@ function Conversation({ slug, channel, me }: { slug: string; channel: Channel; m
     if (!box) return;
     const track = () => {
       nearBottom.current = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+      setAtBottom(nearBottom.current);
     };
     box.addEventListener("scroll", track);
     return () => {
@@ -378,18 +451,7 @@ function Conversation({ slug, channel, me }: { slug: string; channel: Channel; m
             This is the very start of #{channel.name}. Say salaam.
           </p>
         )}
-        <ol>
-          {messages.map((message, index) => (
-            <MessageRow
-              key={message.seq}
-              message={message}
-              grouped={!startsGroup(messages[index - 1], message)}
-              mine={message.author?.id === me.id}
-              slug={slug}
-              channel={channel}
-            />
-          ))}
-        </ol>
+        {timeline.data && <Messages messages={messages} channel={channel} me={me} slug={slug} />}
       </div>
 
       {channel.is_member && !channel.archived ? (

@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: 2026-11-17. Update at the end of every work session.
+Last updated: 2026-11-21. Update at the end of every work session.
 
 ## Where we are
 
@@ -83,17 +83,21 @@ M1 in progress. Merged so far:
   reCAPTCHA checkbox shown up front, themed selects, and a contact page that mails
   support@ahmershah.dev.
 
+- M3 started: unread counts and read markers. Channels carry `last_read_seq` and `unread`;
+  `POST .../channels/{id}/read/` moves the marker forward only; posting, joining and being added
+  move it too; each move reaches all the person's sockets as a `read` event. Rules in
+  `apps/core/unread.py`. The sidebar shows a count per channel, an open channel is marked read
+  at the bottom of a visible tab, and a "New" line marks where unread messages began.
+
 ## Next session
 
 M3, in this order:
 
-1. Unread counts and read markers per person and channel (uses `last_read_seq`), the same on
-   every device.
-2. Threads with reply counts and "also send to channel".
-3. Mentions parsed in `apps/core` (`@person`, `@channel`) with autocomplete.
-4. Reactions.
-5. Direct and group messages.
-6. Typing indicator and online status in Redis with expiry.
+1. Threads with reply counts and "also send to channel".
+2. Mentions parsed in `apps/core` (`@person`, `@channel`) with autocomplete.
+3. Reactions.
+4. Direct and group messages.
+5. Typing indicator and online status in Redis with expiry.
 
 ## Open questions
 
