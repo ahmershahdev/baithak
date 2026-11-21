@@ -186,6 +186,39 @@ export function Search() {
   );
 }
 
+function MoreButton({
+  results,
+}: {
+  results: { hasNextPage: boolean; isFetchingNextPage: boolean; fetchNextPage: () => unknown };
+}) {
+  if (!results.hasNextPage) return null;
+  return (
+    <div className="flex justify-center border-t border-border p-3">
+      <button
+        type="button"
+        disabled={results.isFetchingNextPage}
+        onClick={() => void results.fetchNextPage()}
+        className="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold hover:bg-bg-subtle disabled:opacity-60"
+      >
+        {results.isFetchingNextPage ? "Loading" : "More results"}
+      </button>
+    </div>
+  );
+}
+
+/** What to show instead of results while searching, after a failure or when nothing matched. */
+function resultState(pending: boolean, failed: boolean, count: number, terms: string[]) {
+  if (pending)
+    return (
+      <p role="status" className="text-text-muted">
+        Searching
+      </p>
+    );
+  if (failed) return <ErrorMessage>Search did not work. Try again.</ErrorMessage>;
+  if (count === 0) return <Empty terms={terms} />;
+  return null;
+}
+
 function Empty({ terms }: { terms: string[] }) {
   return (
     <p className="text-text-muted">
@@ -210,14 +243,8 @@ function MessageResults({
   const hits: MessageHit[] = pages.flatMap((page) => page.results);
   const terms = pages[0]?.terms ?? [];
 
-  if (results.isPending)
-    return (
-      <p role="status" className="text-text-muted">
-        Searching
-      </p>
-    );
-  if (results.isError) return <ErrorMessage>Search did not work. Try again.</ErrorMessage>;
-  if (hits.length === 0) return <Empty terms={terms} />;
+  const shown = resultState(results.isPending, results.isError, hits.length, terms);
+  if (shown) return shown;
   return (
     <Panel className="settle">
       <ul aria-label="Results" className="divide-y divide-border">
@@ -251,18 +278,7 @@ function MessageResults({
           );
         })}
       </ul>
-      {results.hasNextPage && (
-        <div className="flex justify-center border-t border-border p-3">
-          <button
-            type="button"
-            disabled={results.isFetchingNextPage}
-            onClick={() => void results.fetchNextPage()}
-            className="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold hover:bg-bg-subtle disabled:opacity-60"
-          >
-            {results.isFetchingNextPage ? "Loading" : "More results"}
-          </button>
-        </div>
-      )}
+      <MoreButton results={results} />
     </Panel>
   );
 }
@@ -281,14 +297,8 @@ function FileResults({
   const hits: FileHit[] = pages.flatMap((page) => page.results);
   const terms = pages[0]?.terms ?? [];
 
-  if (results.isPending)
-    return (
-      <p role="status" className="text-text-muted">
-        Searching
-      </p>
-    );
-  if (results.isError) return <ErrorMessage>Search did not work. Try again.</ErrorMessage>;
-  if (hits.length === 0) return <Empty terms={terms} />;
+  const shown = resultState(results.isPending, results.isError, hits.length, terms);
+  if (shown) return shown;
   return (
     <Panel className="settle">
       <ul aria-label="Results" className="divide-y divide-border">
@@ -315,18 +325,7 @@ function FileResults({
           </li>
         ))}
       </ul>
-      {results.hasNextPage && (
-        <div className="flex justify-center border-t border-border p-3">
-          <button
-            type="button"
-            disabled={results.isFetchingNextPage}
-            onClick={() => void results.fetchNextPage()}
-            className="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold hover:bg-bg-subtle disabled:opacity-60"
-          >
-            {results.isFetchingNextPage ? "Loading" : "More results"}
-          </button>
-        </div>
-      )}
+      <MoreButton results={results} />
     </Panel>
   );
 }

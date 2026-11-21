@@ -7,7 +7,7 @@ find anything in a channel or conversation the person can't open.
 from dataclasses import dataclass
 from datetime import date
 
-from django.db.models import F, FloatField, Func, QuerySet, Value
+from django.db.models import F, FloatField, Func, Model, QuerySet, Value
 
 from apps.chat.access import readable_channels
 from apps.chat.models import Message
@@ -38,23 +38,14 @@ class Match(Func):
         super().__init__(F(column), Value(boolean_query(words)))
 
 
-def messages(
-    member: Member, words: list[str], filters: Filters, before_id: int | None
-) -> tuple[list[Message], int | None]:
-    """Newest first. Returns a page and the id to continue before, if there is more."""
-    found: QuerySet[Message] = (
-        Message.objects.filter(
-            channel__in=readable_channels(member).values("pk"), deleted_at__isnull=True
-        )
-        .annotate(score=Match("body", words))
-        .filter(score__gt=0)
-        .select_related("author", "parent")
-        .prefetch_related(*MESSAGE_PREFETCH)
-    )
+def _page[M: Model](
+    found: QuerySet[M], filters: Filters, before_id: int | None, author_field: str
+) -> tuple[list[M], int | None]:
+    """Narrow by the filters, newest first. Returns a page and the id to continue before."""
     if filters.channel is not None:
         found = found.filter(channel_id=filters.channel)
     if filters.author:
-        found = found.filter(author__username=filters.author)
+        found = found.filter(**{f"{author_field}__username": filters.author})
     if filters.after:
         found = found.filter(created_at__date__gte=filters.after)
     if filters.before:
@@ -67,11 +58,26 @@ def messages(
     return page, (page[-1].pk if more else None)
 
 
+def messages(
+    member: Member, words: list[str], filters: Filters, before_id: int | None
+) -> tuple[list[Message], int | None]:
+    found = (
+        Message.objects.filter(
+            channel__in=readable_channels(member).values("pk"), deleted_at__isnull=True
+        )
+        .annotate(score=Match("body", words))
+        .filter(score__gt=0)
+        .select_related("author", "parent")
+        .prefetch_related(*MESSAGE_PREFETCH)
+    )
+    return _page(found, filters, before_id, "author")
+
+
 def files(
     member: Member, words: list[str], filters: Filters, before_id: int | None
 ) -> tuple[list[Attachment], int | None]:
-    """Files that were sent (a file not yet sent is its uploader's alone), newest first."""
-    found: QuerySet[Attachment] = (
+    """Only files that were sent: a file not yet sent is its uploader's alone."""
+    found = (
         Attachment.objects.for_workspace(member.workspace)
         .filter(
             channel__in=readable_channels(member).values("pk"),
@@ -82,17 +88,4 @@ def files(
         .filter(score__gt=0)
         .select_related("workspace", "message", "message__parent")
     )
-    if filters.channel is not None:
-        found = found.filter(channel_id=filters.channel)
-    if filters.author:
-        found = found.filter(uploader__username=filters.author)
-    if filters.after:
-        found = found.filter(created_at__date__gte=filters.after)
-    if filters.before:
-        found = found.filter(created_at__date__lte=filters.before)
-    if before_id is not None:
-        found = found.filter(pk__lt=before_id)
-    page = list(found.order_by("-pk")[: PAGE_SIZE + 1])
-    more = len(page) > PAGE_SIZE
-    page = page[:PAGE_SIZE]
-    return page, (page[-1].pk if more else None)
+    return _page(found, filters, before_id, "uploader")

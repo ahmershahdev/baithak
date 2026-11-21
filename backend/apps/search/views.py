@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
@@ -17,6 +17,7 @@ from apps.search.serializers import (
     SearchParamsSerializer,
 )
 from apps.workspaces.access import membership
+from apps.workspaces.models import Member
 
 
 def _params(request: Request) -> tuple[list[str], queries.Filters, int | None]:
@@ -32,9 +33,30 @@ def _params(request: Request) -> tuple[list[str], queries.Filters, int | None]:
     return terms(data["q"]), filters, data.get("before_id")
 
 
-class MessageSearchView(APIView):
+class _SearchView(APIView):
     throttle_classes = (ScopedRateThrottle,)
     throttle_scope = "search"
+
+    def _search(
+        self, member: Member, words: list[str], filters: queries.Filters, before_id: int | None
+    ) -> tuple[list[dict[str, Any]], int | None]:
+        raise NotImplementedError
+
+    def _respond(self, request: Request, slug: str) -> Response:
+        member = membership(cast(User, request.user), slug)
+        words, filters, before_id = _params(request)
+        if not words:
+            return Response({"terms": [], "results": [], "next": None})
+        results, more = self._search(member, words, filters, before_id)
+        return Response({"terms": words, "results": results, "next": more})
+
+
+class MessageSearchView(_SearchView):
+    def _search(
+        self, member: Member, words: list[str], filters: queries.Filters, before_id: int | None
+    ) -> tuple[list[dict[str, Any]], int | None]:
+        found, more = queries.messages(member, words, filters, before_id)
+        return [dict(MessageHitSerializer(hit).data) for hit in found], more
 
     @extend_schema(
         parameters=[SearchParamsSerializer],
@@ -42,23 +64,15 @@ class MessageSearchView(APIView):
         summary="Search messages you can read, newest first",
     )
     def get(self, request: Request, slug: str) -> Response:
-        member = membership(cast(User, request.user), slug)
-        words, filters, before_id = _params(request)
-        if not words:
-            return Response({"terms": [], "results": [], "next": None})
-        found, more = queries.messages(member, words, filters, before_id)
-        return Response(
-            {
-                "terms": words,
-                "results": [MessageHitSerializer(hit).data for hit in found],
-                "next": more,
-            }
-        )
+        return self._respond(request, slug)
 
 
-class FileSearchView(APIView):
-    throttle_classes = (ScopedRateThrottle,)
-    throttle_scope = "search"
+class FileSearchView(_SearchView):
+    def _search(
+        self, member: Member, words: list[str], filters: queries.Filters, before_id: int | None
+    ) -> tuple[list[dict[str, Any]], int | None]:
+        found, more = queries.files(member, words, filters, before_id)
+        return [dict(FileHitSerializer(hit).data) for hit in found], more
 
     @extend_schema(
         parameters=[SearchParamsSerializer],
@@ -66,15 +80,4 @@ class FileSearchView(APIView):
         summary="Search files you can read by name, newest first",
     )
     def get(self, request: Request, slug: str) -> Response:
-        member = membership(cast(User, request.user), slug)
-        words, filters, before_id = _params(request)
-        if not words:
-            return Response({"terms": [], "results": [], "next": None})
-        found, more = queries.files(member, words, filters, before_id)
-        return Response(
-            {
-                "terms": words,
-                "results": [FileHitSerializer(hit).data for hit in found],
-                "next": more,
-            }
-        )
+        return self._respond(request, slug)
