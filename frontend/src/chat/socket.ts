@@ -5,7 +5,7 @@ export type ServerEvent =
   | { type: "read"; channel: number; last_read_seq: number }
   | { type: "presence"; online: number[] }
   | { type: "notifications" }
-  | { type: "presence_change"; user: number; online: boolean }
+  | { type: "presence_changes"; changes: { user: number; online: boolean }[] }
   | {
       type: "typing";
       channel: number;

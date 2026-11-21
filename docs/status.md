@@ -150,19 +150,16 @@ M1 in progress. Merged so far:
 - Load check: `python manage.py load_check` opens N real sockets in an invented workspace and
   times delivery from send to arrival. Numbers in `docs/architecture.md`. Found and fixed: redis-py
   8 caps a pool at 100 connections and raised when 500 sockets closed at once (channel layer pool
-  now 2000). Found, not yet fixed: see Next session.
+  now 2000).
+
+- Online status fixed for crowds: join and leave announcements are batched per workspace,
+  about one message a second (`presence_changes`), instead of one per person to everyone. The
+  load check now also checks every client's online list: 500 of 500 right with 500 online.
 
 ## Next session
 
-1. Presence under a crowd. With the default channel layer each socket's queue holds 100
-   messages and silently drops the rest, so when hundreds join at once most join announcements
-   are lost and online dots can be wrong (chat messages survive drops through catch-up; presence
-   has none). Options: coalesce announcements into one batch per workspace every second or so,
-   or send a fresh presence list now and then instead of only changes. The pub/sub layer
-   (`channels_redis.pubsub.RedisPubSubChannelLayer`) delivers everything but then the N x N join
-   storm slowed connecting (43 of 500 failed); retry it once announcements are coalesced.
-2. Rerun the load check on the production setup (Linux, separate client machine) at deploy.
-3. Release `v0.4.0` once #39 is merged.
+Release M4 as `v0.4.0` and close its milestone, then start M5 (issue tracker). Rerun the load
+check on the production setup at deploy.
 
 ## Open questions
 

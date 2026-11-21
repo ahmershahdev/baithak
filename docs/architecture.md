@@ -157,8 +157,12 @@ Online status is a Redis sorted set per workspace (`presence:<workspace id>`). E
 is an entry `<user id>:<connection>` scored by when it lapses: now + 60 s on connect and on
 every ping (the web app pings every 25 s). A person is online while any entry is alive, so a
 second tab closing doesn't take them offline and a crashed tab drops off on its own. Each
-socket also joins a workspace group: a person's first socket coming or last one going is
-announced there (`presence_change`), and every new socket gets the list (`presence`). A tab
+socket also joins a workspace group, and every new socket gets the list (`presence`). A
+person's first socket coming or last one going is not sent at once: each server process
+gathers a workspace's changes for a second and sends them as one `presence_changes` message.
+One by one, N people arriving together meant N x N messages, and the channel layer drops
+whatever is past a socket's queue of 100, so most were lost and online dots went wrong; the
+load check showed it. A tab
 that crashes is not announced; others see it on their next connect. Rules in
 `apps/core/presence.py`, the Redis side in `apps/chat/presence.py`.
 
@@ -233,12 +237,16 @@ waits for join announcements to drain, posts messages the normal way and times e
 until every client has it. Measured 2026-11-22 on the development stack (Windows Docker, Daphne
 through `runserver`, the client in the same container), 500 clients, 20 messages:
 
-| Channel layer | Connected | Deliveries | p50 | p95 | max |
-|---|---|---|---|---|---|
-| `RedisChannelLayer` (in use) | 500 of 500, 60 s at 10 at a time | 10000 of 10000 | 784 ms | 1447 ms | 1499 ms |
-| `RedisPubSubChannelLayer` (tried) | 457 of 500, 136 s | 9140 of 9140 | 517 ms | 1443 ms | 1537 ms |
+| Run | Connected | Online lists right | Deliveries | p50 | p95 | max |
+|---|---|---|---|---|---|---|
+| Before batching join announcements | 500 of 500, 60 s | not checked (most announcements dropped) | 10000 of 10000 | 784 ms | 1447 ms | 1499 ms |
+| Pub/sub layer, before batching | 457 of 500, 136 s | not checked | 9140 of 9140 | 517 ms | 1443 ms | 1537 ms |
+| Batched announcements (in use) | 500 of 500, 57 s | 500 of 500 | 10000 of 10000 | 1215 ms | 1849 ms | 3357 ms |
+| Pub/sub layer, batched | 500 of 500, 41 s | 500 of 500 | 10000 of 10000 | 2631 ms | 5872 ms | 6396 ms |
 
-Every message reached every connected client. Most of the time is fan-out: the default layer
+Every message reached every connected client, and with batching every client ends up with the
+right online list. Runs on this machine vary a lot from one to the next, so the delivery times
+are an order of magnitude, not a comparison. Most of the time is fan-out: the default layer
 stores a group message once per socket and the server pops them one Redis round trip at a time;
 pub/sub publishes once per process. Connecting is limited by per-socket setup (session, user and
 channel queries on Django's single database thread, presence in Redis) and by join
@@ -290,7 +298,7 @@ when the channel opens and stays there while the marker moves past it.
 | Email links confirm on a click, not on page load | Mail scanners open links, and the verification link works only once |
 | Role rules in `apps/core/roles.py`, compared by rank | Owner > admin > member > guest; nobody acts on or grants a rank above their own; the last owner can't step down or leave. Plain functions, so every rule is one table of test cases |
 | Membership changes lock the workspace row | Two owners demoting each other at once can't leave a workspace without an owner |
-| Default Redis channel layer kept after the load check | It connected all 500 clients; pub/sub delivered faster but lost 43 connections to the join storm. Revisit after presence announcements are coalesced |
+| Default Redis channel layer kept after the load check | Both layers deliver everything once join announcements are batched, and pub/sub showed no steady gain on the development machine; measure again on the production setup |
 | Pillow for image previews | Decoding and resizing images safely needs a real image library; it is the standard one, with decompression-bomb limits |
 | Read markers are not in the audit log | They are one person's place in a channel, not workspace data, and they change on every read |
 | `WorkspaceScopedManager.for_workspace()` on every workspace-owned model | One way to read workspace rows, so a query can't forget its workspace |
