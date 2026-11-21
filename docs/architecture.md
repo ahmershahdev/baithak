@@ -44,7 +44,8 @@ message           channel_id, seq (null for a reply kept in its thread), event, 
                   thread_seq, also_in_channel, reply_count, last_reply_at, body, client_id,
                   mentions (users), mentions_channel, edited_at, deleted_at, created_at
 reaction          message_id, user_id, emoji (one per person and emoji)
-attachment        workspace_id, message_id, uploader_id, name, content_type, size, storage_key
+attachment        workspace_id, channel_id, message_id (null until sent), uploader_id, name,
+                  content_type, size, storage_key, preview_key, width, height
 
 project           workspace_id, key, name, next_number
 issue             project_id, number, title, status, priority, assignee_id, due, thread_message_id
@@ -166,6 +167,28 @@ Typing is not stored. The client sends `{"type": "typing", "channel", "thread"}`
 archived) and it is 3 s since their last notice for that place, then relays it to the
 channel's group. Other tabs show it for 5 s, and clear it when that person's message arrives.
 
+## Files
+
+A file is uploaded on its own (`POST .../channels/{id}/files/`, multipart, members who can post,
+60 an hour) and then sent by id with a message or reply (`attachments`, up to 10). Until then it
+belongs to its uploader alone; sending takes it under the channel lock and only if it is still
+unsent, theirs and in that channel, so two sends can't share one. `apps/core/files.py` judges
+the type from the first 4 KB of the file, never from the name or the browser's claim: PNG, JPEG,
+GIF, WebP, PDF, zip (Office files are zip) and UTF-8 text, up to 25 MB. SVG is refused and HTML
+is just text, so nothing uploaded can run script here. Names lose folders and control
+characters.
+
+Files live under `FILES_ROOT` (default `backend/var/files`, ignored by git; a volume in
+production), which nothing serves. They are read back only through
+`/api/v1/workspaces/{slug}/files/{token}/`: the token is signed (Django `signing`) with the file
+and version and works for 12 hours, and the view also requires workspace membership and
+`can_read` on the file's channel, so leaving a private channel takes its files away too.
+Responses carry `nosniff` and a sandboxing CSP; only images are shown inline, everything else
+downloads. Celery makes a WebP preview (720 px, upright, metadata dropped) of each image, skipping
+anything over 40 million pixels, then gives the message a new event so open tabs get the
+preview. Deleting a message deletes its files after the commit. Uploads are not audited, like
+messages; deleting someone else's message still is.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =
@@ -211,6 +234,7 @@ when the channel opens and stays there while the marker moves past it.
 | Email links confirm on a click, not on page load | Mail scanners open links, and the verification link works only once |
 | Role rules in `apps/core/roles.py`, compared by rank | Owner > admin > member > guest; nobody acts on or grants a rank above their own; the last owner can't step down or leave. Plain functions, so every rule is one table of test cases |
 | Membership changes lock the workspace row | Two owners demoting each other at once can't leave a workspace without an owner |
+| Pillow for image previews | Decoding and resizing images safely needs a real image library; it is the standard one, with decompression-bomb limits |
 | Read markers are not in the audit log | They are one person's place in a channel, not workspace data, and they change on every read |
 | `WorkspaceScopedManager.for_workspace()` on every workspace-owned model | One way to read workspace rows, so a query can't forget its workspace |
 | `tests/test_access.py` lists every workspace endpoint and fails on an unlisted one | Each new endpoint is checked for 404 to outsiders and to unknown slugs without anyone remembering to add it |

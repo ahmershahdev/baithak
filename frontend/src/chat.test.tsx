@@ -45,6 +45,7 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     mentions: [],
     mentions_channel: false,
     reactions: [],
+    attachments: [],
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -646,5 +647,67 @@ describe("typing and presence", () => {
       FakeSocket.latest().receive({ type: "presence_change", user: 2, online: false });
     });
     expect(await within(dms).findByRole("img", { name: "Offline" })).toBeInTheDocument();
+  });
+});
+
+describe("files", () => {
+  test("attach a file, see it upload, and send it with no text", async () => {
+    const notes = {
+      id: 31,
+      name: "notes.txt",
+      content_type: "text/plain",
+      size: 2048,
+      width: null,
+      height: null,
+      url: "/api/v1/workspaces/team/files/signed-notes/",
+      preview_url: null,
+    };
+    const sent: unknown[] = [];
+    let uploaded = false;
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+      "POST /api/v1/workspaces/team/channels/5/files/": (request) => {
+        // Sent as a form with the file, not as JSON.
+        uploaded = request.headers.get("content-type")?.startsWith("multipart/form-data") ?? false;
+        return json(201, notes);
+      },
+      "POST /api/v1/workspaces/team/channels/5/messages/": async (request) => {
+        const body = (await request.json()) as { client_id: string };
+        sent.push(body);
+        return json(201, { ...message(1, 1, "", body.client_id), attachments: [notes] });
+      },
+    });
+    await openChannel();
+    await screen.findByText(/This is the very start/);
+
+    await userEvent.upload(
+      screen.getByLabelText("Attach files"),
+      new File(["chai at four"], "notes.txt", { type: "text/plain" }),
+    );
+    const files = await screen.findByRole("list", { name: "Files to send" });
+    expect(await within(files).findByText("2 KB")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    const link = await screen.findByRole("link", { name: /notes\.txt/ });
+    expect(link).toHaveAttribute("href", notes.url);
+    expect(uploaded).toBe(true);
+    expect(sent).toMatchObject([{ body: "", attachments: [31] }]);
+    expect(screen.queryByRole("list", { name: "Files to send" })).not.toBeInTheDocument();
+  });
+
+  test("a file over the limit is refused before uploading", async () => {
+    const backendState = backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+    });
+    await openChannel();
+    await screen.findByText(/This is the very start/);
+    const big = new File(["x"], "huge.zip");
+    Object.defineProperty(big, "size", { value: 26 * 1024 * 1024 });
+
+    await userEvent.upload(screen.getByLabelText("Attach files"), big);
+
+    expect(await screen.findByText("Files can be up to 25 MB.")).toBeInTheDocument();
+    expect(backendState.requests.some((r) => r.url.endsWith("/files/"))).toBe(false);
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 });

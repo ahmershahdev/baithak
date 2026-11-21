@@ -125,9 +125,25 @@ M1 in progress. Merged so far:
   dots on members, direct messages and the conversation header; "Bilal is typing" under the
   channel and thread. M3 is complete.
 
+- M3 released as `v0.3.0`, milestone closed.
+- M4 started: file and image uploads. Files are sniffed by content (images, PDF, zip/Office,
+  text; 25 MB), kept under `FILES_ROOT` outside anything served, sent with messages and replies
+  by id, and downloaded through 12-hour signed links that also check the channel. Celery makes
+  WebP previews. The composer attaches by button, paste or drop; messages show images and file
+  cards. New dependency: Pillow 13.0.0.
+
 ## Next session
 
-Release M3 as `v0.3.0` and close its milestone, then start M4 (files, search, notifications).
+M4, in this order:
+
+1. Full-text search (MySQL FULLTEXT) over messages and files, filtered by the read rule, with
+   channel, person and date filters.
+2. In-app notifications for mentions and direct messages.
+3. Email notifications for unread mentions, with quiet hours.
+4. Load check: 500 clients in one channel.
+
+Production needs a volume for `FILES_ROOT` and a request body limit of at least 25 MB at the
+proxy.
 
 ## Open questions
 

@@ -1,4 +1,6 @@
 import os
+import tempfile
+from pathlib import Path
 
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-not-a-secret")
 os.environ.setdefault("MYSQL_PASSWORD", "baithak")
@@ -18,3 +20,4 @@ RECAPTCHA_V2_SECRET_KEY = ""
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 # Real Redis, kept apart from development's keys; tests/chat/test_websockets.py clears it.
 PRESENCE_KEY_PREFIX = "test-presence"
+FILES_ROOT = Path(tempfile.gettempdir()) / "baithak-test-files"

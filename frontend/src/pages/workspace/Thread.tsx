@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
 
-import { remember, sendReply, useThread, type Channel } from "../../api/chat";
+import { remember, sendReply, uploadFile, useThread, type Channel } from "../../api/chat";
 import type { User } from "../../api/client";
 import { TypingContext, useTypers } from "../../chat/live";
 import type { Candidate } from "../../chat/mentions";
@@ -31,8 +31,16 @@ export function ThreadPanel({
   const sendTyping = use(TypingContext);
   const typers = useTypers(slug, channel.id, seq);
 
-  async function send(body: string, clientId: string) {
-    const reply = await sendReply(slug, channel.id, seq, body, clientId, alsoInChannel);
+  async function send(body: string, clientId: string, attachments: number[]) {
+    const reply = await sendReply(
+      slug,
+      channel.id,
+      seq,
+      body,
+      clientId,
+      alsoInChannel,
+      attachments,
+    );
     remember(client, slug, channel.id, reply);
   }
 
@@ -100,6 +108,7 @@ export function ThreadPanel({
           label="Reply"
           stored={storedIds(replies, me.id)}
           send={send}
+          upload={(file) => uploadFile(slug, channel.id, file)}
           candidates={candidates}
           onTyping={() => {
             sendTyping(channel.id, seq);

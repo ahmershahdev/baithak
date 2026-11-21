@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
+import type { Attachment } from "../chat/files";
 import { CHANNEL_CANDIDATE, type Candidate } from "../chat/mentions";
 import { merge, updateThread, type Message, type Thread, type Timeline } from "../chat/timeline";
 import { applyRead } from "../chat/unread";
@@ -265,11 +266,30 @@ export async function markRead(client: QueryClient, slug: string, id: number, se
   );
 }
 
-export async function sendMessage(slug: string, id: number, body: string, clientId: string) {
+export async function sendMessage(
+  slug: string,
+  id: number,
+  body: string,
+  clientId: string,
+  attachments: number[] = [],
+) {
   return unwrap(
     await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/messages/", {
       params: path(slug, id),
-      body: { body, client_id: clientId },
+      body: { body, client_id: clientId, attachments },
+    }),
+  );
+}
+
+export async function uploadFile(slug: string, id: number, file: File): Promise<Attachment> {
+  const form = new FormData();
+  form.append("file", file);
+  return unwrap(
+    await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/files/", {
+      params: path(slug, id),
+      // The typed body stands for the multipart form; the serializer sends the real one.
+      body: { file: "" },
+      bodySerializer: () => form,
     }),
   );
 }
@@ -281,11 +301,12 @@ export async function sendReply(
   body: string,
   clientId: string,
   alsoInChannel: boolean,
+  attachments: number[] = [],
 ) {
   return unwrap(
     await api.POST("/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/", {
       params: { path: { slug, channel_id: id, seq } },
-      body: { body, client_id: clientId, also_in_channel: alsoInChannel },
+      body: { body, client_id: clientId, also_in_channel: alsoInChannel, attachments },
     }),
   );
 }

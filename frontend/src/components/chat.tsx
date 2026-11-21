@@ -20,6 +20,14 @@ import {
 } from "../chat/mentions";
 import { QUICK_REACTIONS, reactedByMe, whoReacted } from "../chat/reactions";
 import { typingText, type Person } from "../chat/presence";
+import {
+  fileProblem,
+  fitWithin,
+  formatSize,
+  isImage,
+  MAX_FILES,
+  type Attachment,
+} from "../chat/files";
 import type { Message } from "../chat/timeline";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
@@ -90,6 +98,58 @@ const mentionClass = {
   me: "rounded bg-mention px-0.5 font-semibold ring-1 ring-mention-edge",
   channel: "rounded bg-mention px-0.5 font-semibold ring-1 ring-mention-edge",
 };
+
+function Attachments({ attachments }: { attachments: Attachment[] }) {
+  return (
+    <ul aria-label="Files" className="mt-1 flex flex-wrap gap-2">
+      {attachments.map((attachment) => {
+        const box = fitWithin(attachment.width, attachment.height, 320);
+        return (
+          <li key={attachment.id} className="max-w-full">
+            {isImage(attachment) ? (
+              <a href={attachment.url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={attachment.preview_url ?? attachment.url}
+                  alt={attachment.name}
+                  loading="lazy"
+                  width={box?.width}
+                  height={box?.height}
+                  className="max-h-80 max-w-full rounded-lg border border-border bg-bg-subtle object-contain"
+                />
+              </a>
+            ) : (
+              <a
+                href={attachment.url}
+                download={attachment.name}
+                className="flex max-w-xs items-center gap-3 rounded-xl border border-border bg-bg px-3 py-2 hover:border-border-strong"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  className="size-5 shrink-0 text-text-subtle"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 2.5h6.5L15 6v11.5H5z M11.5 2.5V6H15"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{attachment.name}</span>
+                  <span className="block text-xs text-text-subtle">
+                    {formatSize(attachment.size)}
+                  </span>
+                </span>
+              </a>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function Body({ message, meId }: { message: Message; meId: number }) {
   return (
@@ -252,6 +312,7 @@ export function MessageRow({
             {replies(message.reply_count)}
           </button>
         )}
+        {message.attachments.length > 0 && <Attachments attachments={message.attachments} />}
         {message.reactions.length > 0 && (
           <ul aria-label="Reactions" className="mt-1 flex flex-wrap gap-1">
             {message.reactions.map((reaction) => {
@@ -340,7 +401,16 @@ export function MessageRow({
 interface Pending {
   clientId: string;
   body: string;
+  attachments: Attachment[];
   failed: boolean;
+}
+
+/** A file picked for the next message: uploading, ready to send, or refused. */
+interface Picked {
+  key: string;
+  name: string;
+  attachment?: Attachment;
+  problem?: string;
 }
 
 export function Composer({
@@ -351,21 +421,28 @@ export function Composer({
   footer,
   candidates = [],
   onTyping,
+  upload,
 }: {
   id: string;
   label: string;
+  /** Uploads a picked or pasted file; without it the composer takes no files. */
+  upload?: (file: File) => Promise<Attachment>;
   /** People (and @channel) offered after typing "@". */
   candidates?: Candidate[];
   /** Called as the person types; the caller throttles what it sends. */
   onTyping?: () => void;
   /** client_ids of my messages already stored where this composer sends. */
   stored: Set<string>;
-  send: (body: string, clientId: string) => Promise<void>;
+  send: (body: string, clientId: string, attachments: number[]) => Promise<void>;
   footer?: ReactNode;
 }) {
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<Pending[]>([]);
+  const [picked, setPicked] = useState<Picked[]>([]);
   const area = useRef<HTMLTextAreaElement>(null);
+  const filePicker = useRef<HTMLInputElement>(null);
+  const uploading = picked.some((item) => !item.attachment && !item.problem);
+  const ready = picked.flatMap((item) => (item.attachment ? [item.attachment] : []));
   const [caret, setCaret] = useState(0);
   const [active, setActive] = useState(0);
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
@@ -398,7 +475,11 @@ export function Composer({
       now.map((p) => (p.clientId === item.clientId ? { ...p, failed: false } : p)),
     );
     try {
-      await send(item.body, item.clientId);
+      await send(
+        item.body,
+        item.clientId,
+        item.attachments.map((attachment) => attachment.id),
+      );
     } catch {
       setPending((now) =>
         now.map((p) => (p.clientId === item.clientId ? { ...p, failed: true } : p)),
@@ -408,12 +489,37 @@ export function Composer({
 
   function submit() {
     const body = draft.trim();
-    if (!body) return;
+    if ((!body && ready.length === 0) || uploading) return;
     // The same id goes with every retry, so the server stores the message once.
-    const item = { clientId: crypto.randomUUID(), body, failed: false };
+    const item = { clientId: crypto.randomUUID(), body, attachments: ready, failed: false };
     setPending((now) => [...now.filter((p) => !stored.has(p.clientId)), item]);
     setDraft("");
+    setPicked([]);
     void deliver(item);
+  }
+
+  function addFiles(files: File[]) {
+    if (!upload) return;
+    const room = MAX_FILES - picked.length;
+    for (const file of files.slice(0, Math.max(0, room))) {
+      const key = crypto.randomUUID();
+      const problem = fileProblem(file);
+      setPicked((now) => [...now, { key, name: file.name, ...(problem ? { problem } : {}) }]);
+      if (problem) continue;
+      upload(file).then(
+        (attachment) => {
+          setPicked((now) => now.map((p) => (p.key === key ? { ...p, attachment } : p)));
+        },
+        (failure: unknown) => {
+          const message =
+            failure instanceof ApiError
+              ? Object.values(failure.problems.fields).flat().join(" ") ||
+                (failure.problems.detail ?? "Could not upload it.")
+              : "Could not upload it.";
+          setPicked((now) => now.map((p) => (p.key === key ? { ...p, problem: message } : p)));
+        },
+      );
+    }
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -448,7 +554,12 @@ export function Composer({
         <ul className="flex flex-col gap-1 px-2" aria-label="Sending">
           {waiting.map((item) => (
             <li key={item.clientId} className="flex items-center gap-3 pl-12 text-text-muted">
-              <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{item.body}</span>
+              <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
+                {item.body ||
+                  (item.attachments.length === 1
+                    ? item.attachments[0]?.name
+                    : `${String(item.attachments.length)} files`)}
+              </span>
               {item.failed ? (
                 <button
                   type="button"
@@ -464,7 +575,45 @@ export function Composer({
           ))}
         </ul>
       )}
-      <div className="relative rounded-2xl border border-border-strong bg-surface p-2 focus-within:border-focus-ring focus-within:ring-4 focus-within:ring-focus-ring/20">
+      <div
+        onDragOver={(event) => {
+          if (upload && event.dataTransfer.types.includes("Files")) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (!upload || event.dataTransfer.files.length === 0) return;
+          event.preventDefault();
+          addFiles([...event.dataTransfer.files]);
+        }}
+        className="relative rounded-2xl border border-border-strong bg-surface p-2 focus-within:border-focus-ring focus-within:ring-4 focus-within:ring-focus-ring/20"
+      >
+        {picked.length > 0 && (
+          <ul aria-label="Files to send" className="flex flex-wrap gap-2 px-2 pt-1 pb-2">
+            {picked.map((item) => (
+              <li
+                key={item.key}
+                className={`flex max-w-full items-center gap-2 rounded-lg border px-2 py-1 text-sm ${
+                  item.problem ? "border-danger text-danger" : "border-border bg-bg"
+                }`}
+              >
+                <span className="truncate">{item.name}</span>
+                <span className="shrink-0 text-xs text-text-subtle">
+                  {item.problem ??
+                    (item.attachment ? formatSize(item.attachment.size) : "Uploading")}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${item.name}`}
+                  onClick={() => {
+                    setPicked((now) => now.filter((p) => p.key !== item.key));
+                  }}
+                  className="shrink-0 rounded px-1 text-text-subtle hover:bg-bg-subtle hover:text-text"
+                >
+                  &times;
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {open && (
           <ul
             id={`${id}-mentions`}
@@ -516,21 +665,53 @@ export function Composer({
             setCaret(event.currentTarget.selectionStart);
           }}
           onKeyDown={onKeyDown}
+          onPaste={(event) => {
+            const files = [...event.clipboardData.files];
+            if (upload && files.length > 0) {
+              event.preventDefault();
+              addFiles(files);
+            }
+          }}
           rows={2}
           maxLength={4000}
           placeholder={label}
           className="block w-full resize-none bg-transparent px-2 py-1 outline-none placeholder:text-text-subtle"
         />
         <div className="flex flex-wrap items-center justify-between gap-2 px-2 pt-1">
-          {footer ?? (
-            <span className="text-xs text-text-subtle">
-              Enter to send, Shift+Enter for a new line
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {upload && (
+              <>
+                <input
+                  ref={filePicker}
+                  type="file"
+                  multiple
+                  hidden
+                  aria-label="Attach files"
+                  onChange={(event) => {
+                    addFiles([...(event.target.files ?? [])]);
+                    event.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => filePicker.current?.click()}
+                  disabled={picked.length >= MAX_FILES}
+                  className="rounded-lg px-2 py-1 text-sm font-semibold text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-50"
+                >
+                  Attach
+                </button>
+              </>
+            )}
+            {footer ?? (
+              <span className="text-xs text-text-subtle">
+                Enter to send, Shift+Enter for a new line
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={submit}
-            disabled={!draft.trim()}
+            disabled={(!draft.trim() && ready.length === 0) || uploading}
             className="btn-lamp rounded-lg bg-accent px-4 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             Send

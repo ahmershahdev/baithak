@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.workspaces",
     "apps.chat",
+    "apps.files",
 ]
 
 MIDDLEWARE = [
@@ -98,6 +99,11 @@ CHANNEL_LAYERS = {
     }
 }
 
+# Uploaded files: outside the code and anything the web server serves (AGENTS.md).
+FILES_ROOT = Path(env("FILES_ROOT", str(BASE_DIR / "var" / "files")))
+# Seconds a signed download link works.
+FILE_LINK_MAX_AGE = 12 * 60 * 60
+
 # Online status lives in REDIS_URL under this prefix (apps/chat/presence.py).
 PRESENCE_KEY_PREFIX = "presence"
 
@@ -147,6 +153,7 @@ REST_FRAMEWORK = {
         "post": "120/minute",
         "availability": "30/minute",
         "contact": "5/hour",
+        "upload": "60/hour",
     },
     # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
     # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.

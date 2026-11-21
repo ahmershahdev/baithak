@@ -42,7 +42,7 @@ in CI, and seed data.
 
 ## M4. Files, search and notifications (target 2027-02-07)
 
-- [ ] File and image uploads: type and size checks, signed expiring links, previews in Celery
+- [x] File and image uploads: type and size checks, signed expiring links, previews in Celery
 - [ ] Full-text search (MySQL FULLTEXT) over messages, files and issues, filtered by the
       permission check; filters by channel, person and date
 - [ ] In-app notifications for mentions, direct messages and assigned issues
