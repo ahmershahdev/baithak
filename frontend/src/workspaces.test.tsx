@@ -130,7 +130,8 @@ describe("members", () => {
     });
     renderAt("/w/karachi-team/members");
 
-    await userEvent.selectOptions(await screen.findByLabelText("Role of Bilal"), "admin");
+    await userEvent.click(await screen.findByRole("combobox", { name: "Role of Bilal" }));
+    await userEvent.click(screen.getByRole("option", { name: "Admin" }));
 
     await waitFor(() => {
       expect(backend.requests.some((r) => r.method === "PATCH")).toBe(true);
@@ -143,8 +144,13 @@ describe("members", () => {
     inWorkspace("admin");
     renderAt("/w/karachi-team/members");
 
-    const roleOfBilal = await screen.findByLabelText("Role of Bilal");
-    expect(within(roleOfBilal).queryByRole("option", { name: "Owner" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("combobox", { name: "Role of Bilal" }));
+    const roles = screen.getByRole("listbox");
+    expect(
+      within(roles)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).not.toContain("Owner");
     expect(screen.queryByLabelText("Role of Sana")).not.toBeInTheDocument();
   });
 
@@ -172,7 +178,8 @@ describe("members", () => {
     });
     renderAt("/w/karachi-team/members");
 
-    await userEvent.selectOptions(await screen.findByLabelText("Role of Bilal"), "guest");
+    await userEvent.click(await screen.findByRole("combobox", { name: "Role of Bilal" }));
+    await userEvent.click(screen.getByRole("option", { name: "Guest" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "You can't give this person that role.",
@@ -213,7 +220,8 @@ describe("invitations", () => {
     renderAt("/w/karachi-team/invitations");
 
     await userEvent.type(await screen.findByLabelText("Email"), "chanda@example.com");
-    await userEvent.selectOptions(screen.getByLabelText("Role"), "member");
+    await userEvent.click(screen.getByRole("combobox", { name: /Role/ }));
+    await userEvent.click(screen.getByRole("option", { name: "Member" }));
     await userEvent.click(screen.getByRole("button", { name: "Send invitation" }));
 
     expect(await screen.findByText("Invitation sent to chanda@example.com.")).toBeInTheDocument();

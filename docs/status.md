@@ -101,6 +101,12 @@ M1 in progress. Merged so far:
   the composer suggests people after `@` (arrow keys, Enter or Tab, Escape). The unread badge
   now uses the `unread` token.
 
+- Fixed: the "Reconnecting" banner every few seconds. redis-py 8 reads time out at 5 s, the
+  same as channels_redis's blocking wait, so idle sockets crashed; the channel layer's Redis
+  socket timeout is now 30 s (#30).
+- Dropdowns (role on members and invitations, channel visibility) are a themed listbox
+  (`components/Select.tsx`) instead of native selects, whose open list ignored the theme.
+
 ## Next session
 
 M3, in this order:

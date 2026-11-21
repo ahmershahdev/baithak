@@ -98,6 +98,11 @@ Inputs sit on `bg` inside `surface` cards: `border-strong` on `surface-raised` i
 under the 3:1 UI minimum, while on `bg` it passes in both themes. Field errors use `danger` text
 and are tied to the input with `aria-describedby` and `aria-invalid`.
 
+Dropdowns use `components/Select.tsx`, never a native `select`: the open list of a native select
+is drawn by the browser and the OS and ignores the theme. Its list is a `surface-raised` popover
+like the workspace switcher, with the select-only combobox keyboard pattern, and it sends its
+value with the form through a hidden input.
+
 ## Contrast
 
 `node frontend/scripts/check-contrast.mjs` checks every text pair at 4.5:1 and every UI part
