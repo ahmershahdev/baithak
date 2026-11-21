@@ -1261,6 +1261,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+  /api/v1/workspaces/{slug}/channels/conversations/:
+    post:
+      operationId: workspaces_channels_conversations_create
+      summary: Open a direct or group conversation, starting it if it doesn't exist
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Channel'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Channel'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
   /api/v1/workspaces/{slug}/invitations/:
     get:
       operationId: workspaces_invitations_list
@@ -1575,7 +1614,7 @@ components:
           readOnly: true
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/ChannelKindEnum'
           readOnly: true
         topic:
           type: string
@@ -1600,6 +1639,12 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        people:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+          readOnly: true
+          description: Everyone in a direct or group conversation; empty for channels.
         created_at:
           type: string
           format: date-time
@@ -1614,8 +1659,17 @@ components:
       - last_read_seq
       - last_seq
       - name
+      - people
       - topic
       - unread
+    ChannelCreateKindEnum:
+      enum:
+      - public
+      - private
+      type: string
+      description: |-
+        * `public` - public
+        * `private` - private
     ChannelCreateRequest:
       type: object
       properties:
@@ -1626,13 +1680,25 @@ components:
           maxLength: 81
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/ChannelCreateKindEnum'
           default: public
         topic:
           type: string
           maxLength: 250
       required:
       - name
+    ChannelKindEnum:
+      enum:
+      - public
+      - private
+      - direct
+      - group
+      type: string
+      description: |-
+        * `public` - public
+        * `private` - private
+        * `direct` - direct
+        * `group` - group
     ChannelMember:
       type: object
       properties:
@@ -1683,6 +1749,17 @@ components:
       - email
       - message
       - name
+    ConversationRequest:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: integer
+          description: The other people in it.
+          minItems: 1
+      required:
+      - user_ids
     Detail:
       type: object
       properties:
@@ -1792,14 +1869,6 @@ components:
       required:
       - email
       - role
-    KindEnum:
-      enum:
-      - public
-      - private
-      type: string
-      description: |-
-        * `public` - public
-        * `private` - private
     Member:
       type: object
       properties:

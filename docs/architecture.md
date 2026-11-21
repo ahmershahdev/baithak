@@ -104,6 +104,18 @@ page can't undo an edit that already arrived. After a reconnect (exponential bac
 carry a `client_id`; the message shows as "Sending" at once and is replaced by the stored copy,
 whichever comes first, the API's answer or the live event, and a retry reuses the id.
 
+## Direct and group messages
+
+A conversation is a channel of kind `direct` (two people) or `group` (three to nine), so
+messages, threads, unread counts, mentions, reactions and live events work in it unchanged.
+`POST .../channels/conversations/` with the other people's ids opens it: the channel name is a
+key made from the sorted ids (`~3-7-12`, `apps/core/conversations.py`), so the same people
+always get the same conversation, and "~" can't appear in a channel name a person picks.
+Opening it again brings back anyone who left. `can_read` treats it like a private channel
+(members only, admins included); it has no name, topic or archive to manage, and nobody can be
+added, which starts a new one instead. Channels list a conversation's `people` for its title.
+The audit log records that one was started, with its kind and size, not who is in it.
+
 ## Threads
 
 A reply is a message row with `parent` set; threads are one level deep. Replies are numbered

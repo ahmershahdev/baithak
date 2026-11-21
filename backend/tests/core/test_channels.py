@@ -13,6 +13,7 @@ from apps.core.roles import Role
 
 OWNER, ADMIN, MEMBER, GUEST = Role.OWNER, Role.ADMIN, Role.MEMBER, Role.GUEST
 PUBLIC, PRIVATE = ChannelKind.PUBLIC, ChannelKind.PRIVATE
+DIRECT, GROUP = ChannelKind.DIRECT, ChannelKind.GROUP
 
 
 @pytest.mark.parametrize(
@@ -30,6 +31,10 @@ PUBLIC, PRIVATE = ChannelKind.PUBLIC, ChannelKind.PRIVATE
         (MEMBER, PRIVATE, False, False),
         (MEMBER, PRIVATE, True, True),
         (GUEST, PRIVATE, True, True),
+        (OWNER, DIRECT, False, False),
+        (MEMBER, DIRECT, True, True),
+        (ADMIN, GROUP, False, False),
+        (GUEST, GROUP, True, True),
     ],
 )
 def test_can_read(role: Role | None, kind: ChannelKind, is_member: bool, expected: bool) -> None:
@@ -89,6 +94,8 @@ def test_can_create(role: Role | None, expected: bool) -> None:
         (MEMBER, PRIVATE, True, True, True),
         (GUEST, PUBLIC, False, True, False),
         (None, PUBLIC, True, True, False),
+        (ADMIN, DIRECT, True, True, False),
+        (OWNER, GROUP, True, True, False),
     ],
 )
 def test_can_manage(
@@ -98,17 +105,21 @@ def test_can_manage(
 
 
 @pytest.mark.parametrize(
-    ("role", "is_member", "expected"),
+    ("role", "kind", "is_member", "expected"),
     [
-        (MEMBER, True, True),
-        (ADMIN, True, True),
-        (MEMBER, False, False),
-        (GUEST, True, False),
-        (None, True, False),
+        (MEMBER, PUBLIC, True, True),
+        (ADMIN, PRIVATE, True, True),
+        (MEMBER, PUBLIC, False, False),
+        (GUEST, PUBLIC, True, False),
+        (None, PUBLIC, True, False),
+        (MEMBER, DIRECT, True, False),
+        (ADMIN, GROUP, True, False),
     ],
 )
-def test_can_add_member(role: Role | None, is_member: bool, expected: bool) -> None:
-    assert can_add_member(role, is_member=is_member) is expected
+def test_can_add_member(
+    role: Role | None, kind: ChannelKind, is_member: bool, expected: bool
+) -> None:
+    assert can_add_member(role, kind, is_member=is_member) is expected
 
 
 @pytest.mark.parametrize(

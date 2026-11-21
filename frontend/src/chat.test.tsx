@@ -28,6 +28,7 @@ const general: Channel = {
   last_seq: 2,
   last_read_seq: 2,
   unread: 0,
+  people: [],
   created_at: "2026-11-01T10:00:00Z",
 };
 
@@ -504,5 +505,77 @@ describe("reactions", () => {
       expect(screen.queryByRole("button", { name: /reacted with/ })).not.toBeInTheDocument();
     });
     expect(calls).toEqual([`add ${THUMBS_UP}`, "remove"]);
+  });
+});
+
+describe("direct messages", () => {
+  test("pick people, start a group, and it shows under Direct messages by their names", async () => {
+    const group: Channel = {
+      ...general,
+      id: 9,
+      name: "~1-2-3",
+      kind: "group",
+      topic: "",
+      is_default: false,
+      last_seq: 0,
+      last_read_seq: 0,
+      people: [
+        { id: 1, username: "amna", display_name: "Amna Khan" },
+        { id: 2, username: "bilal", display_name: "Bilal Ahmed" },
+        { id: 3, username: "sara", display_name: "" },
+      ],
+    };
+    let started = false;
+    const sent: unknown[] = [];
+    fakeBackend({
+      "GET /api/v1/auth/me/": () => json(200, amna),
+      "GET /api/v1/workspaces/team/": () =>
+        json(200, {
+          slug: "team",
+          name: "Team",
+          created_at: "2026-11-01T10:00:00Z",
+          role: "member",
+        }),
+      "GET /api/v1/workspaces/team/channels/": () =>
+        json(200, started ? [general, group] : [general]),
+      "GET /api/v1/workspaces/team/members/": () =>
+        json(200, [
+          {
+            user_id: 1,
+            username: "amna",
+            display_name: "Amna Khan",
+            role: "member",
+            joined_at: "",
+          },
+          {
+            user_id: 2,
+            username: "bilal",
+            display_name: "Bilal Ahmed",
+            role: "member",
+            joined_at: "",
+          },
+          { user_id: 3, username: "sara", display_name: "", role: "guest", joined_at: "" },
+        ]),
+      "POST /api/v1/workspaces/team/channels/conversations/": async (request) => {
+        sent.push(await request.json());
+        started = true;
+        return json(201, group);
+      },
+      "GET /api/v1/workspaces/team/channels/9/messages/": () => json(200, page([], 0)),
+    });
+    renderAt("/w/team/dm");
+
+    const people = await screen.findByRole("list", { name: "People" });
+    await userEvent.click(await within(people).findByLabelText(/Bilal Ahmed/));
+    // Not me.
+    expect(within(people).queryByText("Amna Khan")).not.toBeInTheDocument();
+    await userEvent.click(within(people).getByLabelText(/sara/));
+    await userEvent.click(screen.getByRole("button", { name: "Start group" }));
+
+    expect(await screen.findByRole("heading", { name: /Bilal Ahmed, sara/ })).toBeInTheDocument();
+    expect(sent).toEqual([{ user_ids: [2, 3] }]);
+    const dms = screen.getByRole("region", { name: "Direct messages" });
+    expect(within(dms).getByRole("link", { name: /Bilal Ahmed, sara/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("Message Bilal Ahmed, sara")).toBeInTheDocument();
   });
 });

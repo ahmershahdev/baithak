@@ -556,6 +556,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/channels/conversations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open a direct or group conversation, starting it if it doesn't exist */
+        post: operations["workspaces_channels_conversations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/invitations/": {
         parameters: {
             query?: never;
@@ -683,7 +700,7 @@ export interface components {
         Channel: {
             readonly id: number;
             readonly name: string;
-            readonly kind: components["schemas"]["KindEnum"];
+            readonly kind: components["schemas"]["ChannelKindEnum"];
             readonly topic: string;
             readonly is_default: boolean;
             readonly archived: boolean;
@@ -691,15 +708,31 @@ export interface components {
             readonly last_seq: number;
             readonly last_read_seq: number | null;
             readonly unread: number | null;
+            /** @description Everyone in a direct or group conversation; empty for channels. */
+            readonly people: components["schemas"]["Author"][];
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description * `public` - public
+         *     * `private` - private
+         * @enum {string}
+         */
+        ChannelCreateKindEnum: "public" | "private";
         ChannelCreateRequest: {
             name: string;
             /** @default public */
-            kind: components["schemas"]["KindEnum"];
+            kind: components["schemas"]["ChannelCreateKindEnum"];
             topic?: string;
         };
+        /**
+         * @description * `public` - public
+         *     * `private` - private
+         *     * `direct` - direct
+         *     * `group` - group
+         * @enum {string}
+         */
+        ChannelKindEnum: "public" | "private" | "direct" | "group";
         ChannelMember: {
             readonly user_id: number;
             readonly username: string;
@@ -715,6 +748,10 @@ export interface components {
             /** Format: email */
             email: string;
             message: string;
+        };
+        ConversationRequest: {
+            /** @description The other people in it. */
+            user_ids: number[];
         };
         Detail: {
             detail: string;
@@ -759,12 +796,6 @@ export interface components {
             email: string;
             role: components["schemas"]["InvitableRoleEnum"];
         };
-        /**
-         * @description * `public` - public
-         *     * `private` - private
-         * @enum {string}
-         */
-        KindEnum: "public" | "private";
         Member: {
             readonly user_id: number;
             readonly username: string;
@@ -2119,6 +2150,47 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_conversations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Channel"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Channel"];
+                };
+            };
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

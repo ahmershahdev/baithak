@@ -40,6 +40,12 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("workspaces:invitation", "delete", "/api/v1/workspaces/{slug}/invitations/1/", None),
     ("channels:list", "get", "/api/v1/workspaces/{slug}/channels/", None),
     ("channels:list", "post", "/api/v1/workspaces/{slug}/channels/", {"name": "taken"}),
+    (
+        "channels:conversations",
+        "post",
+        "/api/v1/workspaces/{slug}/channels/conversations/",
+        {"user_ids": [1]},
+    ),
     ("channels:detail", "get", CHANNEL, None),
     ("channels:detail", "patch", CHANNEL, {"topic": "Taken over"}),
     ("channels:join", "post", CHANNEL + "join/", None),

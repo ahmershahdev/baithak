@@ -17,6 +17,7 @@ const channel: Channel = {
   last_seq: 4,
   last_read_seq: 2,
   unread: 2,
+  people: [],
   created_at: "2026-11-01T10:00:00Z",
 };
 

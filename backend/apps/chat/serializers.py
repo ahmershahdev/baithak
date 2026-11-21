@@ -6,9 +6,25 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.chat.models import Channel, ChannelMember, Message, Reaction, channel_name_validator
-from apps.core.channels import ChannelKind
+from apps.core.channels import CONVERSATIONS, ChannelKind
 
 KIND_CHOICES = [kind.value for kind in ChannelKind]
+# Conversations are started through their own endpoint, never created as channels.
+CREATE_KIND_CHOICES = [ChannelKind.PUBLIC.value, ChannelKind.PRIVATE.value]
+
+# The people of each conversation, for its title; other channels load none.
+PEOPLE_PREFETCH = Prefetch(
+    "members",
+    queryset=ChannelMember.objects.filter(channel__kind__in=CONVERSATIONS)
+    .select_related("user")
+    .order_by("user__username"),
+)
+
+
+class AuthorSerializer(serializers.Serializer[User]):
+    id = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    display_name = serializers.CharField(read_only=True)
 
 
 class ChannelSerializer(serializers.ModelSerializer[Channel]):
@@ -17,6 +33,9 @@ class ChannelSerializer(serializers.ModelSerializer[Channel]):
     is_member = serializers.BooleanField(read_only=True)
     last_read_seq = serializers.IntegerField(read_only=True, allow_null=True)
     unread = serializers.IntegerField(read_only=True, allow_null=True)
+    people = serializers.SerializerMethodField(
+        help_text="Everyone in a direct or group conversation; empty for channels."
+    )
 
     class Meta:
         model = Channel
@@ -31,9 +50,23 @@ class ChannelSerializer(serializers.ModelSerializer[Channel]):
             "last_seq",
             "last_read_seq",
             "unread",
+            "people",
             "created_at",
         )
         read_only_fields = fields
+
+    @extend_schema_field(AuthorSerializer(many=True))
+    def get_people(self, channel: Channel) -> list[dict[str, Any]]:
+        """Needs PEOPLE_PREFETCH, or it costs a query per conversation."""
+        if channel.kind not in CONVERSATIONS:
+            return []
+        return [dict(AuthorSerializer(member.user).data) for member in channel.members.all()]
+
+
+class ConversationSerializer(serializers.Serializer[None]):
+    user_ids = serializers.ListField(
+        child=serializers.IntegerField(), min_length=1, help_text="The other people in it."
+    )
 
 
 class ChannelNameField(serializers.CharField):
@@ -44,7 +77,7 @@ class ChannelNameField(serializers.CharField):
 
 class ChannelCreateSerializer(serializers.Serializer[None]):
     name = ChannelNameField(max_length=81, validators=[channel_name_validator])
-    kind = serializers.ChoiceField(choices=KIND_CHOICES, default=ChannelKind.PUBLIC)
+    kind = serializers.ChoiceField(choices=CREATE_KIND_CHOICES, default=ChannelKind.PUBLIC)
     topic = serializers.CharField(max_length=250, required=False, allow_blank=True)
 
 
@@ -77,12 +110,6 @@ class ReadMarkerSerializer(serializers.Serializer[None]):
     channel = serializers.IntegerField()
     last_read_seq = serializers.IntegerField()
     unread = serializers.IntegerField(allow_null=True)
-
-
-class AuthorSerializer(serializers.Serializer[User]):
-    id = serializers.IntegerField(read_only=True)
-    username = serializers.CharField(read_only=True)
-    display_name = serializers.CharField(read_only=True)
 
 
 class ReactionSerializer(serializers.Serializer[None]):

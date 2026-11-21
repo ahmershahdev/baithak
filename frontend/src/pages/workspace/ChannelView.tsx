@@ -15,6 +15,7 @@ import {
 } from "../../api/chat";
 import type { User } from "../../api/client";
 import { startsGroup, storedIds, type Message } from "../../chat/timeline";
+import { channelTitle, isConversation } from "../../chat/conversations";
 import { firstUnread } from "../../chat/unread";
 import { Composer, MessageRow } from "../../components/chat";
 import { ErrorMessage } from "../../components/ui";
@@ -187,6 +188,9 @@ function Conversation({
     setParams(seq === null ? {} : { thread: String(seq) });
   }
 
+  const title = channelTitle(channel, me.id);
+  const conversation = isConversation(channel);
+
   async function send(body: string, clientId: string) {
     remember(client, slug, channel.id, await sendMessage(slug, channel.id, body, clientId));
   }
@@ -198,8 +202,13 @@ function Conversation({
           <div className="min-w-0">
             <h1 className="wonky flex items-center gap-2 font-display text-2xl font-semibold">
               <ChannelIcon kind={channel.kind} />
-              {channel.name}
+              <span className="truncate">{title}</span>
             </h1>
+            {channel.kind === "group" && (
+              <p className="text-sm text-text-muted">
+                Group of {channel.people.length}. Only the people in it can read it.
+              </p>
+            )}
             {channel.topic && <p className="truncate text-sm text-text-muted">{channel.topic}</p>}
           </div>
           {channel.archived && (
@@ -234,7 +243,9 @@ function Conversation({
           )}
           {timeline.data && messages.length === 0 && (
             <p className="p-4 text-text-muted">
-              This is the very start of #{channel.name}. Say salaam.
+              {conversation
+                ? `This is the start of your conversation with ${title}. Say salaam.`
+                : `This is the very start of #${channel.name}. Say salaam.`}
             </p>
           )}
           {timeline.data && (
@@ -251,7 +262,7 @@ function Conversation({
         {channel.is_member && !channel.archived ? (
           <Composer
             id="composer"
-            label={`Message #${channel.name}`}
+            label={conversation ? `Message ${title}` : `Message #${channel.name}`}
             stored={storedIds(timeline.data?.messages, me.id)}
             send={send}
             candidates={candidates}
