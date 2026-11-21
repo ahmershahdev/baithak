@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.files",
     "apps.search",
     "apps.notifications",
+    "apps.issues",
 ]
 
 MIDDLEWARE = [

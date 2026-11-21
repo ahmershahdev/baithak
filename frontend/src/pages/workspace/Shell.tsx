@@ -256,6 +256,11 @@ function Nav({ workspace }: { workspace: Workspace }) {
       <NavLink end to={base} className={linkClass}>
         Overview
       </NavLink>
+      {workspace.role !== "guest" && (
+        <NavLink to={`${base}/projects`} className={linkClass}>
+          Projects
+        </NavLink>
+      )}
       <NavLink to={`${base}/members`} className={linkClass}>
         Members
       </NavLink>

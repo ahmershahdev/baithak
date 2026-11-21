@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/v1/workspaces/<slug:slug>/channels/", include("apps.chat.urls")),
     path("api/v1/workspaces/<slug:slug>/files/", include("apps.files.urls")),
     path("api/v1/workspaces/<slug:slug>/search/", include("apps.search.urls")),
+    path("api/v1/workspaces/<slug:slug>/projects/", include("apps.issues.urls")),
     path("api/v1/workspaces/<slug:slug>/notifications/", include("apps.notifications.urls")),
     path("api/v1/invitations/", include("apps.workspaces.invitation_urls")),
 ]
