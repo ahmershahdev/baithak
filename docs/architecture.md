@@ -40,7 +40,9 @@ audit_event       workspace_id, user_id, action, model, object_id, changes (JSON
 
 channel           workspace_id, name, kind (public, private, direct, group), topic, archived_at, last_seq, last_event
 channel_member    channel_id, user_id, last_read_seq, muted
-message           channel_id, seq, event, author_id, thread_root_id, body, client_id, edited_at, deleted_at, created_at
+message           channel_id, seq (null for a reply kept in its thread), event, author_id, parent_id,
+                  thread_seq, also_in_channel, reply_count, last_reply_at, body, client_id,
+                  edited_at, deleted_at, created_at
 reaction          message_id, user_id, emoji
 attachment        workspace_id, message_id, uploader_id, name, content_type, size, storage_key
 
@@ -101,6 +103,18 @@ page can't undo an edit that already arrived. After a reconnect (exponential bac
 30 s with jitter; 4401 and 4404 are final), every open channel catches up the same way. Sends
 carry a `client_id`; the message shows as "Sending" at once and is replaced by the stored copy,
 whichever comes first, the API's answer or the live event, and a retry reuses the id.
+
+## Threads
+
+A reply is a message row with `parent` set; threads are one level deep. Replies are numbered
+`thread_seq` inside their thread (`reply_count` on the parent is that counter, deleted replies
+included) and live under `.../messages/{seq}/replies/{thread_seq}/`. A reply kept in its thread
+takes no channel `seq`, so it doesn't appear in channel history or change unread counts; "also
+send to channel" gives it a `seq` too, and it shows in both places as one row. Every reply takes
+the channel's next `event`, and the parent then takes one more with its new `reply_count` and
+`last_reply_at`, all under the channel lock. So threads need no events or catch-up of their
+own: a client catching up by event gets the replies and the new counts, and the web app copies
+each channel message into any open thread (`routeMessages` in `frontend/src/api/chat.ts`).
 
 ## Unread counts
 

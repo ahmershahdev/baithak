@@ -64,8 +64,18 @@ class ChannelMember(models.Model):
 
 class Message(models.Model):
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="messages")
-    seq = models.BigIntegerField()
+    # Its place in the channel. None for a thread reply not also sent to the channel, so replies
+    # don't change unread counts or channel history.
+    seq = models.BigIntegerField(null=True, blank=True)
     event = models.BigIntegerField()
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
+    )
+    thread_seq = models.BigIntegerField(null=True, blank=True)
+    also_in_channel = models.BooleanField(default=False)
+    # Counts deleted replies too: it numbers them (thread_seq), and deleted rows stay.
+    reply_count = models.IntegerField(default=0)
+    last_reply_at = models.DateTimeField(null=True, blank=True)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -80,12 +90,15 @@ class Message(models.Model):
         constraints: ClassVar = [
             models.UniqueConstraint(fields=["channel", "seq"], name="message_seq_per_channel"),
             models.UniqueConstraint(fields=["channel", "event"], name="message_event_per_channel"),
+            models.UniqueConstraint(fields=["parent", "thread_seq"], name="reply_seq_per_thread"),
         ]
         indexes: ClassVar = [
             models.Index(fields=["channel", "author", "client_id"], name="message_client_id"),
         ]
 
     def __str__(self) -> str:
+        if self.parent_id is not None:
+            return f"{self.channel_id}#{self.parent_id}/{self.thread_seq}"
         return f"{self.channel_id}#{self.seq}"
 
     @property

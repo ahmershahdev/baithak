@@ -6,6 +6,8 @@ import type { Message } from "./timeline";
  * server's count replaces it whenever the channel list is fetched again (after a reconnect).
  */
 export function countMessage(channel: Channel, message: Message, meId: number): Channel {
+  // A reply kept in its thread has no place in the channel and doesn't count.
+  if (message.seq === null) return channel;
   const isNew = message.seq > channel.last_seq;
   const lastSeq = Math.max(channel.last_seq, message.seq);
   if (channel.last_read_seq === null || channel.unread === null) {
@@ -36,7 +38,11 @@ export function firstUnread(
 ): number | null {
   if (lastReadSeq === null) return null;
   const first = messages.find(
-    (message) => message.seq > lastReadSeq && message.author?.id !== meId && !message.deleted,
+    (message) =>
+      message.seq !== null &&
+      message.seq > lastReadSeq &&
+      message.author?.id !== meId &&
+      !message.deleted,
   );
   return first?.seq ?? null;
 }

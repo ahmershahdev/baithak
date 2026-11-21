@@ -17,4 +17,14 @@ urlpatterns = [
         message_views.MessageDetailView.as_view(),
         name="message",
     ),
+    path(
+        "<int:channel_id>/messages/<int:seq>/replies/",
+        message_views.ThreadView.as_view(),
+        name="thread",
+    ),
+    path(
+        "<int:channel_id>/messages/<int:seq>/replies/<int:thread_seq>/",
+        message_views.ReplyDetailView.as_view(),
+        name="reply",
+    ),
 ]

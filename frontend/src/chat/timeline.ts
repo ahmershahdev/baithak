@@ -11,17 +11,51 @@ export interface Timeline {
   hasMore: boolean;
 }
 
+/** A thread as this tab knows it. Kept current by the channel's events, not by its own. */
+export interface Thread {
+  parent: Message;
+  replies: Message[];
+}
+
+function mergeBy(
+  current: Message[],
+  incoming: Message[],
+  key: (message: Message) => number | null,
+): Message[] {
+  const byKey = new Map<number, Message>();
+  for (const message of [...current, ...incoming]) {
+    const k = key(message);
+    if (k === null) continue;
+    const known = byKey.get(k);
+    if (!known || known.event < message.event) byKey.set(k, message);
+  }
+  return [...byKey.values()].sort((a, b) => (key(a) ?? 0) - (key(b) ?? 0));
+}
+
 /**
  * Upsert by seq and keep seq order. A message seen twice keeps the copy with the higher event,
- * so a late page can't undo an edit or delete that already arrived live.
+ * so a late page can't undo an edit or delete that already arrived live. Thread replies not
+ * sent to the channel have no seq and are left out.
  */
 export function merge(current: Message[], incoming: Message[]): Message[] {
-  const bySeq = new Map(current.map((message) => [message.seq, message]));
+  return mergeBy(current, incoming, (message) => message.seq);
+}
+
+export function mergeReplies(current: Message[], incoming: Message[]): Message[] {
+  return mergeBy(current, incoming, (message) => message.thread_seq);
+}
+
+/** Bring a thread up to date with messages from the channel: its replies and its parent. */
+export function updateThread(thread: Thread, seq: number, incoming: Message[]): Thread {
+  let parent = thread.parent;
   for (const message of incoming) {
-    const known = bySeq.get(message.seq);
-    if (!known || known.event < message.event) bySeq.set(message.seq, message);
+    if (message.seq === seq && message.parent_seq === null && message.event > parent.event) {
+      parent = message;
+    }
   }
-  return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
+  const replies = incoming.filter((message) => message.parent_seq === seq);
+  if (parent === thread.parent && replies.length === 0) return thread;
+  return { parent, replies: mergeReplies(thread.replies, replies) };
 }
 
 export type Applied = { kind: "applied"; timeline: Timeline } | { kind: "stale" } | { kind: "gap" };
@@ -44,4 +78,9 @@ export function startsGroup(previous: Message | undefined, message: Message): bo
   if (!previous || previous.author?.id !== message.author?.id) return true;
   const gap = new Date(message.created_at).getTime() - new Date(previous.created_at).getTime();
   return gap > 5 * 60_000;
+}
+
+/** client_ids of `me`'s messages: a composer's pending send is done once its id is here. */
+export function storedIds(messages: Message[] | undefined, meId: number): Set<string> {
+  return new Set(messages?.filter((m) => m.author?.id === meId).map((m) => m.client_id));
 }

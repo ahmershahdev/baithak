@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { catchUp, chatKeys, updateChannel, type Channel } from "../api/chat";
+import { catchUp, chatKeys, routeMessages, updateChannel, type Channel } from "../api/chat";
 import { LiveSocket, socketUrl, type Status } from "./socket";
 import { applyEvent, type Message, type Timeline } from "./timeline";
 import { applyRead, countMessage } from "./unread";
@@ -28,6 +28,7 @@ export function useLive(slug: string, meId: number): Status {
         // Whatever happened while the socket was down is in the database; fetch it.
         for (const id of timelines()) void catchUp(client, slug, id);
         refreshChannels();
+        void client.invalidateQueries({ queryKey: chatKeys.threads(slug) });
       },
       onEvent: (event) => {
         if (event.type === "message") {
@@ -35,6 +36,7 @@ export function useLive(slug: string, meId: number): Status {
           updateChannel(client, slug, event.channel, (channel) =>
             countMessage(channel, message, meId),
           );
+          routeMessages(client, slug, event.channel, [message]);
           const key = chatKeys.timeline(slug, event.channel);
           const timeline = client.getQueryData<Timeline>(key);
           if (!timeline) return;

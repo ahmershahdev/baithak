@@ -33,7 +33,7 @@ in CI, and seed data.
 
 ## M3. Threads, direct messages and presence (target 2027-01-17)
 
-- [ ] Threads with reply counts and "also send to channel"
+- [x] Threads with reply counts and "also send to channel"
 - [ ] Direct and group messages
 - [ ] Mentions (`@person`, `@channel`) parsed in `apps/core`, with autocomplete
 - [ ] Reactions

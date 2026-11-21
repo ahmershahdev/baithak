@@ -364,3 +364,29 @@ class TestReadMarkers:
                 "last_read_seq": 1,
             }
         assert await other.receive_nothing()
+
+
+class TestThreads:
+    async def test_a_reply_arrives_then_its_parent_with_the_new_count(
+        self,
+        owner: User,
+        workspace: Workspace,
+        general: Channel,
+        sockets: list[WebsocketCommunicator],
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        socket = await open_socket(bilal, sockets)
+        await socket.receive_json_from()
+        first, _ = await post(general, owner, "Lunch?")
+        await socket.receive_json_from()
+
+        await database_sync_to_async(messages.post)(general, owner, "Biryani", parent=first)
+
+        reply = await socket.receive_json_from()
+        parent = await socket.receive_json_from()
+        assert (reply["event"], reply["message"]["parent_seq"], reply["message"]["seq"]) == (
+            2,
+            1,
+            None,
+        )
+        assert (parent["event"], parent["message"]["reply_count"]) == (3, 1)

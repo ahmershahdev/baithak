@@ -415,12 +415,60 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete a message */
+        /**
+         * Delete a message
+         * @description Edit and delete, for a message found by `_message`.
+         */
         delete: operations["workspaces_channels_messages_destroy"];
         options?: never;
         head?: never;
-        /** Edit your message */
+        /**
+         * Edit your message
+         * @description Edit and delete, for a message found by `_message`.
+         */
         patch: operations["workspaces_channels_messages_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A thread: its first message and replies, oldest first */
+        get: operations["workspaces_channels_messages_replies_retrieve"];
+        put?: never;
+        /** Reply in a thread */
+        post: operations["workspaces_channels_messages_replies_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/{thread_seq}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a reply
+         * @description Edit and delete, for a message found by `_message`.
+         */
+        delete: operations["workspaces_channels_messages_replies_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit your reply
+         * @description Edit and delete, for a message found by `_message`.
+         */
+        patch: operations["workspaces_channels_messages_replies_partial_update"];
         trace?: never;
     };
     "/api/v1/workspaces/{slug}/channels/{channel_id}/read/": {
@@ -654,10 +702,18 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
+        /** @description Needs `author` and `parent` loaded (select_related) to avoid a query per message. */
         Message: {
             readonly id: number;
-            readonly seq: number;
+            readonly seq: number | null;
             readonly event: number;
+            /** @description The thread's seq. */
+            readonly parent_seq: number | null;
+            readonly thread_seq: number | null;
+            readonly also_in_channel: boolean;
+            readonly reply_count: number;
+            /** Format: date-time */
+            readonly last_reply_at: string | null;
             readonly author: components["schemas"]["Author"] | null;
             readonly body: string;
             readonly client_id: string;
@@ -703,6 +759,12 @@ export interface components {
         ReadRequest: {
             seq: number;
         };
+        ReplyRequest: {
+            body: string;
+            client_id?: string;
+            /** @default false */
+            also_in_channel: boolean;
+        };
         /**
          * @description * `owner` - owner
          *     * `admin` - admin
@@ -732,6 +794,11 @@ export interface components {
             username: string;
             display_name?: string;
             password: string;
+        };
+        ThreadPage: {
+            parent: components["schemas"]["Message"];
+            replies: components["schemas"]["Message"][];
+            has_more: boolean;
         };
         TokenRequest: {
             token: string;
@@ -1630,6 +1697,142 @@ export interface operations {
                 channel_id: number;
                 seq: number;
                 slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedBodyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_replies_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Replies after this thread_seq. */
+                after?: number;
+            };
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadPage"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_replies_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_replies_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+                thread_seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_replies_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+                thread_seq: number;
             };
             cookie?: never;
         };
