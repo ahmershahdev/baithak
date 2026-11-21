@@ -38,3 +38,10 @@ def test_redis_reads_outlast_the_channel_layers_blocking_wait() -> None:
     host = config["hosts"][0]
 
     assert host["socket_timeout"] > RedisChannelLayer.brpop_timeout
+
+
+def test_the_channel_layer_pool_outgrows_redis_pys_default() -> None:
+    config: Any = base.CHANNEL_LAYERS["default"]["CONFIG"]
+
+    # redis-py 8 defaults to 100 and raises when they are all in use.
+    assert config["hosts"][0]["max_connections"] >= 1000

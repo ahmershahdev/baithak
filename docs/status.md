@@ -147,18 +147,20 @@ M1 in progress. Merged so far:
   that workspace and channels they can no longer read. `/w/<slug>/me` has the settings (email
   on or off, quiet hours, time zone), linked as Settings next to Sign out.
 
+- Load check (in progress, branch `chore/load-check`): `python manage.py load_check` opens N
+  real sockets in an invented workspace and times delivery. Dev stack, Windows Docker, client in
+  the same container: 500 clients connect in about 34 s at 10 handshakes at a time; all 10000
+  deliveries of 20 messages arrive, median 0.8 s, p95 2.9 s. Found and fixed: redis-py 8 caps a
+  pool at 100 connections and raised during 500 disconnects (channel layer now 2000).
+  Suspected bottleneck still to confirm: every join is announced to everyone (presence is
+  N x N, about 250000 frames for 500 joins) and may still be draining while messages are sent;
+  also each connect runs several queries on Django's one database thread.
+
 ## Next session
 
-M4: load check, one channel with 500 connected clients, with message delivery time measured.
-Then release `v0.4.0`.
-
-The local Docker image still lacks Pillow (network timeouts while rebuilding); the running
-backend and worker had it copied in by hand. Rebuild with `docker compose build backend worker`
-before recreating them, or the worker fails to start. The worker needs recreating once to pick
-up `--beat`.
-
-Production needs a volume for `FILES_ROOT` and a request body limit of at least 25 MB at the
-proxy.
+Finish the load check: record when the last presence announcement arrives to confirm the
+suspicion, then batch or coalesce presence announcements if it holds, rerun, record numbers in
+`docs/architecture.md`, merge, and release `v0.4.0`.
 
 ## Open questions
 

@@ -29,6 +29,7 @@ dev = [
   "celery-types==0.26.0",
   "types-channels==4.3.0.20260408",
   "djangorestframework-stubs[compatible-mypy]==3.16.9",
+  "websockets==17.4",
 ]
 
 [tool.uv]
