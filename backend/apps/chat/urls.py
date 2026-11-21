@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.chat import message_views, views
+from apps.files.views import UploadView
 
 app_name = "channels"
 
@@ -11,6 +12,7 @@ urlpatterns = [
     path("<int:channel_id>/join/", views.ChannelJoinView.as_view(), name="join"),
     path("<int:channel_id>/leave/", views.ChannelLeaveView.as_view(), name="leave"),
     path("<int:channel_id>/read/", views.ChannelReadView.as_view(), name="read"),
+    path("<int:channel_id>/files/", UploadView.as_view(), name="files"),
     path("<int:channel_id>/members/", views.ChannelMembersView.as_view(), name="members"),
     path("<int:channel_id>/messages/", message_views.MessageListView.as_view(), name="messages"),
     path(

@@ -7,6 +7,7 @@ import {
   markRead,
   remember,
   sendMessage,
+  uploadFile,
   useChannels,
   useJoinChannel,
   useMentionCandidates,
@@ -197,8 +198,13 @@ function Conversation({
   const other =
     channel.kind === "direct" ? channel.people.find((person) => person.id !== me.id) : undefined;
 
-  async function send(body: string, clientId: string) {
-    remember(client, slug, channel.id, await sendMessage(slug, channel.id, body, clientId));
+  async function send(body: string, clientId: string, attachments: number[]) {
+    remember(
+      client,
+      slug,
+      channel.id,
+      await sendMessage(slug, channel.id, body, clientId, attachments),
+    );
   }
 
   return (
@@ -276,6 +282,7 @@ function Conversation({
             label={conversation ? `Message ${title}` : `Message #${channel.name}`}
             stored={storedIds(timeline.data?.messages, me.id)}
             send={send}
+            upload={(file) => uploadFile(slug, channel.id, file)}
             candidates={candidates}
             onTyping={() => {
               sendTyping(channel.id, null);

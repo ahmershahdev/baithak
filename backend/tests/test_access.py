@@ -51,6 +51,8 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("channels:join", "post", CHANNEL + "join/", None),
     ("channels:leave", "post", CHANNEL + "leave/", None),
     ("channels:read", "post", CHANNEL + "read/", {"seq": 1}),
+    ("channels:files", "post", CHANNEL + "files/", None),
+    ("files:download", "get", "/api/v1/workspaces/{slug}/files/not-a-real-token/", None),
     ("channels:members", "get", CHANNEL + "members/", None),
     ("channels:members", "post", CHANNEL + "members/", {"user_id": 1}),
     ("channels:messages", "get", CHANNEL + "messages/", None),
@@ -83,7 +85,7 @@ CHANNEL_ENDPOINTS = [entry for entry in ENDPOINTS if "{channel_id}" in entry[2]]
 
 # Endpoints that are not inside one workspace, so the rule above does not apply.
 NOT_WORKSPACE_SCOPED = {"workspaces:list"}
-SCOPED_NAMESPACES = ("workspaces:", "channels:")
+SCOPED_NAMESPACES = ("workspaces:", "channels:", "files:")
 
 
 def _names(resolver: URLResolver, namespace: str = "") -> set[str]:

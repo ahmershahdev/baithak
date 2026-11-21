@@ -37,3 +37,6 @@ CLAUDE.local.md
 media/
 staticfiles/
 *.sql.gz
+
+# Uploaded files in development
+backend/var/

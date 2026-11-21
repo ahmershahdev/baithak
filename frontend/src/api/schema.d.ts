@@ -337,6 +337,23 @@ export interface paths {
         patch: operations["workspaces_channels_partial_update"];
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/files/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a file to attach to your next message in this channel */
+        post: operations["workspaces_channels_files_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/channels/{channel_id}/join/": {
         parameters: {
             query?: never;
@@ -573,6 +590,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/files/{token}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a file through its signed link */
+        get: operations["workspaces_files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/invitations/": {
         parameters: {
             query?: never;
@@ -649,6 +683,19 @@ export interface components {
     schemas: {
         AddChannelMemberRequest: {
             user_id: number;
+        };
+        /** @description Needs `workspace` loaded for the links. */
+        Attachment: {
+            readonly id: number;
+            readonly name: string;
+            readonly content_type: string;
+            readonly size: number;
+            readonly width: number | null;
+            readonly height: number | null;
+            /** @description Signed; stops working after a while. */
+            readonly url: string;
+            /** @description A smaller image, once made; null before that and for other files. */
+            readonly preview_url: string | null;
         };
         AuditEvent: {
             readonly id: number;
@@ -830,6 +877,7 @@ export interface components {
             readonly mentions: components["schemas"]["Author"][];
             readonly mentions_channel: boolean;
             readonly reactions: components["schemas"]["Reaction"][];
+            readonly attachments: components["schemas"]["Attachment"][];
         };
         MessagePage: {
             messages: components["schemas"]["Message"][];
@@ -873,8 +921,11 @@ export interface components {
             seq: number;
         };
         ReplyRequest: {
+            /** @default  */
             body: string;
             client_id?: string;
+            /** @description Ids of files you uploaded to this channel and haven't sent yet. */
+            attachments?: number[];
             /** @default false */
             also_in_channel: boolean;
         };
@@ -887,8 +938,11 @@ export interface components {
          */
         RoleEnum: "owner" | "admin" | "member" | "guest";
         SendRequest: {
+            /** @default  */
             body: string;
             client_id?: string;
+            /** @description Ids of files you uploaded to this channel and haven't sent yet. */
+            attachments?: number[];
         };
         SignInRequest: {
             captcha?: string;
@@ -919,6 +973,10 @@ export interface components {
         UidTokenRequest: {
             uid: string;
             token: string;
+        };
+        UploadRequest: {
+            /** Format: binary */
+            file: string;
         };
         User: {
             readonly id: number;
@@ -1588,6 +1646,48 @@ export interface operations {
             };
         };
     };
+    workspaces_channels_files_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
     workspaces_channels_join_create: {
         parameters: {
             query?: never;
@@ -1740,7 +1840,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["SendRequest"];
             };
@@ -1949,7 +2049,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["ReplyRequest"];
             };
@@ -2196,6 +2296,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_files_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
                 };
             };
         };

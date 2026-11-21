@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from django.db import transaction
 from django.http import Http404
@@ -22,6 +22,8 @@ from apps.core.reactions import MAX_DISTINCT
 from apps.workspaces import audit
 
 PAGE_SIZE = 50
+MAX_ATTACHMENTS = 10
+FILES_UNAVAILABLE = "Those files can't be sent: upload them to this channel again."
 THREAD_PAGE_SIZE = 100
 CATCH_UP_LIMIT = 500
 MAX_BODY = 4000
@@ -38,8 +40,23 @@ class BodySerializer(serializers.Serializer[None]):
     body = serializers.CharField(max_length=MAX_BODY, trim_whitespace=True)
 
 
-class SendSerializer(BodySerializer):
+class SendSerializer(serializers.Serializer[None]):
+    body = serializers.CharField(
+        max_length=MAX_BODY, trim_whitespace=True, required=False, allow_blank=True, default=""
+    )
     client_id = serializers.RegexField(r"^[A-Za-z0-9_-]{1,64}$", required=False, allow_blank=True)
+    attachments = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        default=list,
+        max_length=MAX_ATTACHMENTS,
+        help_text="Ids of files you uploaded to this channel and haven't sent yet.",
+    )
+
+    def validate(self, data: dict[str, Any]) -> dict[str, Any]:
+        if not data["body"] and not data["attachments"]:
+            raise serializers.ValidationError({"body": ["Write a message or attach a file."]})
+        return data
 
 
 class ReplySerializer(SendSerializer):
@@ -151,12 +168,16 @@ class MessageListView(APIView):
         _check_can_post(access)
         serializer = SendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        message, created = messages.post(
-            access.channel,
-            user,
-            serializer.validated_data["body"],
-            serializer.validated_data.get("client_id", ""),
-        )
+        try:
+            message, created = messages.post(
+                access.channel,
+                user,
+                serializer.validated_data["body"],
+                serializer.validated_data.get("client_id", ""),
+                attachment_ids=serializer.validated_data["attachments"],
+            )
+        except messages.FilesUnavailable as error:
+            raise serializers.ValidationError({"attachments": [FILES_UNAVAILABLE]}) from error
         return Response(
             MessageSerializer(message).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
@@ -277,14 +298,18 @@ class ThreadView(APIView):
         parent = _thread_parent(access, seq)
         serializer = ReplySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        message, created = messages.post(
-            access.channel,
-            user,
-            serializer.validated_data["body"],
-            serializer.validated_data.get("client_id", ""),
-            parent=parent,
-            also_in_channel=serializer.validated_data["also_in_channel"],
-        )
+        try:
+            message, created = messages.post(
+                access.channel,
+                user,
+                serializer.validated_data["body"],
+                serializer.validated_data.get("client_id", ""),
+                parent=parent,
+                also_in_channel=serializer.validated_data["also_in_channel"],
+                attachment_ids=serializer.validated_data["attachments"],
+            )
+        except messages.FilesUnavailable as error:
+            raise serializers.ValidationError({"attachments": [FILES_UNAVAILABLE]}) from error
         return Response(
             MessageSerializer(message).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,

@@ -7,6 +7,7 @@ from rest_framework import serializers
 from apps.accounts.models import User
 from apps.chat.models import Channel, ChannelMember, Message, Reaction, channel_name_validator
 from apps.core.channels import CONVERSATIONS, ChannelKind
+from apps.files.serializers import ATTACHMENT_PREFETCH, AttachmentSerializer
 
 KIND_CHOICES = [kind.value for kind in ChannelKind]
 # Conversations are started through their own endpoint, never created as channels.
@@ -121,6 +122,7 @@ class ReactionSerializer(serializers.Serializer[None]):
 # Every query that serializes messages loads these, or each message costs extra queries.
 MESSAGE_PREFETCH = (
     "mentions",
+    ATTACHMENT_PREFETCH,
     Prefetch("reactions", queryset=Reaction.objects.select_related("user").order_by("id")),
 )
 
@@ -133,6 +135,7 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
     deleted = serializers.BooleanField(read_only=True)
     mentions = AuthorSerializer(many=True, read_only=True)
     reactions = serializers.SerializerMethodField()
+    attachments = AttachmentSerializer(many=True, read_only=True)
     parent_seq = serializers.IntegerField(
         source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
     )
@@ -157,6 +160,7 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "mentions",
             "mentions_channel",
             "reactions",
+            "attachments",
         )
         read_only_fields = fields
 

@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -5,6 +7,8 @@ from apps.accounts.models import User
 from apps.chat import events, mentions
 from apps.chat.models import Channel, ChannelMember, Message, Reaction
 from apps.core.reactions import can_add
+from apps.files import storage
+from apps.files.models import Attachment
 
 
 def _lock(channel: Channel) -> Channel:
@@ -19,6 +23,7 @@ def post(
     *,
     parent: Message | None = None,
     also_in_channel: bool = False,
+    attachment_ids: Sequence[int] = (),
 ) -> tuple[Message, bool]:
     """Save a message, or a reply to `parent`, with the channel's next event. Returns
     (message, created).
@@ -62,6 +67,14 @@ def post(
             mentions_channel=everyone,
         )
         message.mentions.set(named)
+        if attachment_ids:
+            # Only the author's own files, not yet sent, still in this channel; a second send
+            # racing for the same file finds it taken and rolls back.
+            taken = Attachment.objects.filter(
+                pk__in=attachment_ids, channel=locked, uploader=author, message__isnull=True
+            ).update(message=message)
+            if taken != len(set(attachment_ids)):
+                raise FilesUnavailable
         events.message_changed(message)
         if parent is not None:
             locked.last_event += 1
@@ -107,12 +120,39 @@ def delete(message: Message) -> Message:
         message.save(update_fields=["body", "deleted_at", "event", "mentions_channel"])
         message.mentions.clear()
         message.reactions.all().delete()
+        attached = Attachment.objects.filter(message=message)
+        keys = [key for f in attached for key in (f.storage_key, f.preview_key) if key]
+        attached.delete()
+
+        def remove_files() -> None:
+            for key in keys:
+                storage.delete(key)
+
+        # Only once the rows are gone for good; a rolled-back delete keeps its files.
+        transaction.on_commit(remove_files)
         events.message_changed(message)
     return message
 
 
 class TooManyReactions(Exception):
     pass
+
+
+class FilesUnavailable(Exception):
+    """An attachment isn't the author's to send here, or another message took it."""
+
+
+def touch(message: Message) -> Message:
+    """Give a message a new event without changing its text: something attached to it changed
+    (an image preview is ready), and open sockets and catch-up should hear."""
+    with transaction.atomic():
+        locked = _lock(message.channel)
+        locked.last_event += 1
+        locked.save(update_fields=["last_event"])
+        message.event = locked.last_event
+        message.save(update_fields=["event"])
+        events.message_changed(message)
+    return message
 
 
 def react(message: Message, user: User, emoji: str, *, on: bool) -> Message:

@@ -583,6 +583,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+  /api/v1/workspaces/{slug}/channels/{channel_id}/files/:
+    post:
+      operationId: workspaces_channels_files_create
+      summary: Upload a file to attach to your next message in this channel
+      parameters:
+      - in: path
+        name: channel_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
   /api/v1/workspaces/{slug}/channels/{channel_id}/join/:
     post:
       operationId: workspaces_channels_join_create
@@ -763,7 +807,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SendRequest'
-        required: true
       security:
       - cookieAuth: []
       responses:
@@ -1014,7 +1057,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ReplyRequest'
-        required: true
       security:
       - cookieAuth: []
       responses:
@@ -1300,6 +1342,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+  /api/v1/workspaces/{slug}/files/{token}/:
+    get:
+      operationId: workspaces_files_retrieve
+      summary: Download a file through its signed link
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/workspaces/{slug}/invitations/:
     get:
       operationId: workspaces_invitations_list
@@ -1485,6 +1554,49 @@ components:
           type: integer
       required:
       - user_id
+    Attachment:
+      type: object
+      description: Needs `workspace` loaded for the links.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        content_type:
+          type: string
+          readOnly: true
+        size:
+          type: integer
+          readOnly: true
+        width:
+          type: integer
+          readOnly: true
+          nullable: true
+        height:
+          type: integer
+          readOnly: true
+          nullable: true
+        url:
+          type: string
+          readOnly: true
+          description: Signed; stops working after a while.
+        preview_url:
+          type: string
+          nullable: true
+          readOnly: true
+          description: A smaller image, once made; null before that and for other
+            files.
+      required:
+      - content_type
+      - height
+      - id
+      - name
+      - preview_url
+      - size
+      - url
+      - width
     AuditEvent:
       type: object
       properties:
@@ -1967,8 +2079,14 @@ components:
           items:
             $ref: '#/components/schemas/Reaction'
           readOnly: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+          readOnly: true
       required:
       - also_in_channel
+      - attachments
       - author
       - body
       - client_id
@@ -2103,7 +2221,7 @@ components:
       properties:
         body:
           type: string
-          minLength: 1
+          default: ''
           maxLength: 4000
         client_id:
           oneOf:
@@ -2111,11 +2229,16 @@ components:
             pattern: ^[A-Za-z0-9_-]{1,64}$
           - type: string
             maxLength: 0
+        attachments:
+          type: array
+          items:
+            type: integer
+          description: Ids of files you uploaded to this channel and haven't sent
+            yet.
+          maxItems: 10
         also_in_channel:
           type: boolean
           default: false
-      required:
-      - body
     RoleEnum:
       enum:
       - owner
@@ -2133,7 +2256,7 @@ components:
       properties:
         body:
           type: string
-          minLength: 1
+          default: ''
           maxLength: 4000
         client_id:
           oneOf:
@@ -2141,8 +2264,13 @@ components:
             pattern: ^[A-Za-z0-9_-]{1,64}$
           - type: string
             maxLength: 0
-      required:
-      - body
+        attachments:
+          type: array
+          items:
+            type: integer
+          description: Ids of files you uploaded to this channel and haven't sent
+            yet.
+          maxItems: 10
     SignInRequest:
       type: object
       properties:
@@ -2240,6 +2368,14 @@ components:
       required:
       - token
       - uid
+    UploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     User:
       type: object
       properties:
