@@ -5,7 +5,8 @@ import { useChannels, useCreateChannel, useJoinChannel, type ChannelKind } from 
 import type { ApiErrors } from "../../api/client";
 import { ApiError } from "../../api/workspaces";
 import { Button, ErrorMessage, Field } from "../../components/ui";
-import { ChannelIcon, PageHeader, Panel, Select } from "../../components/workspace";
+import { Select } from "../../components/Select";
+import { ChannelIcon, PageHeader, Panel } from "../../components/workspace";
 import { textField } from "../../forms";
 import type { WorkspaceContext } from "./Shell";
 
@@ -115,10 +116,17 @@ export function Channels() {
                   <label htmlFor="channel-kind" className="text-sm font-semibold">
                     Who can see it
                   </label>
-                  <Select id="channel-kind" name="kind" defaultValue="public" className="h-12" full>
-                    <option value="public">Everyone</option>
-                    <option value="private">Invited only</option>
-                  </Select>
+                  <Select
+                    id="channel-kind"
+                    name="kind"
+                    defaultValue="public"
+                    large
+                    full
+                    options={[
+                      { value: "public", label: "Everyone" },
+                      { value: "private", label: "Invited only" },
+                    ]}
+                  />
                 </div>
               </div>
               <Field

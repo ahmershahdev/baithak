@@ -1,4 +1,4 @@
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ROLE_LABELS, type Role } from "../roles";
 
@@ -82,29 +82,6 @@ export function Panel({ children, className = "" }: { children: ReactNode; class
     <section className={`rounded-2xl border border-border bg-surface shadow-sm ${className}`}>
       {children}
     </section>
-  );
-}
-
-interface SelectProps extends ComponentProps<"select"> {
-  /** Fill the width at every size, for selects in a form column. */
-  full?: boolean;
-}
-
-export function Select({ className = "", full = false, ...props }: SelectProps) {
-  return (
-    <span className={`relative inline-flex w-full ${full ? "" : "sm:w-auto"}`}>
-      <select
-        className={`h-10 w-full cursor-pointer appearance-none rounded-lg border border-border-strong bg-bg py-0 pr-10 pl-3 text-sm font-semibold text-text transition-colors outline-none hover:border-text-subtle focus-visible:border-focus-ring focus-visible:ring-4 focus-visible:ring-focus-ring/20 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
-        {...props}
-      />
-      <svg
-        viewBox="0 0 20 20"
-        className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-text-subtle"
-        aria-hidden="true"
-      >
-        <path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    </span>
   );
 }
 

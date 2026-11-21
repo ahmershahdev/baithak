@@ -8,6 +8,7 @@ import {
   useRemoveMember,
   type Member,
 } from "../../api/workspaces";
+import { Select } from "../../components/Select";
 import { ErrorMessage } from "../../components/ui";
 import {
   Avatar,
@@ -15,7 +16,6 @@ import {
   PageHeader,
   Panel,
   RoleBadge,
-  Select,
   When,
 } from "../../components/workspace";
 import { canManage, grantable, ROLE_LABELS, type Role } from "../../roles";
@@ -53,10 +53,11 @@ function Row({ member, myRole, isMe }: { member: Member; myRole: Role; isMe: boo
             aria-label={`Role of ${name}`}
             value={member.role}
             disabled={changeRole.isPending}
-            onChange={(event) => {
+            options={grantable(myRole).map((role) => ({ value: role, label: ROLE_LABELS[role] }))}
+            onChange={(role) => {
               setError(null);
               changeRole.mutate(
-                { userId: member.user_id, role: event.target.value as Role },
+                { userId: member.user_id, role },
                 {
                   onError: (failure) => {
                     setError(problem(failure));
@@ -64,13 +65,7 @@ function Row({ member, myRole, isMe }: { member: Member; myRole: Role; isMe: boo
                 },
               );
             }}
-          >
-            {grantable(myRole).map((role) => (
-              <option key={role} value={role}>
-                {ROLE_LABELS[role]}
-              </option>
-            ))}
-          </Select>
+          />
         ) : (
           <RoleBadge role={member.role} />
         )}

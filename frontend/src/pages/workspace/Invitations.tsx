@@ -3,15 +3,9 @@ import { useOutletContext } from "react-router";
 
 import type { ApiErrors } from "../../api/client";
 import { ApiError, useInvitations, useInvite, useRevokeInvitation } from "../../api/workspaces";
+import { Select } from "../../components/Select";
 import { Button, ErrorMessage, Field, Notice } from "../../components/ui";
-import {
-  ConfirmButton,
-  PageHeader,
-  Panel,
-  RoleBadge,
-  Select,
-  When,
-} from "../../components/workspace";
+import { ConfirmButton, PageHeader, Panel, RoleBadge, When } from "../../components/workspace";
 import { textField } from "../../forms";
 import { invitable, isAdmin, ROLE_LABELS } from "../../roles";
 import type { WorkspaceContext } from "./Shell";
@@ -86,13 +80,17 @@ export function Invitations() {
               <label htmlFor="invite-role" className="text-sm font-semibold">
                 Role
               </label>
-              <Select id="invite-role" name="role" defaultValue="member" className="h-12" full>
-                {invitable(workspace.role).map((role) => (
-                  <option key={role} value={role}>
-                    {ROLE_LABELS[role]}
-                  </option>
-                ))}
-              </Select>
+              <Select
+                id="invite-role"
+                name="role"
+                defaultValue="member"
+                large
+                full
+                options={invitable(workspace.role).map((role) => ({
+                  value: role,
+                  label: ROLE_LABELS[role],
+                }))}
+              />
             </div>
           </div>
           <Button type="submit" busy={invite.isPending} busyLabel="Sending" className="self-start">
