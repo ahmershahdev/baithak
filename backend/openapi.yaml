@@ -1545,6 +1545,120 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+  /api/v1/workspaces/{slug}/search/files/:
+    get:
+      operationId: workspaces_search_files_retrieve
+      summary: Search files you can read by name, newest first
+      parameters:
+      - in: query
+        name: after
+        schema:
+          type: string
+          format: date
+        description: On or after this day.
+      - in: query
+        name: author
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 30
+        description: A @handle.
+      - in: query
+        name: before
+        schema:
+          type: string
+          format: date
+        description: On or before this day.
+      - in: query
+        name: before_id
+        schema:
+          type: integer
+        description: 'The next page: `next` from the last.'
+      - in: query
+        name: channel
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description: Words to find, each as a prefix.
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResults'
+          description: ''
+  /api/v1/workspaces/{slug}/search/messages/:
+    get:
+      operationId: workspaces_search_messages_retrieve
+      summary: Search messages you can read, newest first
+      parameters:
+      - in: query
+        name: after
+        schema:
+          type: string
+          format: date
+        description: On or after this day.
+      - in: query
+        name: author
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 30
+        description: A @handle.
+      - in: query
+        name: before
+        schema:
+          type: string
+          format: date
+        description: On or before this day.
+      - in: query
+        name: before_id
+        schema:
+          type: integer
+        description: 'The next page: `next` from the last.'
+      - in: query
+        name: channel
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description: Words to find, each as a prefix.
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResults'
+          description: ''
 components:
   schemas:
     AddChannelMemberRequest:
@@ -1907,6 +2021,42 @@ components:
           maxLength: 32
       required:
       - emoji
+    FileHit:
+      type: object
+      properties:
+        channel:
+          type: integer
+        message_seq:
+          type: integer
+          nullable: true
+        parent_seq:
+          type: integer
+          nullable: true
+        file:
+          $ref: '#/components/schemas/Attachment'
+      required:
+      - channel
+      - file
+      - message_seq
+      - parent_seq
+    FileResults:
+      type: object
+      properties:
+        terms:
+          type: array
+          items:
+            type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileHit'
+        next:
+          type: integer
+          nullable: true
+      required:
+      - next
+      - results
+      - terms
     InvitableRoleEnum:
       enum:
       - admin
@@ -2103,6 +2253,16 @@ components:
       - reply_count
       - seq
       - thread_seq
+    MessageHit:
+      type: object
+      properties:
+        channel:
+          type: integer
+        message:
+          $ref: '#/components/schemas/Message'
+      required:
+      - channel
+      - message
     MessagePage:
       type: object
       properties:
@@ -2121,6 +2281,25 @@ components:
       - last_event
       - last_seq
       - messages
+    MessageResults:
+      type: object
+      properties:
+        terms:
+          type: array
+          items:
+            type: string
+          description: The words searched for; empty when none counted.
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageHit'
+        next:
+          type: integer
+          nullable: true
+      required:
+      - next
+      - results
+      - terms
     PasswordResetConfirmRequest:
       type: object
       description: 'The code from the email, and who it is for: `uid` from the emailed

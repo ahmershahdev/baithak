@@ -677,6 +677,40 @@ export interface paths {
         patch: operations["workspaces_members_partial_update"];
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/search/files/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search files you can read by name, newest first */
+        get: operations["workspaces_search_files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/search/messages/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search messages you can read, newest first */
+        get: operations["workspaces_search_messages_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -813,6 +847,17 @@ export interface components {
         EmojiRequest: {
             emoji: string;
         };
+        FileHit: {
+            channel: number;
+            message_seq: number | null;
+            parent_seq: number | null;
+            file: components["schemas"]["Attachment"];
+        };
+        FileResults: {
+            terms: string[];
+            results: components["schemas"]["FileHit"][];
+            next: number | null;
+        };
         /**
          * @description * `admin` - admin
          *     * `member` - member
@@ -879,11 +924,21 @@ export interface components {
             readonly reactions: components["schemas"]["Reaction"][];
             readonly attachments: components["schemas"]["Attachment"][];
         };
+        MessageHit: {
+            channel: number;
+            message: components["schemas"]["Message"];
+        };
         MessagePage: {
             messages: components["schemas"]["Message"][];
             has_more: boolean;
             last_seq: number;
             last_event: number;
+        };
+        MessageResults: {
+            /** @description The words searched for; empty when none counted. */
+            terms: string[];
+            results: components["schemas"]["MessageHit"][];
+            next: number | null;
         };
         /** @description The code from the email, and who it is for: `uid` from the emailed link, or `email`. */
         PasswordResetConfirmRequest: {
@@ -2493,6 +2548,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_search_files_retrieve: {
+        parameters: {
+            query: {
+                /** @description On or after this day. */
+                after?: string;
+                /** @description A @handle. */
+                author?: string;
+                /** @description On or before this day. */
+                before?: string;
+                /** @description The next page: `next` from the last. */
+                before_id?: number;
+                channel?: number;
+                /** @description Words to find, each as a prefix. */
+                q: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileResults"];
+                };
+            };
+        };
+    };
+    workspaces_search_messages_retrieve: {
+        parameters: {
+            query: {
+                /** @description On or after this day. */
+                after?: string;
+                /** @description A @handle. */
+                author?: string;
+                /** @description On or before this day. */
+                before?: string;
+                /** @description The next page: `next` from the last. */
+                before_id?: number;
+                channel?: number;
+                /** @description Words to find, each as a prefix. */
+                q: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResults"];
                 };
             };
         };

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.workspaces",
     "apps.chat",
     "apps.files",
+    "apps.search",
 ]
 
 MIDDLEWARE = [
@@ -154,6 +155,7 @@ REST_FRAMEWORK = {
         "availability": "30/minute",
         "contact": "5/hour",
         "upload": "60/hour",
+        "search": "60/minute",
     },
     # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
     # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.

@@ -711,3 +711,58 @@ describe("files", () => {
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 });
+
+describe("search", () => {
+  test("searching from the sidebar shows highlighted results that open their thread", async () => {
+    const asked: string[] = [];
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+      "GET /api/v1/workspaces/team/search/messages/": (request) => {
+        const url = new URL(request.url);
+        asked.push(url.search);
+        if (url.searchParams.get("before_id") === "40")
+          return json(200, {
+            terms: ["deploy"],
+            results: [{ channel: 5, message: message(2, 2, "Old deploy notes") }],
+            next: null,
+          });
+        return json(200, {
+          terms: ["deploy"],
+          results: [
+            {
+              channel: 5,
+              message: { ...message(9, 9, "Deployment is done"), id: 40, parent_seq: 3, seq: null },
+            },
+          ],
+          next: 40,
+        });
+      },
+    });
+    await openChannel();
+
+    await userEvent.type(screen.getByLabelText("Search messages and files"), "deploy{Enter}");
+
+    const results = await screen.findByRole("list", { name: "Results" });
+    const hit = within(results).getByText("Deployment");
+    expect(hit.tagName).toBe("MARK");
+    expect(within(results).getByRole("link", { name: /Deployment is done/ })).toHaveAttribute(
+      "href",
+      "/w/team/c/5?thread=3",
+    );
+    expect(within(results).getByText(/in general, in a thread/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "More results" }));
+    expect(await within(results).findByText(/Old/)).toBeInTheDocument();
+    expect(asked.at(-1)).toContain("before_id=40");
+  });
+
+  test("words too short to search say so", async () => {
+    backend({
+      "GET /api/v1/workspaces/team/search/messages/": () =>
+        json(200, { terms: [], results: [], next: null }),
+    });
+    renderAt("/w/team/search?q=it");
+
+    expect(await screen.findByText(/at least three letters/)).toBeInTheDocument();
+  });
+});

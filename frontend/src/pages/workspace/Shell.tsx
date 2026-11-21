@@ -158,6 +158,36 @@ function SidebarSection({
 const sectionAction =
   "rounded-md px-1.5 text-xs font-semibold text-accent-text hover:bg-surface focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none";
 
+function SearchBox({ slug }: { slug: string }) {
+  const navigate = useNavigate();
+  const [words, setWords] = useState("");
+  return (
+    <form
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!words.trim()) return;
+        void navigate(`/w/${slug}/search?q=${encodeURIComponent(words.trim())}`);
+        setWords("");
+      }}
+    >
+      <label htmlFor="sidebar-search" className="sr-only">
+        Search messages and files
+      </label>
+      <input
+        id="sidebar-search"
+        type="search"
+        value={words}
+        onChange={(event) => {
+          setWords(event.target.value);
+        }}
+        placeholder="Search"
+        className="h-9 w-full rounded-lg border border-border bg-bg px-3 text-sm outline-none placeholder:text-text-subtle focus-visible:border-focus-ring focus-visible:ring-4 focus-visible:ring-focus-ring/20"
+      />
+    </form>
+  );
+}
+
 function ChannelList({ slug, meId }: { slug: string; meId: number }) {
   const channels = useChannels(slug);
   const mine = channels.data?.filter((channel) => channel.is_member) ?? [];
@@ -293,6 +323,7 @@ export function WorkspaceShell({ me }: { me: User }) {
           <span className="text-xs text-text-subtle">Your role</span>
           <RoleBadge role={workspace.data.role} />
         </div>
+        <SearchBox slug={workspace.data.slug} />
         <ChannelList slug={workspace.data.slug} meId={me.id} />
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">

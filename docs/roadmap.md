@@ -43,8 +43,8 @@ in CI, and seed data.
 ## M4. Files, search and notifications (target 2027-02-07)
 
 - [x] File and image uploads: type and size checks, signed expiring links, previews in Celery
-- [ ] Full-text search (MySQL FULLTEXT) over messages, files and issues, filtered by the
-      permission check; filters by channel, person and date
+- [x] Full-text search (MySQL FULLTEXT) over messages, files and issues, filtered by the
+      permission check; filters by channel, person and date (issues join it in M5)
 - [ ] In-app notifications for mentions, direct messages and assigned issues
 - [ ] Email notifications for unread mentions (Celery), with quiet hours per person
 - [ ] Load check: one channel with 500 connected clients, message delivery time measured
