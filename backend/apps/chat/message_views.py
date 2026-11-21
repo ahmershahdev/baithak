@@ -119,7 +119,11 @@ class MessageListView(APIView):
     )
     def get(self, request: Request, slug: str, channel_id: int) -> Response:
         access = channel_access(_user(request), slug, channel_id)
-        found = Message.objects.filter(channel=access.channel).select_related("author", "parent")
+        found = (
+            Message.objects.filter(channel=access.channel)
+            .select_related("author", "parent")
+            .prefetch_related("mentions")
+        )
         after_event = _int_param(request, "after_event")
         if after_event is not None:
             changed = list(
@@ -242,7 +246,11 @@ class ThreadView(APIView):
     def get(self, request: Request, slug: str, channel_id: int, seq: int) -> Response:
         access = channel_access(_user(request), slug, channel_id)
         parent = _thread_parent(access, seq)
-        found = Message.objects.filter(parent=parent).select_related("author", "parent")
+        found = (
+            Message.objects.filter(parent=parent)
+            .select_related("author", "parent")
+            .prefetch_related("mentions")
+        )
         after = _int_param(request, "after")
         if after is not None:
             found = found.filter(thread_seq__gt=after)

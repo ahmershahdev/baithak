@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
+import { CHANNEL_CANDIDATE, type Candidate } from "../chat/mentions";
 import { merge, updateThread, type Message, type Thread, type Timeline } from "../chat/timeline";
 import { applyRead } from "../chat/unread";
-import { api, readErrors } from "./client";
+import { api, readErrors, type User } from "./client";
 import type { components } from "./schema";
-import { ApiError } from "./workspaces";
+import { ApiError, useMembers } from "./workspaces";
 
 export type Channel = components["schemas"]["Channel"];
 export type ChannelKind = components["schemas"]["KindEnum"];
@@ -13,6 +14,8 @@ export const chatKeys = {
   channels: (slug: string) => ["workspaces", slug, "channels"] as const,
   timeline: (slug: string, id: number) => ["workspaces", slug, "timeline", id] as const,
   threads: (slug: string) => ["workspaces", slug, "thread"] as const,
+  channelMembers: (slug: string, id: number) =>
+    ["workspaces", slug, "channel-members", id] as const,
   thread: (slug: string, id: number, seq: number) =>
     ["workspaces", slug, "thread", id, seq] as const,
 };
@@ -35,6 +38,36 @@ export function useChannels(slug: string) {
     queryFn: async () =>
       unwrap(await api.GET("/api/v1/workspaces/{slug}/channels/", { params: { path: { slug } } })),
   });
+}
+
+/** Who to offer after "@": the channel's members when it is private, else the workspace's. */
+export function useMentionCandidates(
+  slug: string,
+  channel: Channel,
+  me: User,
+  canMentionChannel: boolean,
+): Candidate[] {
+  const isPrivate = channel.kind === "private";
+  const workspace = useMembers(slug);
+  const inChannel = useQuery({
+    queryKey: chatKeys.channelMembers(slug, channel.id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/api/v1/workspaces/{slug}/channels/{channel_id}/members/", {
+          params: path(slug, channel.id),
+        }),
+      ),
+    enabled: isPrivate,
+  });
+  const people = isPrivate
+    ? (inChannel.data ?? [])
+    : (workspace.data ?? []).filter((member) => member.role !== "guest");
+  return [
+    ...people
+      .filter((person) => person.user_id !== me.id)
+      .map(({ username, display_name }) => ({ username, display_name })),
+    ...(canMentionChannel ? [CHANNEL_CANDIDATE] : []),
+  ];
 }
 
 async function latest(slug: string, id: number): Promise<Timeline> {

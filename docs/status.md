@@ -95,14 +95,19 @@ M1 in progress. Merged so far:
   beside the channel (`?thread=<seq>`, full screen on small widths), with "N replies" and a
   Reply action on messages and a composer with "Also send to #channel".
 
+- Mentions: `@handle` and `@channel` parsed in `apps/core/mentions.py`, kept only for people
+  who can read the channel, stored on each message and recomputed on edit. Guests can't use
+  `@channel`. The web app highlights confirmed mentions, marks messages that mention you, and
+  the composer suggests people after `@` (arrow keys, Enter or Tab, Escape). The unread badge
+  now uses the `unread` token.
+
 ## Next session
 
 M3, in this order:
 
-1. Mentions parsed in `apps/core` (`@person`, `@channel`) with autocomplete.
-2. Reactions.
-3. Direct and group messages.
-4. Typing indicator and online status in Redis with expiry.
+1. Reactions.
+2. Direct and group messages.
+3. Typing indicator and online status in Redis with expiry.
 
 ## Open questions
 

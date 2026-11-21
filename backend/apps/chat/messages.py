@@ -2,7 +2,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.chat import events
+from apps.chat import events, mentions
 from apps.chat.models import Channel, ChannelMember, Message
 
 
@@ -47,6 +47,7 @@ def post(
             # Fresh under the channel lock: reply_count numbers the replies.
             parent = Message.objects.get(pk=parent.pk)
             thread_seq = parent.reply_count + 1
+        named, everyone = mentions.resolve(locked, author.pk, body)
         message = Message.objects.create(
             channel=locked,
             seq=seq,
@@ -57,7 +58,9 @@ def post(
             author=author,
             body=body,
             client_id=client_id,
+            mentions_channel=everyone,
         )
+        message.mentions.set(named)
         events.message_changed(message)
         if parent is not None:
             locked.last_event += 1
@@ -83,7 +86,9 @@ def edit(message: Message, body: str) -> Message:
         message.body = body
         message.edited_at = timezone.now()
         message.event = locked.last_event
-        message.save(update_fields=["body", "edited_at", "event"])
+        named, message.mentions_channel = mentions.resolve(locked, message.author_id, body)
+        message.save(update_fields=["body", "edited_at", "event", "mentions_channel"])
+        message.mentions.set(named)
         events.message_changed(message)
     return message
 
@@ -97,6 +102,8 @@ def delete(message: Message) -> Message:
         message.body = ""
         message.deleted_at = timezone.now()
         message.event = locked.last_event
-        message.save(update_fields=["body", "deleted_at", "event"])
+        message.mentions_channel = False
+        message.save(update_fields=["body", "deleted_at", "event", "mentions_channel"])
+        message.mentions.clear()
         events.message_changed(message)
     return message

@@ -1627,8 +1627,9 @@ components:
       - username
     Message:
       type: object
-      description: Needs `author` and `parent` loaded (select_related) to avoid a
-        query per message.
+      description: |-
+        Needs `author` and `parent` loaded (select_related) and `mentions` prefetched to avoid
+        queries per message.
       properties:
         id:
           type: integer
@@ -1683,6 +1684,14 @@ components:
         deleted:
           type: boolean
           readOnly: true
+        mentions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+          readOnly: true
+        mentions_channel:
+          type: boolean
+          readOnly: true
       required:
       - also_in_channel
       - author
@@ -1694,6 +1703,8 @@ components:
       - event
       - id
       - last_reply_at
+      - mentions
+      - mentions_channel
       - parent_seq
       - reply_count
       - seq

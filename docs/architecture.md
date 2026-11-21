@@ -42,7 +42,7 @@ channel           workspace_id, name, kind (public, private, direct, group), top
 channel_member    channel_id, user_id, last_read_seq, muted
 message           channel_id, seq (null for a reply kept in its thread), event, author_id, parent_id,
                   thread_seq, also_in_channel, reply_count, last_reply_at, body, client_id,
-                  edited_at, deleted_at, created_at
+                  mentions (users), mentions_channel, edited_at, deleted_at, created_at
 reaction          message_id, user_id, emoji
 attachment        workspace_id, message_id, uploader_id, name, content_type, size, storage_key
 
@@ -115,6 +115,17 @@ the channel's next `event`, and the parent then takes one more with its new `rep
 `last_reply_at`, all under the channel lock. So threads need no events or catch-up of their
 own: a client catching up by event gets the replies and the new counts, and the web app copies
 each channel message into any open thread (`routeMessages` in `frontend/src/api/chat.ts`).
+
+## Mentions
+
+`apps/core/mentions.py` finds `@handle` and `@channel` in a body: not after a word character,
+`@` or `.` (so email addresses don't count), and a trailing `.`, `_` or `-` is read as the end
+of the sentence. On every send and edit, `apps/chat/mentions.py` keeps only workspace members
+who can read the channel (the one `can_read` rule), so a mention can't reveal a private channel,
+and `@channel` counts only from someone who isn't a guest. The result is stored on the message
+(`mentions`, `mentions_channel`) for notifications in M4; deleting a message clears it. The web
+app highlights only what the server confirmed, and the composer offers people after `@`: the
+channel's members for a private channel, the workspace's non-guests for a public one.
 
 ## Unread counts
 

@@ -122,7 +122,7 @@ function ChannelList({ slug }: { slug: string }) {
                 <>
                   <span
                     aria-hidden="true"
-                    className="ml-auto rounded-full bg-accent px-1.5 text-xs font-semibold text-on-accent tabular-nums"
+                    className="ml-auto rounded-full bg-unread px-1.5 text-xs font-semibold text-on-unread tabular-nums"
                   >
                     {badge(channel.unread)}
                   </span>

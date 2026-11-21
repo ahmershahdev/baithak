@@ -35,7 +35,7 @@ in CI, and seed data.
 
 - [x] Threads with reply counts and "also send to channel"
 - [ ] Direct and group messages
-- [ ] Mentions (`@person`, `@channel`) parsed in `apps/core`, with autocomplete
+- [x] Mentions (`@person`, `@channel`) parsed in `apps/core`, with autocomplete
 - [ ] Reactions
 - [ ] Typing indicator and online status in Redis, with expiry
 - [x] Unread counts and last-read markers per person and channel, the same on every device

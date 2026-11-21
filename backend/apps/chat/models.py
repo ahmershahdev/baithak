@@ -76,6 +76,10 @@ class Message(models.Model):
     # Counts deleted replies too: it numbers them (thread_seq), and deleted rows stay.
     reply_count = models.IntegerField(default=0)
     last_reply_at = models.DateTimeField(null=True, blank=True)
+    # Worked out from the body on every save (apps/chat/mentions.py): only people who can read
+    # the channel.
+    mentions = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
+    mentions_channel = models.BooleanField(default=False)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
