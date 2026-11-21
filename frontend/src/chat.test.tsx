@@ -766,3 +766,53 @@ describe("search", () => {
     expect(await screen.findByText(/at least three letters/)).toBeInTheDocument();
   });
 });
+
+describe("notifications", () => {
+  test("the sidebar counts unread, refreshes live, and the page marks them read", async () => {
+    const mention = {
+      id: 7,
+      kind: "mention",
+      channel: 5,
+      created_at: "2026-11-21T10:00:00Z",
+      read: false,
+      message: { ...message(2, 2, "@amna can you check the invoice?") },
+    };
+    let unread = 0;
+    const marked: unknown[] = [];
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+      "GET /api/v1/workspaces/team/notifications/": () =>
+        json(200, {
+          unread,
+          results: unread ? [mention] : [{ ...mention, read: true }],
+          next: null,
+        }),
+      "POST /api/v1/workspaces/team/notifications/read/": async (request) => {
+        marked.push(await request.json());
+        unread = 0;
+        return json(200, { unread: 0 });
+      },
+    });
+    await openChannel();
+    const link = await screen.findByRole("link", { name: "Notifications" });
+
+    unread = 1;
+    act(() => {
+      FakeSocket.latest().receive({ type: "notifications" });
+    });
+    expect(
+      await screen.findByRole("link", { name: /Notifications, 1 unread/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(link);
+    const list = await screen.findByRole("list", { name: "Notifications" });
+    expect(within(list).getByText("bilal mentioned you in general")).toBeInTheDocument();
+    expect(within(list).getByText("@amna can you check the invoice?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/1 unread/)).not.toBeInTheDocument();
+    });
+    expect(marked).toEqual([{ all: true }]);
+  });
+});

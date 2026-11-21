@@ -51,6 +51,7 @@ export function useLive(slug: string, meId: number): { status: Status; sendTypin
         for (const id of timelines()) void catchUp(client, slug, id);
         refreshChannels();
         void client.invalidateQueries({ queryKey: chatKeys.threads(slug) });
+        void client.invalidateQueries({ queryKey: ["workspaces", slug, "notifications"] });
       },
       onEvent: (event) => {
         if (event.type === "message") {
@@ -91,6 +92,8 @@ export function useLive(slug: string, meId: number): { status: Status; sendTypin
           typing((state) =>
             addTyper(state, placeKey(event.channel, event.thread), event.user, Date.now()),
           );
+        } else if (event.type === "notifications") {
+          void client.invalidateQueries({ queryKey: ["workspaces", slug, "notifications"] });
         } else if (event.type === "channel" || event.type === "subscribed") {
           refreshChannels();
         }

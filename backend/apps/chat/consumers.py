@@ -190,6 +190,9 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
                 {"type": "presence_change", "user": event["user"], "online": event["online"]}
             )
 
+    async def chat_notifications(self, event: dict[str, Any]) -> None:
+        await self.send_json({"type": "notifications"})
+
     async def chat_access(self, event: dict[str, Any]) -> None:
         readable = await self._readable()
         if readable is None:

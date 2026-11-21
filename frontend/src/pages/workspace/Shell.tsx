@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router";
 
 import { useChannels, type Channel } from "../../api/chat";
+import { useNotifications } from "../../api/notifications";
 import { api, type User } from "../../api/client";
 import { useWorkspace, useWorkspaces, type Workspace } from "../../api/workspaces";
 import { ME } from "../../auth";
@@ -188,6 +189,27 @@ function SearchBox({ slug }: { slug: string }) {
   );
 }
 
+function NotificationsLink({ slug }: { slug: string }) {
+  const notifications = useNotifications(slug);
+  const unread = notifications.data?.pages[0]?.unread ?? 0;
+  return (
+    <NavLink to={`/w/${slug}/notifications`} className={linkClass}>
+      <span className={unread ? "font-semibold text-text" : ""}>Notifications</span>
+      {unread > 0 && (
+        <>
+          <span
+            aria-hidden="true"
+            className="ml-auto rounded-full bg-unread px-1.5 text-xs font-semibold text-on-unread tabular-nums"
+          >
+            {badge(unread)}
+          </span>
+          <span className="sr-only">, {unread} unread</span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
 function ChannelList({ slug, meId }: { slug: string; meId: number }) {
   const channels = useChannels(slug);
   const mine = channels.data?.filter((channel) => channel.is_member) ?? [];
@@ -323,7 +345,10 @@ export function WorkspaceShell({ me }: { me: User }) {
           <span className="text-xs text-text-subtle">Your role</span>
           <RoleBadge role={workspace.data.role} />
         </div>
-        <SearchBox slug={workspace.data.slug} />
+        <div className="flex flex-col gap-2">
+          <SearchBox slug={workspace.data.slug} />
+          <NotificationsLink slug={workspace.data.slug} />
+        </div>
         <ChannelList slug={workspace.data.slug} meId={me.id} />
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">

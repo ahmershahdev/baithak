@@ -4,6 +4,7 @@ export type ServerEvent =
   | { type: "channel"; channel: number; data: unknown }
   | { type: "read"; channel: number; last_read_seq: number }
   | { type: "presence"; online: number[] }
+  | { type: "notifications" }
   | { type: "presence_change"; user: number; online: boolean }
   | {
       type: "typing";

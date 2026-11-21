@@ -137,13 +137,18 @@ M1 in progress. Merged so far:
   search box tops the sidebar; `/w/<slug>/search` has filters, Messages and Files tabs,
   highlighted words and links into the channel or thread. Issues join search in M5.
 
+- In-app notifications: a row per recipient for mentions, direct and group messages and
+  `@channel`, cleared by reading the channel, live through the socket, only from channels the
+  person can still read. A Notifications link with an unread count in the sidebar, and a page
+  with Mark all read. Assigned issues join in M5.
+
 ## Next session
 
 M4, in this order:
 
-1. In-app notifications for mentions and direct messages.
-2. Email notifications for unread mentions, with quiet hours.
-3. Load check: 500 clients in one channel.
+1. Email notifications for unread mentions and direct messages (Celery), with quiet hours per
+   person.
+2. Load check: 500 clients in one channel.
 
 Production needs a volume for `FILES_ROOT` and a request body limit of at least 25 MB at the
 proxy.

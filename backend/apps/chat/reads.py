@@ -5,6 +5,7 @@ from django.db.models.functions import Coalesce
 from apps.chat import events
 from apps.chat.models import Channel, ChannelMember, Message
 from apps.core.unread import marker_after, unread_count
+from apps.notifications import services as notifications
 
 
 def with_read_state(channels: QuerySet[Channel], user_id: int) -> QuerySet[Channel]:
@@ -53,6 +54,7 @@ def mark_read(channel: Channel, user_id: int, seq: int) -> int | None:
         )
         if moved:
             events.read_moved(user_id, channel.pk, target)
+            notifications.read_up_to(user_id, channel.pk, target)
             return target
     # Another device may have moved it further meanwhile.
     stored: int = (
