@@ -275,7 +275,7 @@ export async function sendReply(
   );
 }
 
-const MESSAGE = "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/";
+const MESSAGE = "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/" as const;
 const REPLY =
   "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/{thread_seq}/";
 
@@ -303,4 +303,34 @@ export async function deleteMessage(slug: string, id: number, message: Message) 
     return;
   }
   expectOk(await api.DELETE(REPLY, { params: { path: replyPath(slug, id, message) } }));
+}
+
+/** Add or take back my emoji; the answer is the message with its new reactions. */
+export async function react(
+  slug: string,
+  id: number,
+  message: Message,
+  emoji: string,
+  on: boolean,
+): Promise<Message> {
+  if (message.seq !== null) {
+    const seqPath = { slug, channel_id: id, seq: message.seq };
+    return on
+      ? unwrap(
+          await api.POST(`${MESSAGE}reactions/`, { params: { path: seqPath }, body: { emoji } }),
+        )
+      : unwrap(
+          await api.DELETE(`${MESSAGE}reactions/{emoji}/`, {
+            params: { path: { ...seqPath, emoji } },
+          }),
+        );
+  }
+  const replyAt = replyPath(slug, id, message);
+  return on
+    ? unwrap(await api.POST(`${REPLY}reactions/`, { params: { path: replyAt }, body: { emoji } }))
+    : unwrap(
+        await api.DELETE(`${REPLY}reactions/{emoji}/`, {
+          params: { path: { ...replyAt, emoji } },
+        }),
+      );
 }

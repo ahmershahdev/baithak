@@ -429,6 +429,40 @@ export interface paths {
         patch: operations["workspaces_channels_messages_partial_update"];
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/reactions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** React to a message or reply with an emoji */
+        post: operations["workspaces_channels_messages_reactions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/reactions/{emoji}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take back your reaction */
+        delete: operations["workspaces_channels_messages_reactions_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/": {
         parameters: {
             query?: never;
@@ -469,6 +503,40 @@ export interface paths {
          * @description Edit and delete, for a message found by `_message`.
          */
         patch: operations["workspaces_channels_messages_replies_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/{thread_seq}/reactions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** React to a message or reply with an emoji */
+        post: operations["workspaces_channels_messages_replies_reactions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/channels/{channel_id}/messages/{seq}/replies/{thread_seq}/reactions/{emoji}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take back your reaction */
+        delete: operations["workspaces_channels_messages_replies_reactions_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/workspaces/{slug}/channels/{channel_id}/read/": {
@@ -658,6 +726,9 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        EmojiRequest: {
+            emoji: string;
+        };
         /**
          * @description * `admin` - admin
          *     * `member` - member
@@ -727,6 +798,7 @@ export interface components {
             readonly deleted: boolean;
             readonly mentions: components["schemas"]["Author"][];
             readonly mentions_channel: boolean;
+            readonly reactions: components["schemas"]["Reaction"][];
         };
         MessagePage: {
             messages: components["schemas"]["Message"][];
@@ -755,6 +827,11 @@ export interface components {
         };
         PatchedWorkspaceWriteRequest: {
             name?: string;
+        };
+        Reaction: {
+            emoji: string;
+            count: number;
+            users: components["schemas"]["Author"][];
         };
         ReadMarker: {
             channel: number;
@@ -1729,6 +1806,81 @@ export interface operations {
             };
         };
     };
+    workspaces_channels_messages_reactions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmojiRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_reactions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                emoji: string;
+                seq: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
     workspaces_channels_messages_replies_retrieve: {
         parameters: {
             query?: {
@@ -1846,6 +1998,83 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedBodyRequest"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_replies_reactions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                seq: number;
+                slug: string;
+                thread_seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmojiRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_channels_messages_replies_reactions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_id: number;
+                emoji: string;
+                seq: number;
+                slug: string;
+                thread_seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

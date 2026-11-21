@@ -43,6 +43,7 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     last_reply_at: null,
     mentions: [],
     mentions_channel: false,
+    reactions: [],
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -453,5 +454,55 @@ describe("mentions", () => {
     const mention = within(row as HTMLElement).getByText("@amna");
     expect(mention).toHaveClass("bg-mention");
     expect(row).toHaveClass("border-mention-edge");
+  });
+});
+
+describe("reactions", () => {
+  const THUMBS_UP = "\u{1F44D}";
+
+  test("pick a reaction, see it counted, and take it back", async () => {
+    const salaam = message(2, 2, "Salaam");
+    const reacted = {
+      ...salaam,
+      event: 3,
+      reactions: [
+        {
+          emoji: THUMBS_UP,
+          count: 1,
+          users: [{ id: 1, username: "amna", display_name: "Amna Khan" }],
+        },
+      ],
+    };
+    const calls: string[] = [];
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Hi"), salaam], 2)),
+      "POST /api/v1/workspaces/team/channels/5/messages/2/reactions/": async (request) => {
+        calls.push(`add ${((await request.json()) as { emoji: string }).emoji}`);
+        return json(200, reacted);
+      },
+      [`DELETE /api/v1/workspaces/team/channels/5/messages/2/reactions/${encodeURIComponent(THUMBS_UP)}/`]:
+        () => {
+          calls.push("remove");
+          return json(200, { ...salaam, event: 4 });
+        },
+    });
+    await openChannel();
+    const row = (await screen.findByText("Salaam")).closest("li") as HTMLElement;
+
+    await userEvent.click(within(row).getByRole("button", { name: "React" }));
+    await userEvent.click(screen.getByRole("button", { name: "thumbs up" }));
+
+    const chip = await screen.findByRole("button", { name: "You reacted with thumbs up" });
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(chip).toHaveTextContent("1");
+    expect(screen.queryByRole("group", { name: "Pick a reaction" })).not.toBeInTheDocument();
+
+    await userEvent.click(chip);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /reacted with/ })).not.toBeInTheDocument();
+    });
+    expect(calls).toEqual([`add ${THUMBS_UP}`, "remove"]);
   });
 });

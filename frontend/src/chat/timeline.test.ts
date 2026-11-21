@@ -21,6 +21,7 @@ function message(seq: number, event = seq, extra: Partial<Message> = {}): Messag
     last_reply_at: null,
     mentions: [],
     mentions_channel: false,
+    reactions: [],
     author: { id: 1, username: "amna", display_name: "Amna" },
     body: `m${String(seq)}`,
     client_id: "",

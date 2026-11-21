@@ -54,5 +54,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // userEvent types key by key; with every core busy a long form passed the 5 s default.
+    testTimeout: 15_000,
   },
 });

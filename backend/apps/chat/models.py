@@ -108,3 +108,20 @@ class Message(models.Model):
     @property
     def deleted(self) -> bool:
         return self.deleted_at is not None
+
+
+class Reaction(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="reactions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    emoji = models.CharField(max_length=32)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=["message", "user", "emoji"], name="reaction_once_per_person"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id} {self.emoji} on {self.message_id}"

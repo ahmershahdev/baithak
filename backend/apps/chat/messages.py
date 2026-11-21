@@ -3,7 +3,8 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.chat import events, mentions
-from apps.chat.models import Channel, ChannelMember, Message
+from apps.chat.models import Channel, ChannelMember, Message, Reaction
+from apps.core.reactions import can_add
 
 
 def _lock(channel: Channel) -> Channel:
@@ -105,5 +106,33 @@ def delete(message: Message) -> Message:
         message.mentions_channel = False
         message.save(update_fields=["body", "deleted_at", "event", "mentions_channel"])
         message.mentions.clear()
+        message.reactions.all().delete()
+        events.message_changed(message)
+    return message
+
+
+class TooManyReactions(Exception):
+    pass
+
+
+def react(message: Message, user: User, emoji: str, *, on: bool) -> Message:
+    """Add or take back one person's emoji. A change gives the message a new event, so it
+    reaches open sockets and catch-up like an edit."""
+    with transaction.atomic():
+        locked = _lock(message.channel)
+        mine = Reaction.objects.filter(message=message, user=user, emoji=emoji)
+        if on:
+            if mine.exists():
+                return message
+            emoji_here = set(message.reactions.values_list("emoji", flat=True))
+            if not can_add(len(emoji_here), present=emoji in emoji_here):
+                raise TooManyReactions
+            Reaction.objects.create(message=message, user=user, emoji=emoji)
+        elif not mine.delete()[0]:
+            return message
+        locked.last_event += 1
+        locked.save(update_fields=["last_event"])
+        message.event = locked.last_event
+        message.save(update_fields=["event"])
         events.message_changed(message)
     return message

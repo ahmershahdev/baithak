@@ -43,7 +43,7 @@ channel_member    channel_id, user_id, last_read_seq, muted
 message           channel_id, seq (null for a reply kept in its thread), event, author_id, parent_id,
                   thread_seq, also_in_channel, reply_count, last_reply_at, body, client_id,
                   mentions (users), mentions_channel, edited_at, deleted_at, created_at
-reaction          message_id, user_id, emoji
+reaction          message_id, user_id, emoji (one per person and emoji)
 attachment        workspace_id, message_id, uploader_id, name, content_type, size, storage_key
 
 project           workspace_id, key, name, next_number
@@ -126,6 +126,17 @@ and `@channel` counts only from someone who isn't a guest. The result is stored 
 (`mentions`, `mentions_channel`) for notifications in M4; deleting a message clears it. The web
 app highlights only what the server confirmed, and the composer offers people after `@`: the
 channel's members for a private channel, the workspace's non-guests for a public one.
+
+## Reactions
+
+A reaction is one row per person and emoji. `apps/core/reactions.py` accepts exactly one
+emoji (pictographs, flags, keycaps, skin tones, ZWJ and tag sequences; no text), lets only
+people who can post react, never to a deleted message, and caps a message at 20 different
+emoji (anyone can still join one already there). Adding or taking back a reaction gives the
+message a new channel event under the channel lock, so it reaches sockets and catch-up like an
+edit, and the message is sent with its reactions grouped by emoji in first-used order.
+Deleting a message removes its reactions. Reactions are user data, so they are not audited.
+The picker's emoji are code point escapes in `frontend/src/chat/reactions.ts`.
 
 ## Unread counts
 

@@ -27,4 +27,24 @@ urlpatterns = [
         message_views.ReplyDetailView.as_view(),
         name="reply",
     ),
+    path(
+        "<int:channel_id>/messages/<int:seq>/reactions/",
+        message_views.ReactionsView.as_view(),
+        name="reactions",
+    ),
+    path(
+        "<int:channel_id>/messages/<int:seq>/reactions/<str:emoji>/",
+        message_views.ReactionView.as_view(),
+        name="reaction",
+    ),
+    path(
+        "<int:channel_id>/messages/<int:seq>/replies/<int:thread_seq>/reactions/",
+        message_views.ReactionsView.as_view(),
+        name="reply_reactions",
+    ),
+    path(
+        "<int:channel_id>/messages/<int:seq>/replies/<int:thread_seq>/reactions/<str:emoji>/",
+        message_views.ReactionView.as_view(),
+        name="reply_reaction",
+    ),
 ]

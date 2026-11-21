@@ -1,9 +1,11 @@
 from typing import Any
 
+from django.db.models import Prefetch
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.accounts.models import User
-from apps.chat.models import Channel, ChannelMember, Message, channel_name_validator
+from apps.chat.models import Channel, ChannelMember, Message, Reaction, channel_name_validator
 from apps.core.channels import ChannelKind
 
 KIND_CHOICES = [kind.value for kind in ChannelKind]
@@ -83,6 +85,19 @@ class AuthorSerializer(serializers.Serializer[User]):
     display_name = serializers.CharField(read_only=True)
 
 
+class ReactionSerializer(serializers.Serializer[None]):
+    emoji = serializers.CharField()
+    count = serializers.IntegerField()
+    users = AuthorSerializer(many=True)
+
+
+# Every query that serializes messages loads these, or each message costs extra queries.
+MESSAGE_PREFETCH = (
+    "mentions",
+    Prefetch("reactions", queryset=Reaction.objects.select_related("user").order_by("id")),
+)
+
+
 class MessageSerializer(serializers.ModelSerializer[Message]):
     """Needs `author` and `parent` loaded (select_related) and `mentions` prefetched to avoid
     queries per message."""
@@ -90,6 +105,7 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
     author = AuthorSerializer(read_only=True, allow_null=True)
     deleted = serializers.BooleanField(read_only=True)
     mentions = AuthorSerializer(many=True, read_only=True)
+    reactions = serializers.SerializerMethodField()
     parent_seq = serializers.IntegerField(
         source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
     )
@@ -113,8 +129,24 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "deleted",
             "mentions",
             "mentions_channel",
+            "reactions",
         )
         read_only_fields = fields
+
+    @extend_schema_field(ReactionSerializer(many=True))
+    def get_reactions(self, message: Message) -> list[dict[str, Any]]:
+        """Grouped by emoji, in the order each emoji was first used."""
+        groups: dict[str, list[User]] = {}
+        for reaction in message.reactions.all():
+            groups.setdefault(reaction.emoji, []).append(reaction.user)
+        return [
+            {
+                "emoji": emoji,
+                "count": len(users),
+                "users": [AuthorSerializer(user).data for user in users],
+            }
+            for emoji, users in groups.items()
+        ]
 
 
 class ChannelEventSerializer(serializers.ModelSerializer[Channel]):
