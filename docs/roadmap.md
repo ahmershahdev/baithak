@@ -47,7 +47,7 @@ in CI, and seed data.
       permission check; filters by channel, person and date (issues join it in M5)
 - [x] In-app notifications for mentions, direct messages and assigned issues (issues join in M5)
 - [x] Email notifications for unread mentions (Celery), with quiet hours per person
-- [ ] Load check: one channel with 500 connected clients, message delivery time measured
+- [x] Load check: one channel with 500 connected clients, message delivery time measured
 
 ## M5. Issue tracker (target 2027-03-07)
 

@@ -63,6 +63,10 @@ class Run:
     # Connected, then closed by the server before the run ended.
     dropped: int = 0
     connect_seconds: float = 0.0
+    # Join announcements (presence) each client heard, and when the last one landed.
+    presence_frames: int = 0
+    last_presence: float = 0.0
+    sending_from: float = 0.0
     sent: dict[int, float] = field(default_factory=dict)
     arrivals: dict[int, list[float]] = field(default_factory=lambda: defaultdict(list))
 
@@ -173,6 +177,9 @@ class Command(BaseCommand):
                         event = json.loads(raw)
                         if event["type"] == "subscribed":
                             count_in(failed=False)
+                        elif event["type"] == "presence_change":
+                            run.presence_frames += 1
+                            run.last_presence = time.perf_counter()
                         elif event["type"] == "message" and event["channel"] == run.channel_id:
                             seq = event["message"]["seq"]
                             # It can land before post() returns and its send time is noted.
@@ -201,6 +208,7 @@ class Command(BaseCommand):
         )
         await asyncio.sleep(options["settle"])
         self.stdout.write("Sending.")
+        run.sending_from = time.perf_counter()
         post = sync_to_async(messages.post)
         for number in range(expected):
             before = time.perf_counter()
@@ -229,7 +237,10 @@ class Command(BaseCommand):
         wanted = run.connected * len(run.sent)
         stats = summarize(latencies)
         self.stdout.write(
-            f"Clients: {run.connected} connected of {run.clients} ({run.failed} failed)\n"
+            f"Clients: {run.connected} connected of {run.clients} ({run.failed} failed, "
+            f"{run.dropped} dropped) in {run.connect_seconds:.1f} s\n"
+            f"Join announcements heard: {run.presence_frames}, the last one "
+            f"{run.last_presence - run.sending_from:+.1f} s from the first send\n"
             f"Messages: {len(run.sent)} of {expected}\n"
             f"Deliveries: {len(latencies)} of {wanted}\n"
             f"Delivery time (send to arrival), ms: p50 {stats['p50']:.1f}, "

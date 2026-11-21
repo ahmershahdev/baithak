@@ -147,20 +147,22 @@ M1 in progress. Merged so far:
   that workspace and channels they can no longer read. `/w/<slug>/me` has the settings (email
   on or off, quiet hours, time zone), linked as Settings next to Sign out.
 
-- Load check (in progress, branch `chore/load-check`): `python manage.py load_check` opens N
-  real sockets in an invented workspace and times delivery. Dev stack, Windows Docker, client in
-  the same container: 500 clients connect in about 34 s at 10 handshakes at a time; all 10000
-  deliveries of 20 messages arrive, median 0.8 s, p95 2.9 s. Found and fixed: redis-py 8 caps a
-  pool at 100 connections and raised during 500 disconnects (channel layer now 2000).
-  Suspected bottleneck still to confirm: every join is announced to everyone (presence is
-  N x N, about 250000 frames for 500 joins) and may still be draining while messages are sent;
-  also each connect runs several queries on Django's one database thread.
+- Load check: `python manage.py load_check` opens N real sockets in an invented workspace and
+  times delivery from send to arrival. Numbers in `docs/architecture.md`. Found and fixed: redis-py
+  8 caps a pool at 100 connections and raised when 500 sockets closed at once (channel layer pool
+  now 2000). Found, not yet fixed: see Next session.
 
 ## Next session
 
-Finish the load check: record when the last presence announcement arrives to confirm the
-suspicion, then batch or coalesce presence announcements if it holds, rerun, record numbers in
-`docs/architecture.md`, merge, and release `v0.4.0`.
+1. Presence under a crowd. With the default channel layer each socket's queue holds 100
+   messages and silently drops the rest, so when hundreds join at once most join announcements
+   are lost and online dots can be wrong (chat messages survive drops through catch-up; presence
+   has none). Options: coalesce announcements into one batch per workspace every second or so,
+   or send a fresh presence list now and then instead of only changes. The pub/sub layer
+   (`channels_redis.pubsub.RedisPubSubChannelLayer`) delivers everything but then the N x N join
+   storm slowed connecting (43 of 500 failed); retry it once announcements are coalesced.
+2. Rerun the load check on the production setup (Linux, separate client machine) at deploy.
+3. Release `v0.4.0` once #39 is merged.
 
 ## Open questions
 
