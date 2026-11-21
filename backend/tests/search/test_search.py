@@ -24,21 +24,23 @@ URL = "/api/v1/workspaces/team/search/"
 
 
 @pytest.fixture
-def owner() -> User:
-    return make_user(username="owner")
+def workspace() -> Workspace:
+    """A team with its owner and #general."""
+    founder = make_user(username="owner")
+    team = Workspace.objects.create(name="Team", slug="team", created_by=founder)
+    Member.objects.create(workspace=team, user=founder, role=Role.OWNER)
+    create_default_channel(team, founder)
+    return team
 
 
 @pytest.fixture
-def workspace(owner: User) -> Workspace:
-    workspace = Workspace.objects.create(name="Team", slug="team", created_by=owner)
-    Member.objects.create(workspace=workspace, user=owner, role=Role.OWNER)
-    create_default_channel(workspace, owner)
-    return workspace
+def owner(workspace: Workspace) -> User:
+    return Member.objects.for_workspace(workspace).get(role=Role.OWNER).user
 
 
 @pytest.fixture
 def general(workspace: Workspace) -> Channel:
-    return Channel.objects.for_workspace(workspace).get(name="general")
+    return Channel.objects.for_workspace(workspace).get(is_default=True)
 
 
 @pytest.fixture
