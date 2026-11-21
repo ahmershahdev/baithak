@@ -41,6 +41,8 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     also_in_channel: false,
     reply_count: 0,
     last_reply_at: null,
+    mentions: [],
+    mentions_channel: false,
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -387,5 +389,69 @@ describe("threads", () => {
     expect(await screen.findByRole("button", { name: "1 reply" })).toBeInTheDocument();
     // Kept in the thread: the channel does not show it.
     expect(screen.getAllByText("Biryani")).toHaveLength(1);
+  });
+});
+
+describe("mentions", () => {
+  const people = [
+    { user_id: 1, username: "amna", display_name: "Amna Khan", role: "member", joined_at: "" },
+    { user_id: 2, username: "bilal", display_name: "Bilal Ahmed", role: "member", joined_at: "" },
+    { user_id: 3, username: "sara", display_name: "Sara", role: "guest", joined_at: "" },
+  ];
+
+  test("typing @ offers people, and Enter picks one instead of sending", async () => {
+    const backendState = backend({
+      "GET /api/v1/workspaces/team/members/": () => json(200, people),
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+    });
+    await openChannel();
+    const composer = await screen.findByLabelText("Message #general");
+
+    await userEvent.type(composer, "chai @");
+    const list = await screen.findByRole("listbox", { name: "People to mention" });
+    // Not me, not a guest in a public channel; @channel for everyone.
+    expect(
+      within(list)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["@bilalBilal Ahmed", "@channelEveryone in this channel"]);
+
+    await userEvent.type(composer, "bi{Enter}");
+
+    expect(composer).toHaveValue("chai @bilal ");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(backendState.requests.some((r) => r.method === "POST")).toBe(false);
+  });
+
+  test("Escape closes the list and Enter sends again", async () => {
+    backend({
+      "GET /api/v1/workspaces/team/members/": () => json(200, people),
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+    });
+    await openChannel();
+    const composer = await screen.findByLabelText("Message #general");
+
+    await userEvent.type(composer, "@b");
+    await screen.findByRole("listbox");
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  test("a message that mentions me stands out", async () => {
+    const forMe = {
+      ...message(2, 2, "@amna can you check?"),
+      mentions: [{ id: 1, username: "amna", display_name: "Amna Khan" }],
+    };
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Salaam"), forMe], 2)),
+    });
+    await openChannel();
+
+    const row = (await screen.findByText(/can you check/)).closest("li");
+    const mention = within(row as HTMLElement).getByText("@amna");
+    expect(mention).toHaveClass("bg-mention");
+    expect(row).toHaveClass("border-mention-edge");
   });
 });

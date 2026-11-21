@@ -702,7 +702,10 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
-        /** @description Needs `author` and `parent` loaded (select_related) to avoid a query per message. */
+        /**
+         * @description Needs `author` and `parent` loaded (select_related) and `mentions` prefetched to avoid
+         *     queries per message.
+         */
         Message: {
             readonly id: number;
             readonly seq: number | null;
@@ -722,6 +725,8 @@ export interface components {
             /** Format: date-time */
             readonly edited_at: string | null;
             readonly deleted: boolean;
+            readonly mentions: components["schemas"]["Author"][];
+            readonly mentions_channel: boolean;
         };
         MessagePage: {
             messages: components["schemas"]["Message"][];

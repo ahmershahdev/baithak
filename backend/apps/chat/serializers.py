@@ -84,10 +84,12 @@ class AuthorSerializer(serializers.Serializer[User]):
 
 
 class MessageSerializer(serializers.ModelSerializer[Message]):
-    """Needs `author` and `parent` loaded (select_related) to avoid a query per message."""
+    """Needs `author` and `parent` loaded (select_related) and `mentions` prefetched to avoid
+    queries per message."""
 
     author = AuthorSerializer(read_only=True, allow_null=True)
     deleted = serializers.BooleanField(read_only=True)
+    mentions = AuthorSerializer(many=True, read_only=True)
     parent_seq = serializers.IntegerField(
         source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
     )
@@ -109,6 +111,8 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "created_at",
             "edited_at",
             "deleted",
+            "mentions",
+            "mentions_channel",
         )
         read_only_fields = fields
 

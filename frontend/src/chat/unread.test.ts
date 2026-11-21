@@ -30,6 +30,8 @@ function message(seq: number, authorId: number, deleted = false): Message {
     also_in_channel: false,
     reply_count: 0,
     last_reply_at: null,
+    mentions: [],
+    mentions_channel: false,
     author: { id: authorId, username: `u${String(authorId)}`, display_name: "" },
     body: deleted ? "" : "text",
     client_id: "",

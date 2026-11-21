@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { remember, sendReply, useThread, type Channel } from "../../api/chat";
 import type { User } from "../../api/client";
+import type { Candidate } from "../../chat/mentions";
 import { startsGroup, storedIds } from "../../chat/timeline";
 import { Composer, MessageRow } from "../../components/chat";
 import { ErrorMessage } from "../../components/ui";
@@ -12,12 +13,14 @@ export function ThreadPanel({
   channel,
   me,
   seq,
+  candidates,
   onClose,
 }: {
   slug: string;
   channel: Channel;
   me: User;
   seq: number;
+  candidates: Candidate[];
   onClose: () => void;
 }) {
   const client = useQueryClient();
@@ -62,7 +65,7 @@ export function ThreadPanel({
               <MessageRow
                 message={thread.data.parent}
                 grouped={false}
-                mine={thread.data.parent.author?.id === me.id}
+                meId={me.id}
                 slug={slug}
                 channel={channel}
               />
@@ -77,7 +80,7 @@ export function ThreadPanel({
                   key={reply.thread_seq}
                   message={reply}
                   grouped={!startsGroup(replies[index - 1], reply)}
-                  mine={reply.author?.id === me.id}
+                  meId={me.id}
                   slug={slug}
                   channel={channel}
                 />
@@ -93,6 +96,7 @@ export function ThreadPanel({
           label="Reply"
           stored={storedIds(replies, me.id)}
           send={send}
+          candidates={candidates}
           footer={
             <label className="flex items-center gap-2 text-sm text-text-muted">
               <input

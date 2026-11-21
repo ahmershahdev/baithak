@@ -1,8 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { deleteMessage, editMessage, remember, type Channel } from "../api/chat";
 import { ApiError } from "../api/workspaces";
+import {
+  activeQuery,
+  insertMention,
+  mentionsMe,
+  segments,
+  suggest,
+  type Candidate,
+} from "../chat/mentions";
 import type { Message } from "../chat/timeline";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
@@ -22,17 +30,39 @@ function replies(count: number): string {
 
 const actionClass = "rounded-md px-2 py-1 text-xs font-semibold hover:bg-bg-subtle";
 
+const mentionClass = {
+  person: "font-semibold text-accent-text",
+  me: "rounded bg-mention px-0.5 font-semibold ring-1 ring-mention-edge",
+  channel: "rounded bg-mention px-0.5 font-semibold ring-1 ring-mention-edge",
+};
+
+function Body({ message, meId }: { message: Message; meId: number }) {
+  return (
+    <>
+      {segments(message, meId).map((part, index) =>
+        "mention" in part ? (
+          <span key={index} className={mentionClass[part.mention]}>
+            {part.text}
+          </span>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
+}
+
 export function MessageRow({
   message,
   grouped,
-  mine,
+  meId,
   slug,
   channel,
   onOpenThread,
 }: {
   message: Message;
   grouped: boolean;
-  mine: boolean;
+  meId: number;
   slug: string;
   channel: Channel;
   /** Shows the thread links and the Reply action; left out inside a thread. */
@@ -44,6 +74,8 @@ export function MessageRow({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const name = message.author ? message.author.display_name || message.author.username : "Someone";
+  const mine = message.author?.id === meId;
+  const forMe = !mine && !message.deleted && mentionsMe(message, meId);
   const threadSeq = message.parent_seq === null ? message.seq : null;
   const canEdit = mine && !message.deleted && !editing;
   const canReply = onOpenThread !== undefined && threadSeq !== null && !editing;
@@ -74,7 +106,9 @@ export function MessageRow({
 
   return (
     <li
-      className={`group relative flex gap-3 rounded-lg px-2 hover:bg-bg-subtle ${grouped ? "py-0.5" : "mt-3 py-1"}`}
+      className={`group relative flex gap-3 rounded-lg px-2 ${
+        forMe ? "border-l-2 border-mention-edge bg-mention" : "hover:bg-bg-subtle"
+      } ${grouped ? "py-0.5" : "mt-3 py-1"}`}
     >
       <div className="w-9 shrink-0">
         {!grouped && message.author && <Avatar name={name} colorKey={message.author.username} />}
@@ -136,7 +170,7 @@ export function MessageRow({
           </div>
         ) : (
           <p className="break-words whitespace-pre-wrap">
-            {message.body}
+            <Body message={message} meId={meId} />
             {message.edited_at && <span className="ml-1 text-xs text-text-subtle">(edited)</span>}
           </p>
         )}
@@ -204,9 +238,12 @@ export function Composer({
   stored,
   send,
   footer,
+  candidates = [],
 }: {
   id: string;
   label: string;
+  /** People (and @channel) offered after typing "@". */
+  candidates?: Candidate[];
   /** client_ids of my messages already stored where this composer sends. */
   stored: Set<string>;
   send: (body: string, clientId: string) => Promise<void>;
@@ -214,6 +251,30 @@ export function Composer({
 }) {
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<Pending[]>([]);
+  const area = useRef<HTMLTextAreaElement>(null);
+  const [caret, setCaret] = useState(0);
+  const [active, setActive] = useState(0);
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+  const moveCaretTo = useRef<number | null>(null);
+  const query = activeQuery(draft, caret);
+  const options = query && query.start !== dismissedAt ? suggest(candidates, query.query) : [];
+  const open = options.length > 0;
+  const current = Math.min(active, options.length - 1);
+
+  useLayoutEffect(() => {
+    if (moveCaretTo.current === null || !area.current) return;
+    area.current.setSelectionRange(moveCaretTo.current, moveCaretTo.current);
+    moveCaretTo.current = null;
+  }, [draft]);
+
+  function choose(candidate: Candidate) {
+    if (!query) return;
+    const next = insertMention(draft, query.start, caret, candidate.username);
+    moveCaretTo.current = next.caret;
+    setDraft(next.text);
+    setCaret(next.caret);
+    area.current?.focus();
+  }
   // A pending message is done once the stored copy is shown, whichever arrived first: the API's
   // answer or the live event.
   const waiting = pending.filter((item) => !stored.has(item.clientId));
@@ -242,6 +303,25 @@ export function Composer({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (open && !event.nativeEvent.isComposing) {
+      const picked = options[current];
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        setActive((current + step + options.length) % options.length);
+        return;
+      }
+      if ((event.key === "Enter" || event.key === "Tab") && picked) {
+        event.preventDefault();
+        choose(picked);
+        return;
+      }
+      if (event.key === "Escape" && query) {
+        event.preventDefault();
+        setDismissedAt(query.start);
+        return;
+      }
+    }
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       submit();
@@ -270,15 +350,55 @@ export function Composer({
           ))}
         </ul>
       )}
-      <div className="rounded-2xl border border-border-strong bg-surface p-2 focus-within:border-focus-ring focus-within:ring-4 focus-within:ring-focus-ring/20">
+      <div className="relative rounded-2xl border border-border-strong bg-surface p-2 focus-within:border-focus-ring focus-within:ring-4 focus-within:ring-focus-ring/20">
+        {open && (
+          <ul
+            id={`${id}-mentions`}
+            role="listbox"
+            aria-label="People to mention"
+            className="settle absolute inset-x-2 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-border bg-surface-raised p-1 shadow-lg"
+          >
+            {options.map((candidate, index) => (
+              <li
+                key={candidate.username}
+                id={`${id}-mention-${candidate.username}`}
+                role="option"
+                aria-selected={index === current}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  choose(candidate);
+                }}
+                className="flex cursor-pointer items-baseline gap-2 rounded-lg px-3 py-1.5 text-sm aria-selected:bg-bg-subtle"
+              >
+                <span className="font-semibold">@{candidate.username}</span>
+                {candidate.display_name && (
+                  <span className="truncate text-text-muted">{candidate.display_name}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         <label htmlFor={id} className="sr-only">
           {label}
         </label>
         <textarea
+          ref={area}
           id={id}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? `${id}-mentions` : undefined}
+          aria-activedescendant={
+            open && options[current] ? `${id}-mention-${options[current].username}` : undefined
+          }
           value={draft}
           onChange={(event) => {
             setDraft(event.target.value);
+            setCaret(event.target.selectionStart);
+            setActive(0);
+          }}
+          onSelect={(event) => {
+            setCaret(event.currentTarget.selectionStart);
           }}
           onKeyDown={onKeyDown}
           rows={2}

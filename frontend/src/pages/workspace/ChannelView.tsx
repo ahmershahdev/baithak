@@ -9,6 +9,7 @@ import {
   sendMessage,
   useChannels,
   useJoinChannel,
+  useMentionCandidates,
   useTimeline,
   type Channel,
 } from "../../api/chat";
@@ -45,7 +46,15 @@ export function ChannelView() {
       </div>
     );
   }
-  return <Conversation key={channel.id} slug={workspace.slug} channel={channel} me={me} />;
+  return (
+    <Conversation
+      key={channel.id}
+      slug={workspace.slug}
+      channel={channel}
+      me={me}
+      canMentionChannel={workspace.role !== "guest"}
+    />
+  );
 }
 
 /** Report the newest message as read while the reader is at the bottom of a visible tab. */
@@ -108,7 +117,7 @@ function Messages({
           <MessageRow
             message={message}
             grouped={message.seq !== newFrom && !startsGroup(messages[index - 1], message)}
-            mine={message.author?.id === me.id}
+            meId={me.id}
             slug={slug}
             channel={channel}
             onOpenThread={onOpenThread}
@@ -119,11 +128,22 @@ function Messages({
   );
 }
 
-function Conversation({ slug, channel, me }: { slug: string; channel: Channel; me: User }) {
+function Conversation({
+  slug,
+  channel,
+  me,
+  canMentionChannel,
+}: {
+  slug: string;
+  channel: Channel;
+  me: User;
+  canMentionChannel: boolean;
+}) {
   const client = useQueryClient();
   const timeline = useTimeline(slug, channel.id);
   const joinChannel = useJoinChannel(slug);
   const [params, setParams] = useSearchParams();
+  const candidates = useMentionCandidates(slug, channel, me, canMentionChannel);
   const scroller = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
   const [atBottom, setAtBottom] = useState(true);
@@ -234,6 +254,7 @@ function Conversation({ slug, channel, me }: { slug: string; channel: Channel; m
             label={`Message #${channel.name}`}
             stored={storedIds(timeline.data?.messages, me.id)}
             send={send}
+            candidates={candidates}
           />
         ) : channel.archived ? (
           <p className="rounded-xl bg-surface-sunken px-4 py-3 text-sm text-text-muted">
@@ -263,6 +284,7 @@ function Conversation({ slug, channel, me }: { slug: string; channel: Channel; m
           channel={channel}
           me={me}
           seq={openThread}
+          candidates={candidates}
           onClose={() => {
             showThread(null);
           }}
