@@ -40,3 +40,6 @@ staticfiles/
 
 # Uploaded files in development
 backend/var/
+
+# Celery beat keeps its schedule state here in development
+backend/celerybeat-schedule*
