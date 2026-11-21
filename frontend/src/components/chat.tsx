@@ -19,6 +19,7 @@ import {
   type Candidate,
 } from "../chat/mentions";
 import { QUICK_REACTIONS, reactedByMe, whoReacted } from "../chat/reactions";
+import { typingText, type Person } from "../chat/presence";
 import type { Message } from "../chat/timeline";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
@@ -349,11 +350,14 @@ export function Composer({
   send,
   footer,
   candidates = [],
+  onTyping,
 }: {
   id: string;
   label: string;
   /** People (and @channel) offered after typing "@". */
   candidates?: Candidate[];
+  /** Called as the person types; the caller throttles what it sends. */
+  onTyping?: () => void;
   /** client_ids of my messages already stored where this composer sends. */
   stored: Set<string>;
   send: (body: string, clientId: string) => Promise<void>;
@@ -506,6 +510,7 @@ export function Composer({
             setDraft(event.target.value);
             setCaret(event.target.selectionStart);
             setActive(0);
+            if (event.target.value.trim()) onTyping?.();
           }}
           onSelect={(event) => {
             setCaret(event.currentTarget.selectionStart);
@@ -533,5 +538,14 @@ export function Composer({
         </div>
       </div>
     </div>
+  );
+}
+
+/** "Bilal is typing", in a line that keeps its height so the messages don't jump. */
+export function TypingLine({ people }: { people: Person[] }) {
+  return (
+    <p aria-live="polite" className="h-5 px-2 text-xs text-text-muted">
+      {typingText(people)}
+    </p>
   );
 }

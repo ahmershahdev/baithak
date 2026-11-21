@@ -98,6 +98,9 @@ CHANNEL_LAYERS = {
     }
 }
 
+# Online status lives in REDIS_URL under this prefix (apps/chat/presence.py).
+PRESENCE_KEY_PREFIX = "presence"
+
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", "redis://127.0.0.1:6379/1")
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True

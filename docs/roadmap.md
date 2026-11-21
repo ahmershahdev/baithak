@@ -37,7 +37,7 @@ in CI, and seed data.
 - [x] Direct and group messages
 - [x] Mentions (`@person`, `@channel`) parsed in `apps/core`, with autocomplete
 - [x] Reactions
-- [ ] Typing indicator and online status in Redis, with expiry
+- [x] Typing indicator and online status in Redis, with expiry
 - [x] Unread counts and last-read markers per person and channel, the same on every device
 
 ## M4. Files, search and notifications (target 2027-02-07)

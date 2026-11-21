@@ -579,3 +579,72 @@ describe("direct messages", () => {
     expect(screen.getByLabelText("Message Bilal Ahmed, sara")).toBeInTheDocument();
   });
 });
+
+describe("typing and presence", () => {
+  const bilal = { id: 2, username: "bilal", display_name: "Bilal" };
+
+  test("typing tells the server, but not on every key", async () => {
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+    });
+    await openChannel();
+
+    await userEvent.type(await screen.findByLabelText("Message #general"), "Salaam");
+
+    const notices = FakeSocket.latest().sent.filter(
+      (sent) => (sent as { type: string }).type === "typing",
+    );
+    expect(notices).toEqual([{ type: "typing", channel: 5, thread: null }]);
+  });
+
+  test("someone typing shows until their message arrives", async () => {
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Salaam")], 1)),
+    });
+    await openChannel();
+    await screen.findByText("Salaam");
+
+    act(() => {
+      FakeSocket.latest().receive({ type: "typing", channel: 5, thread: null, user: bilal });
+    });
+    expect(await screen.findByText("Bilal is typing")).toBeInTheDocument();
+
+    live(2, message(2, 2, "Walaikum salaam"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Bilal is typing")).not.toBeInTheDocument();
+    });
+  });
+
+  test("a direct message shows whether the other person is online", async () => {
+    const direct: Channel = {
+      ...general,
+      id: 8,
+      name: "~1-2",
+      kind: "direct",
+      is_default: false,
+      people: [
+        { id: 1, username: "amna", display_name: "Amna Khan" },
+        { id: 2, username: "bilal", display_name: "Bilal" },
+      ],
+    };
+    backend({
+      "GET /api/v1/workspaces/team/channels/": () => json(200, [general, direct]),
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([], 0)),
+    });
+    await openChannel();
+    const dms = await screen.findByRole("region", { name: "Direct messages" });
+    expect(await within(dms).findByRole("img", { name: "Offline" })).toBeInTheDocument();
+
+    act(() => {
+      FakeSocket.latest().receive({ type: "presence", online: [1, 2] });
+    });
+    expect(await within(dms).findByRole("img", { name: "Online" })).toBeInTheDocument();
+
+    act(() => {
+      FakeSocket.latest().receive({ type: "presence_change", user: 2, online: false });
+    });
+    expect(await within(dms).findByRole("img", { name: "Offline" })).toBeInTheDocument();
+  });
+});

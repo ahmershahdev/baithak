@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, use, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useOutletContext, useParams, useSearchParams } from "react-router";
 
 import {
@@ -16,10 +16,11 @@ import {
 import type { User } from "../../api/client";
 import { startsGroup, storedIds, type Message } from "../../chat/timeline";
 import { channelTitle, isConversation } from "../../chat/conversations";
+import { TypingContext, useOnline, useTypers } from "../../chat/live";
 import { firstUnread } from "../../chat/unread";
-import { Composer, MessageRow } from "../../components/chat";
+import { Composer, MessageRow, TypingLine } from "../../components/chat";
 import { ErrorMessage } from "../../components/ui";
-import { ChannelIcon } from "../../components/workspace";
+import { ChannelIcon, PresenceDot } from "../../components/workspace";
 import type { WorkspaceContext } from "./Shell";
 import { ThreadPanel } from "./Thread";
 
@@ -190,6 +191,11 @@ function Conversation({
 
   const title = channelTitle(channel, me.id);
   const conversation = isConversation(channel);
+  const sendTyping = use(TypingContext);
+  const typers = useTypers(slug, channel.id, null);
+  const online = useOnline(slug);
+  const other =
+    channel.kind === "direct" ? channel.people.find((person) => person.id !== me.id) : undefined;
 
   async function send(body: string, clientId: string) {
     remember(client, slug, channel.id, await sendMessage(slug, channel.id, body, clientId));
@@ -201,7 +207,11 @@ function Conversation({
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="min-w-0">
             <h1 className="wonky flex items-center gap-2 font-display text-2xl font-semibold">
-              <ChannelIcon kind={channel.kind} />
+              {other ? (
+                <PresenceDot online={online.has(other.id)} />
+              ) : (
+                <ChannelIcon kind={channel.kind} />
+              )}
               <span className="truncate">{title}</span>
             </h1>
             {channel.kind === "group" && (
@@ -259,6 +269,7 @@ function Conversation({
           )}
         </div>
 
+        <TypingLine people={typers} />
         {channel.is_member && !channel.archived ? (
           <Composer
             id="composer"
@@ -266,6 +277,9 @@ function Conversation({
             stored={storedIds(timeline.data?.messages, me.id)}
             send={send}
             candidates={candidates}
+            onTyping={() => {
+              sendTyping(channel.id, null);
+            }}
           />
         ) : channel.archived ? (
           <p className="rounded-xl bg-surface-sunken px-4 py-3 text-sm text-text-muted">

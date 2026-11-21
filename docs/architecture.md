@@ -15,7 +15,7 @@ React web app  ──REST──>  Django + DRF (ASGI)  ──>  MySQL 8.4 (all w
 
 The web app reads and writes through the REST API. The WebSocket carries live events (new,
 edited and deleted messages, reactions, typing, presence, read markers) and the client sends only
-typing and read markers over it. Long work runs in Celery, never inside a request or a consumer.
+pings and typing notices over it; read markers go through the REST API. Long work runs in Celery, never inside a request or a consumer.
 
 ## Apps
 
@@ -150,6 +150,22 @@ edit, and the message is sent with its reactions grouped by emoji in first-used 
 Deleting a message removes its reactions. Reactions are user data, so they are not audited.
 The picker's emoji are code point escapes in `frontend/src/chat/reactions.ts`.
 
+## Presence and typing
+
+Online status is a Redis sorted set per workspace (`presence:<workspace id>`). Each open socket
+is an entry `<user id>:<connection>` scored by when it lapses: now + 60 s on connect and on
+every ping (the web app pings every 25 s). A person is online while any entry is alive, so a
+second tab closing doesn't take them offline and a crashed tab drops off on its own. Each
+socket also joins a workspace group: a person's first socket coming or last one going is
+announced there (`presence_change`), and every new socket gets the list (`presence`). A tab
+that crashes is not announced; others see it on their next connect. Rules in
+`apps/core/presence.py`, the Redis side in `apps/chat/presence.py`.
+
+Typing is not stored. The client sends `{"type": "typing", "channel", "thread"}` at most every
+3 s while typing; the consumer drops it unless the person is in the channel (and it isn't
+archived) and it is 3 s since their last notice for that place, then relays it to the
+channel's group. Other tabs show it for 5 s, and clear it when that person's message arrives.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =
@@ -236,7 +252,6 @@ when the channel opens and stays there while the marker moves past it.
 
 ## Open questions
 
-- Presence at scale: per-connection keys with expiry in Redis, or a heartbeat set per workspace.
-- Whether guests can start direct messages, and which channels they can be added to.
+- Which channels guests can be added to. (They can start direct messages: decided with #33.)
 - Message formatting: a small Markdown subset rendered on the client, and which parts are allowed.
 - Whether HolidayOps working days feed quiet hours and issue due dates.

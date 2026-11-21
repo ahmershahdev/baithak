@@ -7,10 +7,10 @@ import { api, type User } from "../../api/client";
 import { useWorkspace, useWorkspaces, type Workspace } from "../../api/workspaces";
 import { ME } from "../../auth";
 import { channelTitle, isConversation } from "../../chat/conversations";
-import { useLive } from "../../chat/live";
+import { TypingContext, useLive, useOnline } from "../../chat/live";
 import { badge } from "../../chat/unread";
 import { Wordmark } from "../../components/brand";
-import { Avatar, ChannelIcon, RoleBadge } from "../../components/workspace";
+import { Avatar, ChannelIcon, PresenceDot, RoleBadge } from "../../components/workspace";
 import { rememberWorkspace } from "../../lastWorkspace";
 import { isAdmin } from "../../roles";
 
@@ -88,11 +88,26 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-surface text-text shadow-sm" : "text-text-muted hover:bg-surface hover:text-text"
   }`;
 
-function ChannelLink({ slug, channel, meId }: { slug: string; channel: Channel; meId: number }) {
+function ChannelLink({
+  slug,
+  channel,
+  meId,
+  online,
+}: {
+  slug: string;
+  channel: Channel;
+  meId: number;
+  online: Set<number>;
+}) {
+  const other = channel.kind === "direct" ? channel.people.find((p) => p.id !== meId) : undefined;
   return (
     <li>
       <NavLink to={`/w/${slug}/c/${String(channel.id)}`} className={linkClass}>
-        <ChannelIcon kind={channel.kind} />
+        {other ? (
+          <PresenceDot online={online.has(other.id)} className="mx-0.5" />
+        ) : (
+          <ChannelIcon kind={channel.kind} />
+        )}
         <span
           className={`truncate ${channel.archived ? "text-text-subtle line-through" : ""} ${
             channel.unread ? "font-semibold text-text" : ""
@@ -148,6 +163,7 @@ function ChannelList({ slug, meId }: { slug: string; meId: number }) {
   const mine = channels.data?.filter((channel) => channel.is_member) ?? [];
   const rooms = mine.filter((channel) => !isConversation(channel));
   const conversations = mine.filter(isConversation);
+  const online = useOnline(slug);
   return (
     <>
       <SidebarSection
@@ -160,7 +176,7 @@ function ChannelList({ slug, meId }: { slug: string; meId: number }) {
         }
       >
         {rooms.map((channel) => (
-          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} />
+          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} online={online} />
         ))}
       </SidebarSection>
       <SidebarSection
@@ -173,7 +189,7 @@ function ChannelList({ slug, meId }: { slug: string; meId: number }) {
         }
       >
         {conversations.map((channel) => (
-          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} />
+          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} online={online} />
         ))}
       </SidebarSection>
     </>
@@ -245,7 +261,7 @@ function Account({ me }: { me: User }) {
 export function WorkspaceShell({ me }: { me: User }) {
   const { slug = "" } = useParams();
   const workspace = useWorkspace(slug);
-  const live = useLive(slug, me.id);
+  const { status: live, sendTyping } = useLive(slug, me.id);
 
   useEffect(() => {
     if (workspace.data) rememberWorkspace(workspace.data.slug);
@@ -296,7 +312,9 @@ export function WorkspaceShell({ me }: { me: User }) {
               Reconnecting. Messages sent meanwhile will appear when the connection is back.
             </p>
           )}
-          <Outlet context={context} />
+          <TypingContext value={sendTyping}>
+            <Outlet context={context} />
+          </TypingContext>
         </div>
         <div className="mt-12 border-t border-border pt-4 md:hidden">
           <Account me={me} />
