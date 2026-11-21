@@ -30,6 +30,7 @@ function message(body: string, extra: Partial<Message> = {}): Message {
     deleted: false,
     mentions: [],
     mentions_channel: false,
+    reactions: [],
     ...extra,
   };
 }

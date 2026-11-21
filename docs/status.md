@@ -107,13 +107,17 @@ M1 in progress. Merged so far:
 - Dropdowns (role on members and invitations, channel visibility) are a themed listbox
   (`components/Select.tsx`) instead of native selects, whose open list ignored the theme.
 
+- Reactions on messages and replies: one emoji each (checked in `apps/core/reactions.py`), up
+  to 20 different per message, live through the message's event. Chips show counts and who
+  reacted, pressed when one is yours; a React action opens a picker of 16. Vitest's per-test
+  timeout is now 15 s: typing tests passed the 5 s default when every core was busy.
+
 ## Next session
 
 M3, in this order:
 
-1. Reactions.
-2. Direct and group messages.
-3. Typing indicator and online status in Redis with expiry.
+1. Direct and group messages.
+2. Typing indicator and online status in Redis with expiry.
 
 ## Open questions
 

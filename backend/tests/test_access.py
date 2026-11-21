@@ -20,6 +20,7 @@ pytestmark = pytest.mark.django_db
 
 MEMBER = "/api/v1/workspaces/{slug}/members/{user_id}/"
 CHANNEL = "/api/v1/workspaces/{slug}/channels/{channel_id}/"
+THUMBS_UP = "\U0001f44d"
 
 # (url name, method, path with {slug}, {user_id} and {channel_id}, body)
 ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
@@ -54,6 +55,20 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("channels:thread", "post", CHANNEL + "messages/1/replies/", {"body": "Me too"}),
     ("channels:reply", "patch", CHANNEL + "messages/1/replies/1/", {"body": "Changed"}),
     ("channels:reply", "delete", CHANNEL + "messages/1/replies/1/", None),
+    ("channels:reactions", "post", CHANNEL + "messages/1/reactions/", {"emoji": THUMBS_UP}),
+    ("channels:reaction", "delete", CHANNEL + "messages/1/reactions/%F0%9F%91%8D/", None),
+    (
+        "channels:reply_reactions",
+        "post",
+        CHANNEL + "messages/1/replies/1/reactions/",
+        {"emoji": THUMBS_UP},
+    ),
+    (
+        "channels:reply_reaction",
+        "delete",
+        CHANNEL + "messages/1/replies/1/reactions/%F0%9F%91%8D/",
+        None,
+    ),
 ]
 
 # Inside a workspace the person can see, but about one channel: a private channel they are not

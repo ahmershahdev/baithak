@@ -14,9 +14,11 @@ from apps.accounts.serializers import DetailSerializer
 from apps.chat import messages
 from apps.chat.access import ChannelAccess, channel_access
 from apps.chat.models import Message
-from apps.chat.serializers import MessageSerializer
+from apps.chat.serializers import MESSAGE_PREFETCH, MessageSerializer
 from apps.chat.throttles import SendThrottle
 from apps.core import channels as rules
+from apps.core import reactions as reaction_rules
+from apps.core.reactions import MAX_DISTINCT
 from apps.workspaces import audit
 
 PAGE_SIZE = 50
@@ -122,7 +124,7 @@ class MessageListView(APIView):
         found = (
             Message.objects.filter(channel=access.channel)
             .select_related("author", "parent")
-            .prefetch_related("mentions")
+            .prefetch_related(*MESSAGE_PREFETCH)
         )
         after_event = _int_param(request, "after_event")
         if after_event is not None:
@@ -249,7 +251,7 @@ class ThreadView(APIView):
         found = (
             Message.objects.filter(parent=parent)
             .select_related("author", "parent")
-            .prefetch_related("mentions")
+            .prefetch_related(*MESSAGE_PREFETCH)
         )
         after = _int_param(request, "after")
         if after is not None:
@@ -289,17 +291,21 @@ class ThreadView(APIView):
         )
 
 
+def _reply(access: ChannelAccess, seq: int, thread_seq: int) -> Message:
+    parent = _thread_parent(access, seq)
+    reply = (
+        Message.objects.filter(parent=parent, thread_seq=thread_seq)
+        .select_related("author", "channel", "parent")
+        .first()
+    )
+    if reply is None:
+        raise Http404
+    return reply
+
+
 class ReplyDetailView(_EditDeleteView):
     def _message(self, access: ChannelAccess, **kwargs: int) -> Message:
-        parent = _thread_parent(access, kwargs["seq"])
-        reply = (
-            Message.objects.filter(parent=parent, thread_seq=kwargs["thread_seq"])
-            .select_related("author", "channel", "parent")
-            .first()
-        )
-        if reply is None:
-            raise Http404
-        return reply
+        return _reply(access, kwargs["seq"], kwargs["thread_seq"])
 
     @extend_schema(
         request=BodySerializer,
@@ -316,3 +322,84 @@ class ReplyDetailView(_EditDeleteView):
         self, request: Request, slug: str, channel_id: int, seq: int, thread_seq: int
     ) -> Response:
         return self._delete(request, slug, channel_id, seq=seq, thread_seq=thread_seq)
+
+
+class EmojiSerializer(serializers.Serializer[None]):
+    emoji = serializers.CharField(max_length=32)
+
+    def validate_emoji(self, value: str) -> str:
+        if not reaction_rules.is_emoji(value):
+            raise serializers.ValidationError("Use one emoji.")
+        return value
+
+
+def _reaction_target(access: ChannelAccess, seq: int, thread_seq: int | None) -> Message:
+    return _channel_message(access, seq) if thread_seq is None else _reply(access, seq, thread_seq)
+
+
+def _react(
+    request: Request,
+    slug: str,
+    channel_id: int,
+    seq: int,
+    thread_seq: int | None,
+    emoji: str,
+    on: bool,
+) -> Response:
+    user = _user(request)
+    access = channel_access(user, slug, channel_id)
+    message = _reaction_target(access, seq, thread_seq)
+    allowed = reaction_rules.can_react(
+        access.role,
+        access.kind,
+        is_member=access.is_member,
+        archived=access.channel.archived,
+        deleted=message.deleted,
+    )
+    if not allowed:
+        raise PermissionDenied("Join the channel to react, and only to messages still there.")
+    try:
+        messages.react(message, user, emoji, on=on)
+    except messages.TooManyReactions as error:
+        raise serializers.ValidationError(
+            {"emoji": [f"A message can have up to {MAX_DISTINCT} different reactions."]}
+        ) from error
+    fresh = (
+        Message.objects.filter(pk=message.pk)
+        .select_related("author", "parent")
+        .prefetch_related(*MESSAGE_PREFETCH)
+        .get()
+    )
+    return Response(MessageSerializer(fresh).data)
+
+
+class ReactionsView(APIView):
+    @extend_schema(
+        request=EmojiSerializer,
+        responses={200: MessageSerializer, 400: DetailSerializer, 403: DetailSerializer},
+        summary="React to a message or reply with an emoji",
+    )
+    def post(
+        self, request: Request, slug: str, channel_id: int, seq: int, thread_seq: int | None = None
+    ) -> Response:
+        serializer = EmojiSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        emoji = serializer.validated_data["emoji"]
+        return _react(request, slug, channel_id, seq, thread_seq, emoji, on=True)
+
+
+class ReactionView(APIView):
+    @extend_schema(
+        responses={200: MessageSerializer, 403: DetailSerializer},
+        summary="Take back your reaction",
+    )
+    def delete(
+        self,
+        request: Request,
+        slug: str,
+        channel_id: int,
+        seq: int,
+        emoji: str,
+        thread_seq: int | None = None,
+    ) -> Response:
+        return _react(request, slug, channel_id, seq, thread_seq, emoji, on=False)

@@ -1,7 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
-import { deleteMessage, editMessage, remember, type Channel } from "../api/chat";
+import { deleteMessage, editMessage, react, remember, type Channel } from "../api/chat";
 import { ApiError } from "../api/workspaces";
 import {
   activeQuery,
@@ -11,6 +18,7 @@ import {
   suggest,
   type Candidate,
 } from "../chat/mentions";
+import { QUICK_REACTIONS, reactedByMe, whoReacted } from "../chat/reactions";
 import type { Message } from "../chat/timeline";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
@@ -26,6 +34,52 @@ function problem(error: unknown): string {
 
 function replies(count: number): string {
   return count === 1 ? "1 reply" : `${String(count)} replies`;
+}
+
+function ReactionPicker({
+  onPick,
+  onClose,
+}: {
+  onPick: (emoji: string) => void;
+  onClose: () => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    box.current?.querySelector("button")?.focus();
+    const outside = (event: MouseEvent) => {
+      if (!box.current?.contains(event.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", outside);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+    };
+  }, [onClose]);
+  return (
+    <div
+      ref={box}
+      role="group"
+      aria-label="Pick a reaction"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onClose();
+      }}
+      className="settle absolute top-6 right-2 z-20 grid grid-cols-8 gap-0.5 rounded-xl border border-border bg-surface-raised p-1.5 shadow-lg"
+    >
+      {QUICK_REACTIONS.map(({ emoji, name }) => (
+        <button
+          key={emoji}
+          type="button"
+          aria-label={name}
+          title={name}
+          onClick={() => {
+            onPick(emoji);
+          }}
+          className="grid size-8 place-items-center rounded-lg text-lg hover:bg-bg-subtle focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 const actionClass = "rounded-md px-2 py-1 text-xs font-semibold hover:bg-bg-subtle";
@@ -79,6 +133,18 @@ export function MessageRow({
   const threadSeq = message.parent_seq === null ? message.seq : null;
   const canEdit = mine && !message.deleted && !editing;
   const canReply = onOpenThread !== undefined && threadSeq !== null && !editing;
+  const canReact = channel.is_member && !channel.archived && !message.deleted && !editing;
+  const [picking, setPicking] = useState(false);
+
+  async function toggle(emoji: string, on: boolean) {
+    setPicking(false);
+    setError(null);
+    try {
+      remember(client, slug, channel.id, await react(slug, channel.id, message, emoji, on));
+    } catch (failure) {
+      setError(problem(failure));
+    }
+  }
 
   async function save() {
     setBusy(true);
@@ -185,10 +251,54 @@ export function MessageRow({
             {replies(message.reply_count)}
           </button>
         )}
+        {message.reactions.length > 0 && (
+          <ul aria-label="Reactions" className="mt-1 flex flex-wrap gap-1">
+            {message.reactions.map((reaction) => {
+              const mineToo = reactedByMe(reaction, meId);
+              const label = whoReacted(reaction, meId);
+              return (
+                <li key={reaction.emoji}>
+                  <button
+                    type="button"
+                    aria-pressed={mineToo}
+                    aria-label={label}
+                    title={label}
+                    disabled={!canReact}
+                    onClick={() => void toggle(reaction.emoji, !mineToo)}
+                    className="flex h-7 items-center gap-1 rounded-full border border-border bg-bg px-2 text-sm tabular-nums transition-colors hover:border-border-strong disabled:cursor-default aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-soft-text"
+                  >
+                    <span aria-hidden="true">{reaction.emoji}</span>
+                    <span aria-hidden="true">{reaction.count}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {error && <ErrorMessage>{error}</ErrorMessage>}
       </div>
-      {(canEdit || canReply) && (
+      {picking && (
+        <ReactionPicker
+          onPick={(emoji) => void toggle(emoji, true)}
+          onClose={() => {
+            setPicking(false);
+          }}
+        />
+      )}
+      {(canEdit || canReply || canReact) && (
         <div className="absolute -top-3 right-2 hidden items-center gap-1 rounded-lg border border-border bg-surface-raised p-0.5 shadow-sm group-focus-within:flex group-hover:flex">
+          {canReact && (
+            <button
+              type="button"
+              aria-expanded={picking}
+              onClick={() => {
+                setPicking((now) => !now);
+              }}
+              className={actionClass}
+            >
+              React
+            </button>
+          )}
           {canReply && (
             <button
               type="button"
