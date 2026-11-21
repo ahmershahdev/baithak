@@ -34,7 +34,7 @@ in CI, and seed data.
 ## M3. Threads, direct messages and presence (target 2027-01-17)
 
 - [x] Threads with reply counts and "also send to channel"
-- [ ] Direct and group messages
+- [x] Direct and group messages
 - [x] Mentions (`@person`, `@channel`) parsed in `apps/core`, with autocomplete
 - [x] Reactions
 - [ ] Typing indicator and online status in Redis, with expiry

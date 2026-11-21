@@ -16,15 +16,18 @@ from apps.chat.access import channel_access, readable_channels
 from apps.chat.models import Channel, ChannelMember
 from apps.chat.reads import mark_read, unread_of, with_read_state
 from apps.chat.serializers import (
+    PEOPLE_PREFETCH,
     AddChannelMemberSerializer,
     ChannelCreateSerializer,
     ChannelMemberSerializer,
     ChannelSerializer,
     ChannelUpdateSerializer,
+    ConversationSerializer,
     ReadMarkerSerializer,
     ReadSerializer,
 )
 from apps.core import channels as rules
+from apps.core import conversations
 from apps.core.roles import Role
 from apps.workspaces import audit
 from apps.workspaces.access import membership
@@ -45,7 +48,11 @@ def _with_state(channel: Channel) -> Channel:
 
 
 def _serialize(channel: Channel, user: User) -> dict[str, object]:
-    fresh = with_read_state(Channel.objects.filter(pk=channel.pk), user.pk).get()
+    fresh = (
+        with_read_state(Channel.objects.filter(pk=channel.pk), user.pk)
+        .prefetch_related(PEOPLE_PREFETCH)
+        .get()
+    )
     return dict(ChannelSerializer(_with_state(fresh)).data)
 
 
@@ -54,7 +61,11 @@ class ChannelListView(APIView):
     def get(self, request: Request, slug: str) -> Response:
         user = _user(request)
         member = membership(user, slug)
-        channels = with_read_state(readable_channels(member), user.pk).order_by("name")
+        channels = (
+            with_read_state(readable_channels(member), user.pk)
+            .prefetch_related(PEOPLE_PREFETCH)
+            .order_by("name")
+        )
         return Response(ChannelSerializer([_with_state(c) for c in channels], many=True).data)
 
     @extend_schema(
@@ -200,7 +211,7 @@ class ChannelMembersView(APIView):
     def post(self, request: Request, slug: str, channel_id: int) -> Response:
         user = _user(request)
         access = channel_access(user, slug, channel_id)
-        if not rules.can_add_member(access.role, is_member=access.is_member):
+        if not rules.can_add_member(access.role, access.kind, is_member=access.is_member):
             raise PermissionDenied("Only people in the channel can add others.")
         if access.channel.archived:
             raise PermissionDenied("This channel is archived.")
@@ -256,4 +267,53 @@ class ChannelReadView(APIView):
         channel = with_read_state(Channel.objects.filter(pk=access.channel.pk), user.pk).get()
         return Response(
             {"channel": channel.pk, "last_read_seq": marker, "unread": unread_of(channel)}
+        )
+
+
+class ConversationView(APIView):
+    @extend_schema(
+        request=ConversationSerializer,
+        responses={200: ChannelSerializer, 201: ChannelSerializer, 400: DetailSerializer},
+        summary="Open a direct or group conversation, starting it if it doesn't exist",
+    )
+    def post(self, request: Request, slug: str) -> Response:
+        user = _user(request)
+        member = membership(user, slug)
+        serializer = ConversationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        people = set(serializer.validated_data["user_ids"]) | {user.pk}
+        kind = conversations.kind_for(len(people))
+        if kind is None:
+            others = conversations.MAX_PEOPLE - 1
+            raise ValidationError({"user_ids": [f"Pick 1 to {others} other people."]})
+        workspace = member.workspace
+        if Member.objects.for_workspace(workspace).filter(user_id__in=people).count() != len(
+            people
+        ):
+            raise ValidationError({"user_ids": ["Everyone must be in this workspace."]})
+        with transaction.atomic():
+            channel, created = Channel.objects.get_or_create(
+                workspace=workspace,
+                name=conversations.key(people),
+                defaults={"kind": kind, "created_by": user},
+            )
+            # Opening it again brings back anyone who left.
+            for person in people:
+                _, joined = ChannelMember.objects.get_or_create(
+                    channel=channel, user_id=person, defaults={"last_read_seq": channel.last_seq}
+                )
+                if joined:
+                    events.access_changed(person)
+            if created:
+                # Who talks to whom stays out of the log: only the kind and the size.
+                audit.record(
+                    workspace,
+                    user,
+                    "conversation.create",
+                    channel,
+                    {"kind": kind.value, "people": len(people)},
+                )
+        return Response(
+            _serialize(channel, user),
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )

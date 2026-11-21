@@ -4,6 +4,7 @@ import { Link, useNavigate, useOutletContext } from "react-router";
 import { useChannels, useCreateChannel, useJoinChannel, type ChannelKind } from "../../api/chat";
 import type { ApiErrors } from "../../api/client";
 import { ApiError } from "../../api/workspaces";
+import { isConversation } from "../../chat/conversations";
 import { Button, ErrorMessage, Field } from "../../components/ui";
 import { Select } from "../../components/Select";
 import { ChannelIcon, PageHeader, Panel } from "../../components/workspace";
@@ -54,43 +55,45 @@ export function Channels() {
       {channels.data && (
         <Panel className="settle">
           <ul className="divide-y divide-border">
-            {channels.data.map((channel) => (
-              <li key={channel.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to={`${base}/c/${String(channel.id)}`}
-                    className="inline-flex items-center gap-1.5 font-semibold hover:underline"
-                  >
-                    <ChannelIcon kind={channel.kind} />
-                    {channel.name}
-                  </Link>
-                  <p className="truncate text-sm text-text-subtle">
-                    {channel.archived ? "Archived. " : ""}
-                    {channel.topic || (channel.kind === "private" ? "Private" : "Public")}
-                  </p>
-                </div>
-                {channel.is_member ? (
-                  <span className="text-sm text-text-subtle">Joined</span>
-                ) : (
-                  !channel.archived && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        joinChannel.mutate(channel.id, {
-                          onSuccess: () => {
-                            void navigate(`${base}/c/${String(channel.id)}`);
-                          },
-                        });
-                      }}
-                      disabled={joinChannel.isPending}
-                      className="rounded-lg border border-border-strong px-3 py-1.5 text-sm font-semibold hover:bg-bg-subtle focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+            {channels.data
+              .filter((channel) => !isConversation(channel))
+              .map((channel) => (
+                <li key={channel.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      to={`${base}/c/${String(channel.id)}`}
+                      className="inline-flex items-center gap-1.5 font-semibold hover:underline"
                     >
-                      Join
-                    </button>
-                  )
-                )}
-              </li>
-            ))}
+                      <ChannelIcon kind={channel.kind} />
+                      {channel.name}
+                    </Link>
+                    <p className="truncate text-sm text-text-subtle">
+                      {channel.archived ? "Archived. " : ""}
+                      {channel.topic || (channel.kind === "private" ? "Private" : "Public")}
+                    </p>
+                  </div>
+                  {channel.is_member ? (
+                    <span className="text-sm text-text-subtle">Joined</span>
+                  ) : (
+                    !channel.archived && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          joinChannel.mutate(channel.id, {
+                            onSuccess: () => {
+                              void navigate(`${base}/c/${String(channel.id)}`);
+                            },
+                          });
+                        }}
+                        disabled={joinChannel.isPending}
+                        className="rounded-lg border border-border-strong px-3 py-1.5 text-sm font-semibold hover:bg-bg-subtle focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+                      >
+                        Join
+                      </button>
+                    )
+                  )}
+                </li>
+              ))}
           </ul>
         </Panel>
       )}

@@ -12,6 +12,13 @@ from apps.core.roles import Role, is_admin
 class ChannelKind(StrEnum):
     PUBLIC = "public"
     PRIVATE = "private"
+    # Conversations (apps/core/conversations.py): read only by the people in them, like a
+    # private channel, but with no name, topic or archive to manage and no one to add.
+    DIRECT = "direct"
+    GROUP = "group"
+
+
+CONVERSATIONS = frozenset({ChannelKind.DIRECT, ChannelKind.GROUP})
 
 
 def can_read(role: Role | None, kind: ChannelKind, *, is_member: bool) -> bool:
@@ -38,14 +45,15 @@ def can_create(role: Role | None) -> bool:
 
 def can_manage(role: Role | None, kind: ChannelKind, *, is_creator: bool, is_member: bool) -> bool:
     """Rename, change the topic, archive."""
-    if role is None or not can_read(role, kind, is_member=is_member):
+    if role is None or kind in CONVERSATIONS or not can_read(role, kind, is_member=is_member):
         return False
     return is_admin(role) or (is_creator and is_member)
 
 
-def can_add_member(role: Role | None, *, is_member: bool) -> bool:
-    """Bring another workspace member into a channel you are in."""
-    return role is not None and role != Role.GUEST and is_member
+def can_add_member(role: Role | None, kind: ChannelKind, *, is_member: bool) -> bool:
+    """Bring another workspace member into a channel you are in. A conversation is fixed to its
+    people; adding someone starts a new one."""
+    return role is not None and role != Role.GUEST and is_member and kind not in CONVERSATIONS
 
 
 def can_edit_message(*, is_author: bool, deleted: bool, archived: bool) -> bool:

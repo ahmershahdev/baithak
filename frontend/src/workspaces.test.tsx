@@ -380,6 +380,16 @@ describe("invitation link", () => {
 
     expect(await screen.findByRole("button", { name: "Accept and join" })).toBeInTheDocument();
   });
+
+  test("someone already signed in who opens sign-in from an invitation goes to the invitation", async () => {
+    fakeBackend({
+      "GET /api/v1/auth/me/": () => json(200, amna),
+      "POST /api/v1/invitations/preview/": () => json(200, preview),
+    });
+    renderAt(`/signin?next=${encodeURIComponent("/invite?token=tok-123")}`);
+
+    expect(await screen.findByRole("button", { name: "Accept and join" })).toBeInTheDocument();
+  });
 });
 
 describe("safe return paths", () => {

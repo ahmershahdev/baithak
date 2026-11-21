@@ -8,7 +8,7 @@ import type { components } from "./schema";
 import { ApiError, useMembers } from "./workspaces";
 
 export type Channel = components["schemas"]["Channel"];
-export type ChannelKind = components["schemas"]["KindEnum"];
+export type ChannelKind = components["schemas"]["ChannelCreateKindEnum"];
 
 export const chatKeys = {
   channels: (slug: string) => ["workspaces", slug, "channels"] as const,
@@ -47,7 +47,8 @@ export function useMentionCandidates(
   me: User,
   canMentionChannel: boolean,
 ): Candidate[] {
-  const isPrivate = channel.kind === "private";
+  // Anything but a public channel is read only by its members.
+  const isPrivate = channel.kind !== "public";
   const workspace = useMembers(slug);
   const inChannel = useQuery({
     queryKey: chatKeys.channelMembers(slug, channel.id),
@@ -191,6 +192,20 @@ export function useCreateChannel(slug: string) {
     mutationFn: async (body: { name: string; kind: ChannelKind; topic: string }) =>
       unwrap(
         await api.POST("/api/v1/workspaces/{slug}/channels/", { params: { path: { slug } }, body }),
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: chatKeys.channels(slug) }),
+  });
+}
+
+export function useStartConversation(slug: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (userIds: number[]) =>
+      unwrap(
+        await api.POST("/api/v1/workspaces/{slug}/channels/conversations/", {
+          params: { path: { slug } },
+          body: { user_ids: userIds },
+        }),
       ),
     onSuccess: () => client.invalidateQueries({ queryKey: chatKeys.channels(slug) }),
   });

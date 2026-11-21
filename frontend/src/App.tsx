@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router";
+import { Navigate, Route, Routes, useLocation, useSearchParams } from "react-router";
 
 import type { User } from "./api/client";
 import { useWorkspaces } from "./api/workspaces";
@@ -17,11 +17,13 @@ import { VerifyEmail } from "./pages/VerifyEmail";
 import { Audit } from "./pages/workspace/Audit";
 import { Channels } from "./pages/workspace/Channels";
 import { ChannelView } from "./pages/workspace/ChannelView";
+import { StartConversation } from "./pages/workspace/StartConversation";
 import { Invitations } from "./pages/workspace/Invitations";
 import { Members } from "./pages/workspace/Members";
 import { Overview } from "./pages/workspace/Overview";
 import { Settings } from "./pages/workspace/Settings";
 import { WorkspaceShell } from "./pages/workspace/Shell";
+import { safePath } from "./next";
 
 function Loading() {
   return (
@@ -41,8 +43,11 @@ function Unreachable() {
 
 function SignedOutOnly({ children }: { children: ReactNode }) {
   const me = useMe();
+  const [params] = useSearchParams();
   if (me.isPending) return <Loading />;
-  if (me.data) return <Navigate to="/" replace />;
+  // The page signs the person in and goes to `next` at the same moment this sees them signed
+  // in; both must go to the same place, or an invitation is lost to whichever runs last.
+  if (me.data) return <Navigate to={safePath(params.get("next")) ?? "/"} replace />;
   return children;
 }
 
@@ -77,6 +82,7 @@ export function App() {
         <Route index element={<Overview />} />
         <Route path="channels" element={<Channels />} />
         <Route path="c/:channelId" element={<ChannelView />} />
+        <Route path="dm" element={<StartConversation />} />
         <Route path="members" element={<Members />} />
         <Route path="invitations" element={<Invitations />} />
         <Route path="settings" element={<Settings />} />

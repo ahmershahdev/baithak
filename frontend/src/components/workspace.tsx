@@ -163,8 +163,35 @@ export function When({ iso }: { iso: string }) {
   );
 }
 
-/** "#" for public channels, a lock for private ones; labelled for screen readers. */
-export function ChannelIcon({ kind }: { kind: "public" | "private" }) {
+/** "#" for public channels, a lock for private ones, a person or two for conversations;
+ * labelled for screen readers. */
+export function ChannelIcon({ kind }: { kind: "public" | "private" | "direct" | "group" }) {
+  if (kind === "direct" || kind === "group") {
+    return (
+      <svg
+        viewBox="0 0 16 16"
+        className="size-3.5 shrink-0"
+        role="img"
+        aria-label={kind === "direct" ? "Direct message" : "Group"}
+      >
+        <circle cx="6" cy="5.5" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <path
+          d="M1.5 13.5c.6-2.4 2.4-3.6 4.5-3.6s3.9 1.2 4.5 3.6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+        {kind === "group" && (
+          <path
+            d="M10.5 3.2a2.5 2.5 0 0 1 0 4.6M12 10.2c1.3.5 2.1 1.6 2.5 3.3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+          />
+        )}
+      </svg>
+    );
+  }
   if (kind === "public") {
     return (
       <span aria-hidden="true" className="w-3.5 shrink-0 text-center text-text-subtle">

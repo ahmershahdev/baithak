@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router";
 
-import { useChannels } from "../../api/chat";
+import { useChannels, type Channel } from "../../api/chat";
 import { api, type User } from "../../api/client";
 import { useWorkspace, useWorkspaces, type Workspace } from "../../api/workspaces";
 import { ME } from "../../auth";
+import { channelTitle, isConversation } from "../../chat/conversations";
 import { useLive } from "../../chat/live";
 import { badge } from "../../chat/unread";
 import { Wordmark } from "../../components/brand";
@@ -87,53 +88,95 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-surface text-text shadow-sm" : "text-text-muted hover:bg-surface hover:text-text"
   }`;
 
-function ChannelList({ slug }: { slug: string }) {
+function ChannelLink({ slug, channel, meId }: { slug: string; channel: Channel; meId: number }) {
+  return (
+    <li>
+      <NavLink to={`/w/${slug}/c/${String(channel.id)}`} className={linkClass}>
+        <ChannelIcon kind={channel.kind} />
+        <span
+          className={`truncate ${channel.archived ? "text-text-subtle line-through" : ""} ${
+            channel.unread ? "font-semibold text-text" : ""
+          }`}
+        >
+          {channelTitle(channel, meId)}
+        </span>
+        {channel.unread ? (
+          <>
+            <span
+              aria-hidden="true"
+              className="ml-auto rounded-full bg-unread px-1.5 text-xs font-semibold text-on-unread tabular-nums"
+            >
+              {badge(channel.unread)}
+            </span>
+            <span className="sr-only">, {channel.unread} unread</span>
+          </>
+        ) : null}
+      </NavLink>
+    </li>
+  );
+}
+
+function SidebarSection({
+  id,
+  title,
+  action,
+  children,
+}: {
+  id: string;
+  title: string;
+  action: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-1">
+      <div className="flex items-center justify-between px-3">
+        <h2 id={id} className="text-xs font-semibold tracking-wide text-text-subtle uppercase">
+          {title}
+        </h2>
+        {action}
+      </div>
+      <ul className="flex flex-col gap-0.5">{children}</ul>
+    </section>
+  );
+}
+
+const sectionAction =
+  "rounded-md px-1.5 text-xs font-semibold text-accent-text hover:bg-surface focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none";
+
+function ChannelList({ slug, meId }: { slug: string; meId: number }) {
   const channels = useChannels(slug);
   const mine = channels.data?.filter((channel) => channel.is_member) ?? [];
+  const rooms = mine.filter((channel) => !isConversation(channel));
+  const conversations = mine.filter(isConversation);
   return (
-    <section aria-labelledby="channels-heading" className="flex flex-col gap-1">
-      <div className="flex items-center justify-between px-3">
-        <h2
-          id="channels-heading"
-          className="text-xs font-semibold tracking-wide text-text-subtle uppercase"
-        >
-          Channels
-        </h2>
-        <Link
-          to={`/w/${slug}/channels`}
-          className="rounded-md px-1.5 text-xs font-semibold text-accent-text hover:bg-surface focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
-        >
-          Browse
-        </Link>
-      </div>
-      <ul className="flex flex-col gap-0.5">
-        {mine.map((channel) => (
-          <li key={channel.id}>
-            <NavLink to={`/w/${slug}/c/${String(channel.id)}`} className={linkClass}>
-              <ChannelIcon kind={channel.kind} />
-              <span
-                className={`truncate ${channel.archived ? "text-text-subtle line-through" : ""} ${
-                  channel.unread ? "font-semibold text-text" : ""
-                }`}
-              >
-                {channel.name}
-              </span>
-              {channel.unread ? (
-                <>
-                  <span
-                    aria-hidden="true"
-                    className="ml-auto rounded-full bg-unread px-1.5 text-xs font-semibold text-on-unread tabular-nums"
-                  >
-                    {badge(channel.unread)}
-                  </span>
-                  <span className="sr-only">, {channel.unread} unread</span>
-                </>
-              ) : null}
-            </NavLink>
-          </li>
+    <>
+      <SidebarSection
+        id="channels-heading"
+        title="Channels"
+        action={
+          <Link to={`/w/${slug}/channels`} className={sectionAction}>
+            Browse
+          </Link>
+        }
+      >
+        {rooms.map((channel) => (
+          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} />
         ))}
-      </ul>
-    </section>
+      </SidebarSection>
+      <SidebarSection
+        id="conversations-heading"
+        title="Direct messages"
+        action={
+          <Link to={`/w/${slug}/dm`} className={sectionAction}>
+            New
+          </Link>
+        }
+      >
+        {conversations.map((channel) => (
+          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} />
+        ))}
+      </SidebarSection>
+    </>
   );
 }
 
@@ -234,7 +277,7 @@ export function WorkspaceShell({ me }: { me: User }) {
           <span className="text-xs text-text-subtle">Your role</span>
           <RoleBadge role={workspace.data.role} />
         </div>
-        <ChannelList slug={workspace.data.slug} />
+        <ChannelList slug={workspace.data.slug} meId={me.id} />
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">
           <Account me={me} />

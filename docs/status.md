@@ -112,12 +112,16 @@ M1 in progress. Merged so far:
   reacted, pressed when one is yours; a React action opens a picker of 16. Vitest's per-test
   timeout is now 15 s: typing tests passed the 5 s default when every core was busy.
 
+- Direct and group messages: conversations are channels of kind `direct` or `group`, opened
+  (found or started) through `.../channels/conversations/`, readable only by their people. The
+  sidebar has a Direct messages section titled by the other people's names, and `/w/<slug>/dm`
+  picks one person or up to eight.
+- Fixed: signing in from an invitation link sometimes landed on home. The signed-out guard sent
+  people to `/` while the page sent them to `next`; both now go to `next`.
+
 ## Next session
 
-M3, in this order:
-
-1. Direct and group messages.
-2. Typing indicator and online status in Redis with expiry.
+M3: typing indicator and online status in Redis with expiry. Then release `v0.3.0`.
 
 ## Open questions
 
