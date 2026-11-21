@@ -23,19 +23,41 @@ export function Avatar({
   name,
   colorKey,
   size = "md",
+  online,
 }: {
   name: string;
   colorKey: string;
   size?: "sm" | "md" | "lg";
+  /** Shows a presence dot when set. */
+  online?: boolean;
 }) {
   const sizes = { sm: "size-7 text-xs", md: "size-9 text-sm", lg: "size-12 text-lg" };
-  return (
+  const face = (
     <span
       aria-hidden="true"
       className={`grid shrink-0 place-items-center rounded-t-full rounded-b-lg font-display font-semibold ${sizes[size]} ${hue(colorKey)}`}
     >
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
+  );
+  if (online === undefined) return face;
+  return (
+    <span className="relative shrink-0">
+      {face}
+      <PresenceDot online={online} className="absolute -right-0.5 -bottom-0.5" />
+    </span>
+  );
+}
+
+export function PresenceDot({ online, className = "" }: { online: boolean; className?: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={online ? "Online" : "Offline"}
+      className={`size-2.5 shrink-0 rounded-full ring-2 ring-bg-subtle ${
+        online ? "bg-presence-online" : "bg-presence-offline"
+      } ${className}`}
+    />
   );
 }
 

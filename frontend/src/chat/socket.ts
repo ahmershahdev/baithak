@@ -3,6 +3,14 @@ export type ServerEvent =
   | { type: "message"; channel: number; event: number; message: unknown }
   | { type: "channel"; channel: number; data: unknown }
   | { type: "read"; channel: number; last_read_seq: number }
+  | { type: "presence"; online: number[] }
+  | { type: "presence_change"; user: number; online: boolean }
+  | {
+      type: "typing";
+      channel: number;
+      thread: number | null;
+      user: { id: number; username: string; display_name: string };
+    }
   | { type: "pong" };
 
 export type Status = "connecting" | "open" | "reconnecting" | "closed";
@@ -37,6 +45,13 @@ export class LiveSocket {
 
   constructor(private readonly options: LiveSocketOptions) {
     this.connect();
+  }
+
+  /** Send while connected; false when the socket is down (a typing notice is simply lost). */
+  send(payload: unknown): boolean {
+    if (this.socket?.readyState !== WebSocket.OPEN) return false;
+    this.socket.send(JSON.stringify(payload));
+    return true;
   }
 
   stop() {

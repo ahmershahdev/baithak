@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { use, useState } from "react";
 
 import { remember, sendReply, useThread, type Channel } from "../../api/chat";
 import type { User } from "../../api/client";
+import { TypingContext, useTypers } from "../../chat/live";
 import type { Candidate } from "../../chat/mentions";
 import { startsGroup, storedIds } from "../../chat/timeline";
-import { Composer, MessageRow } from "../../components/chat";
+import { Composer, MessageRow, TypingLine } from "../../components/chat";
 import { ErrorMessage } from "../../components/ui";
 
 export function ThreadPanel({
@@ -27,6 +28,8 @@ export function ThreadPanel({
   const thread = useThread(slug, channel.id, seq);
   const [alsoInChannel, setAlsoInChannel] = useState(false);
   const replies = thread.data?.replies ?? [];
+  const sendTyping = use(TypingContext);
+  const typers = useTypers(slug, channel.id, seq);
 
   async function send(body: string, clientId: string) {
     const reply = await sendReply(slug, channel.id, seq, body, clientId, alsoInChannel);
@@ -90,6 +93,7 @@ export function ThreadPanel({
         )}
       </div>
 
+      <TypingLine people={typers} />
       {thread.data && channel.is_member && !channel.archived && (
         <Composer
           id="thread-composer"
@@ -97,6 +101,9 @@ export function ThreadPanel({
           stored={storedIds(replies, me.id)}
           send={send}
           candidates={candidates}
+          onTyping={() => {
+            sendTyping(channel.id, seq);
+          }}
           footer={
             <label className="flex items-center gap-2 text-sm text-text-muted">
               <input

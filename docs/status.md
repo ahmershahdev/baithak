@@ -119,9 +119,15 @@ M1 in progress. Merged so far:
 - Fixed: signing in from an invitation link sometimes landed on home. The signed-out guard sent
   people to `/` while the page sent them to `next`; both now go to `next`.
 
+- Typing indicator and online status: a Redis sorted set per workspace with a 60 s lapse,
+  kept alive by pings; first socket in and last out are announced to the workspace. Typing
+  notices go over the socket, at most every 3 s per person and place, shown for 5 s. Presence
+  dots on members, direct messages and the conversation header; "Bilal is typing" under the
+  channel and thread. M3 is complete.
+
 ## Next session
 
-M3: typing indicator and online status in Redis with expiry. Then release `v0.3.0`.
+Release M3 as `v0.3.0` and close its milestone, then start M4 (files, search, notifications).
 
 ## Open questions
 
@@ -135,7 +141,6 @@ M3: typing indicator and online status in Redis with expiry. Then release `v0.3.
 - jsdom is held at 29.x so tests run on Node 22.12; 30 and later need Node 22.22 or 24.15. Lift
   it once the local Node is upgraded.
 
-- Presence design (see [architecture.md](architecture.md)).
 - Guest permissions and the allowed message formatting.
 - Typefaces, spacing and type scale (see [design.md](design.md)).
 - `apps/core` 100% branch coverage gate: add a separate coverage run for it once it has code.

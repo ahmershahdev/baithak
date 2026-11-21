@@ -22,6 +22,11 @@ def user_group(user_id: int) -> str:
     return f"chat.user.{user_id}"
 
 
+def workspace_group(workspace_id: int) -> str:
+    """Every open socket in the workspace, for who is online."""
+    return f"chat.workspace.{workspace_id}"
+
+
 def _send(group: str, payload: dict[str, Any]) -> None:
     layer = get_channel_layer()
     if layer is not None:

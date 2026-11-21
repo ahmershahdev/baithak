@@ -19,6 +19,7 @@ import {
   When,
 } from "../../components/workspace";
 import { canManage, grantable, ROLE_LABELS, type Role } from "../../roles";
+import { useOnline } from "../../chat/live";
 import type { WorkspaceContext } from "./Shell";
 
 function problem(error: unknown): string {
@@ -27,7 +28,17 @@ function problem(error: unknown): string {
     : "Could not reach Baithak. Try again.";
 }
 
-function Row({ member, myRole, isMe }: { member: Member; myRole: Role; isMe: boolean }) {
+function Row({
+  member,
+  myRole,
+  isMe,
+  online,
+}: {
+  member: Member;
+  myRole: Role;
+  isMe: boolean;
+  online: boolean;
+}) {
   const { workspace } = useOutletContext<WorkspaceContext>();
   const navigate = useNavigate();
   const changeRole = useChangeRole(workspace.slug);
@@ -39,7 +50,7 @@ function Row({ member, myRole, isMe }: { member: Member; myRole: Role; isMe: boo
   return (
     <li className="flex flex-col gap-2 px-5 py-4">
       <div className="flex flex-wrap items-center gap-4">
-        <Avatar name={name} colorKey={member.username} />
+        <Avatar name={name} colorKey={member.username} online={online} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">
             {name} {isMe && <span className="font-normal text-text-subtle">(you)</span>}
@@ -96,6 +107,7 @@ function Row({ member, myRole, isMe }: { member: Member; myRole: Role; isMe: boo
 export function Members() {
   const { workspace, me } = useOutletContext<WorkspaceContext>();
   const members = useMembers(workspace.slug);
+  const online = useOnline(workspace.slug);
 
   return (
     <div className="flex flex-col gap-8">
@@ -113,6 +125,7 @@ export function Members() {
                 member={member}
                 myRole={workspace.role}
                 isMe={member.user_id === me.id}
+                online={online.has(member.user_id)}
               />
             ))}
           </ul>

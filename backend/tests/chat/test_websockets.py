@@ -1,15 +1,17 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 import pytest
+import redis
 from channels.db import database_sync_to_async
 from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.test import Client
 
 from apps.accounts.models import User
-from apps.chat import messages
+from apps.chat import messages, presence
 from apps.chat.consumers import NOT_A_MEMBER, NOT_SIGNED_IN
 from apps.chat.models import Channel, ChannelMember
 from apps.chat.reads import mark_read
@@ -26,6 +28,17 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 PATH = "/ws/workspaces/team/"
 router: Any = URLRouter(websocket_urlpatterns)  # type: ignore[arg-type]
+
+
+@pytest.fixture(autouse=True)
+def _clear_presence() -> Iterator[None]:
+    """Presence lives in real Redis (under the test prefix); start each test from nobody."""
+    yield
+    client = redis.from_url(settings.REDIS_URL)
+    keys = list(client.scan_iter(f"{settings.PRESENCE_KEY_PREFIX}:*"))
+    if keys:
+        client.delete(*keys)
+    client.close()
 
 
 @pytest.fixture
@@ -84,6 +97,23 @@ async def open_socket(user: User, opened: list[WebsocketCommunicator]) -> Websoc
 
 post = database_sync_to_async(messages.post)
 
+# Every socket also hears who is online; tests about other things look past it.
+PRESENCE = {"presence", "presence_change"}
+
+
+async def receive(socket: WebsocketCommunicator) -> Any:
+    while True:
+        event = await socket.receive_json_from()
+        if event["type"] not in PRESENCE:
+            return event
+
+
+async def quiet(socket: WebsocketCommunicator) -> bool:
+    while not await socket.receive_nothing():
+        if (await socket.receive_json_from())["type"] not in PRESENCE:
+            return False
+    return True
+
 
 class TestConnecting:
     async def test_signed_out_is_refused(self, workspace: Workspace) -> None:
@@ -107,7 +137,7 @@ class TestConnecting:
     ) -> None:
         socket = await open_socket(owner, sockets)
 
-        assert await socket.receive_json_from() == {
+        assert await receive(socket) == {
             "type": "subscribed",
             "channels": [general.pk],
         }
@@ -116,21 +146,21 @@ class TestConnecting:
         self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
     ) -> None:
         socket = await open_socket(owner, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
 
         await socket.send_json_to({"type": "ping"})
 
-        assert await socket.receive_json_from() == {"type": "pong"}
+        assert await receive(socket) == {"type": "pong"}
 
     async def test_anything_else_from_the_client_is_ignored(
         self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
     ) -> None:
         socket = await open_socket(owner, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
 
         await socket.send_json_to({"type": "message", "body": "sneaky"})
 
-        assert await socket.receive_nothing()
+        assert await quiet(socket)
 
 
 class TestThroughTheRealApp:
@@ -153,7 +183,7 @@ class TestThroughTheRealApp:
         connected, _ = await socket.connect()
 
         assert connected
-        assert (await socket.receive_json_from())["type"] == "subscribed"
+        assert (await receive(socket))["type"] == "subscribed"
         await socket.disconnect()
 
     async def test_a_foreign_origin_is_refused(self, owner: User, workspace: Workspace) -> None:
@@ -176,12 +206,12 @@ class TestBroadcast:
         bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
         tabs = [await open_socket(owner, sockets), await open_socket(bilal, sockets)]
         for tab in tabs:
-            await tab.receive_json_from()
+            await receive(tab)
 
         message, _ = await post(general, owner, "Salaam")
 
         for tab in tabs:
-            event = await tab.receive_json_from()
+            event = await receive(tab)
             assert (event["type"], event["channel"], event["event"]) == ("message", general.pk, 1)
             assert event["message"]["body"] == "Salaam"
             assert event["message"]["seq"] == message.seq
@@ -194,15 +224,15 @@ class TestBroadcast:
         sockets: list[WebsocketCommunicator],
     ) -> None:
         socket = await open_socket(owner, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
         message, _ = await post(general, owner, "Teh plan")
-        await socket.receive_json_from()
-        assert (await socket.receive_json_from())["type"] == "read"
+        await receive(socket)
+        assert (await receive(socket))["type"] == "read"
 
         await database_sync_to_async(messages.edit)(message, "The plan")
-        edited = await socket.receive_json_from()
+        edited = await receive(socket)
         await database_sync_to_async(messages.delete)(message)
-        deleted = await socket.receive_json_from()
+        deleted = await receive(socket)
 
         assert (edited["event"], edited["message"]["body"]) == (2, "The plan")
         assert (deleted["event"], deleted["message"]["deleted"]) == (3, True)
@@ -216,11 +246,11 @@ class TestBroadcast:
         secret = await database_sync_to_async(self._private)(workspace, owner)
         admin = await database_sync_to_async(join)(workspace, Role.ADMIN, "admin")
         socket = await open_socket(admin, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
 
         await post(secret, owner, "Only for us")
 
-        assert await socket.receive_nothing()
+        assert await quiet(socket)
 
     async def test_being_added_subscribes_an_open_socket(
         self,
@@ -233,7 +263,7 @@ class TestBroadcast:
         secret = await database_sync_to_async(self._private)(workspace, owner)
         bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
         socket = await open_socket(bilal, sockets)
-        before = await socket.receive_json_from()
+        before = await receive(socket)
 
         def add() -> int:
             api = APIClient()
@@ -246,9 +276,9 @@ class TestBroadcast:
             return int(response.status_code)
 
         assert await database_sync_to_async(add)() == 201
-        after = await socket.receive_json_from()
+        after = await receive(socket)
         await post(secret, owner, "Welcome in")
-        heard = await socket.receive_json_from()
+        heard = await receive(socket)
 
         assert secret.pk not in before["channels"]
         assert secret.pk in after["channels"]
@@ -265,7 +295,7 @@ class TestBroadcast:
 
         secret = await database_sync_to_async(self._private)(workspace, owner)
         socket = await open_socket(owner, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
 
         def leave() -> None:
             api = APIClient()
@@ -273,11 +303,11 @@ class TestBroadcast:
             api.post(f"/api/v1/workspaces/team/channels/{secret.pk}/leave/")
 
         await database_sync_to_async(leave)()
-        after = await socket.receive_json_from()
+        after = await receive(socket)
         await post(secret, owner, "Nobody hears this")
 
         assert after["channels"] == [general.pk]
-        assert await socket.receive_nothing()
+        assert await quiet(socket)
 
     async def test_removal_from_the_workspace_closes_the_socket(
         self,
@@ -289,7 +319,7 @@ class TestBroadcast:
 
         bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
         socket = await open_socket(bilal, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
 
         def remove() -> None:
             api = APIClient()
@@ -299,6 +329,8 @@ class TestBroadcast:
         await database_sync_to_async(remove)()
 
         closed = await socket.receive_output()
+        while closed["type"] == "websocket.send":
+            closed = await socket.receive_output()
         assert closed == {"type": "websocket.close", "code": NOT_A_MEMBER}
         sockets.remove(socket)
 
@@ -312,7 +344,7 @@ class TestBroadcast:
         from rest_framework.test import APIClient
 
         socket = await open_socket(owner, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
 
         def set_topic() -> None:
             api = APIClient()
@@ -324,7 +356,7 @@ class TestBroadcast:
             )
 
         await database_sync_to_async(set_topic)()
-        event = await socket.receive_json_from()
+        event = await receive(socket)
 
         assert (event["type"], event["data"]["topic"]) == ("channel", "Say hello")
         assert "is_member" not in event["data"]
@@ -350,20 +382,20 @@ class TestReadMarkers:
         phone, laptop = await open_socket(owner, sockets), await open_socket(owner, sockets)
         other = await open_socket(bilal, sockets)
         for socket in (phone, laptop, other):
-            await socket.receive_json_from()
+            await receive(socket)
         await post(general, bilal, "Salaam")
         for socket in (phone, laptop, other):
-            assert (await socket.receive_json_from())["type"] == "message"
+            assert (await receive(socket))["type"] == "message"
 
         await database_sync_to_async(mark_read)(general, owner.pk, 1)
 
         for socket in (phone, laptop):
-            assert await socket.receive_json_from() == {
+            assert await receive(socket) == {
                 "type": "read",
                 "channel": general.pk,
                 "last_read_seq": 1,
             }
-        assert await other.receive_nothing()
+        assert await quiet(other)
 
 
 class TestThreads:
@@ -376,17 +408,153 @@ class TestThreads:
     ) -> None:
         bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
         socket = await open_socket(bilal, sockets)
-        await socket.receive_json_from()
+        await receive(socket)
         first, _ = await post(general, owner, "Lunch?")
-        await socket.receive_json_from()
+        await receive(socket)
 
         await database_sync_to_async(messages.post)(general, owner, "Biryani", parent=first)
 
-        reply = await socket.receive_json_from()
-        parent = await socket.receive_json_from()
+        reply = await receive(socket)
+        parent = await receive(socket)
         assert (reply["event"], reply["message"]["parent_seq"], reply["message"]["seq"]) == (
             2,
             1,
             None,
         )
         assert (parent["event"], parent["message"]["reply_count"]) == (3, 1)
+
+
+async def raw(socket: WebsocketCommunicator, kind: str) -> Any:
+    """The next event of `kind`, skipping anything else."""
+    while True:
+        event = await socket.receive_json_from()
+        if event["type"] == kind:
+            return event
+
+
+class TestPresence:
+    async def test_a_new_socket_hears_who_is_online(
+        self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        await open_socket(owner, sockets)
+
+        socket = await open_socket(bilal, sockets)
+
+        snapshot = await raw(socket, "presence")
+        assert snapshot["online"] == sorted([owner.pk, bilal.pk])
+
+    async def test_others_hear_someone_come_and_go(
+        self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        watcher = await open_socket(owner, sockets)
+        await raw(watcher, "presence")
+
+        tab = await open_socket(bilal, sockets)
+        came = await raw(watcher, "presence_change")
+        await tab.disconnect()
+        sockets.remove(tab)
+        went = await raw(watcher, "presence_change")
+
+        assert (came["user"], came["online"]) == (bilal.pk, True)
+        assert (went["user"], went["online"]) == (bilal.pk, False)
+
+    async def test_closing_one_of_two_tabs_keeps_the_person_online(
+        self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        watcher = await open_socket(owner, sockets)
+        await raw(watcher, "presence")
+        first = await open_socket(bilal, sockets)
+        await open_socket(bilal, sockets)
+        await raw(watcher, "presence_change")
+
+        await first.disconnect()
+        sockets.remove(first)
+
+        assert await watcher.receive_nothing()
+        assert bilal.pk in await presence.online_users(workspace.pk)
+
+    async def test_people_in_another_workspace_hear_nothing(
+        self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
+    ) -> None:
+        watcher = await open_socket(owner, sockets)
+        await raw(watcher, "presence")
+        other = await database_sync_to_async(Workspace.objects.create)(
+            name="Other", slug="other", created_by=owner
+        )
+        stranger = await database_sync_to_async(make_user)(username="stranger")
+        await database_sync_to_async(Member.objects.create)(
+            workspace=other, user=stranger, role=Role.OWNER
+        )
+        socket = WebsocketCommunicator(as_user(stranger), "/ws/workspaces/other/")
+        connected, _ = await socket.connect()
+        assert connected
+        sockets.append(socket)
+
+        assert await watcher.receive_nothing()
+
+
+class TestTyping:
+    async def test_typing_reaches_the_others_in_the_channel_not_me(
+        self,
+        owner: User,
+        workspace: Workspace,
+        general: Channel,
+        sockets: list[WebsocketCommunicator],
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        me = await open_socket(owner, sockets)
+        other = await open_socket(bilal, sockets)
+        await receive(me)
+        await receive(other)
+
+        await me.send_json_to({"type": "typing", "channel": general.pk, "thread": None})
+
+        event = await receive(other)
+        assert (event["type"], event["channel"], event["thread"]) == ("typing", general.pk, None)
+        assert event["user"]["username"] == "owner"
+        assert await quiet(me)
+
+    async def test_notices_are_held_to_one_every_few_seconds(
+        self,
+        owner: User,
+        workspace: Workspace,
+        general: Channel,
+        sockets: list[WebsocketCommunicator],
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        me = await open_socket(owner, sockets)
+        other = await open_socket(bilal, sockets)
+        await receive(me)
+        await receive(other)
+
+        for _ in range(3):
+            await me.send_json_to({"type": "typing", "channel": general.pk})
+        await me.send_json_to({"type": "typing", "channel": general.pk, "thread": 1})
+
+        first, in_thread = await receive(other), await receive(other)
+        assert (first["thread"], in_thread["thread"]) == (None, 1)
+        assert await quiet(other)
+
+    @pytest.mark.parametrize("channel", ["general", 999_999, None])
+    async def test_nothing_for_a_channel_i_am_not_in_or_garbage(
+        self,
+        owner: User,
+        workspace: Workspace,
+        general: Channel,
+        sockets: list[WebsocketCommunicator],
+        channel: object,
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        me = await open_socket(bilal, sockets)
+        other = await open_socket(owner, sockets)
+        await receive(me)
+        await receive(other)
+
+        # bilal reads #general (public) but has not joined it, so can't be typing there.
+        target = general.pk if channel == "general" else channel
+        await me.send_json_to({"type": "typing", "channel": target})
+
+        assert await quiet(other)

@@ -16,3 +16,5 @@ FRONTEND_URL = "http://web.test"
 RECAPTCHA_V3_SECRET_KEY = ""
 RECAPTCHA_V2_SECRET_KEY = ""
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+# Real Redis, kept apart from development's keys; tests/chat/test_websockets.py clears it.
+PRESENCE_KEY_PREFIX = "test-presence"
