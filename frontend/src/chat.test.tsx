@@ -644,7 +644,13 @@ describe("typing and presence", () => {
     expect(await within(dms).findByRole("img", { name: "Online" })).toBeInTheDocument();
 
     act(() => {
-      FakeSocket.latest().receive({ type: "presence_change", user: 2, online: false });
+      FakeSocket.latest().receive({
+        type: "presence_changes",
+        changes: [
+          { user: 3, online: true },
+          { user: 2, online: false },
+        ],
+      });
     });
     expect(await within(dms).findByRole("img", { name: "Offline" })).toBeInTheDocument();
   });

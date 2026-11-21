@@ -41,6 +41,11 @@ def _clear_presence() -> Iterator[None]:
     client.close()
 
 
+@pytest.fixture(autouse=True)
+def _quick_presence_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("apps.chat.consumers.PRESENCE_BATCH_SECONDS", 0.05)
+
+
 @pytest.fixture
 def owner() -> User:
     return make_user(username="owner")
@@ -98,7 +103,7 @@ async def open_socket(user: User, opened: list[WebsocketCommunicator]) -> Websoc
 post = database_sync_to_async(messages.post)
 
 # Every socket also hears who is online; tests about other things look past it.
-PRESENCE = {"presence", "presence_change"}
+PRESENCE = {"presence", "presence_changes"}
 
 
 async def receive(socket: WebsocketCommunicator) -> Any:
@@ -424,10 +429,10 @@ class TestThreads:
         assert (parent["event"], parent["message"]["reply_count"]) == (3, 1)
 
 
-async def raw(socket: WebsocketCommunicator, kind: str) -> Any:
+async def raw(socket: WebsocketCommunicator, kind: str, wait: float = 1) -> Any:
     """The next event of `kind`, skipping anything else."""
     while True:
-        event = await socket.receive_json_from()
+        event = await socket.receive_json_from(timeout=wait)
         if event["type"] == kind:
             return event
 
@@ -452,13 +457,36 @@ class TestPresence:
         await raw(watcher, "presence")
 
         tab = await open_socket(bilal, sockets)
-        came = await raw(watcher, "presence_change")
+        came = await raw(watcher, "presence_changes")
         await tab.disconnect()
         sockets.remove(tab)
-        went = await raw(watcher, "presence_change")
+        went = await raw(watcher, "presence_changes")
 
-        assert (came["user"], came["online"]) == (bilal.pk, True)
-        assert (went["user"], went["online"]) == (bilal.pk, False)
+        assert came["changes"] == [{"user": bilal.pk, "online": True}]
+        assert went["changes"] == [{"user": bilal.pk, "online": False}]
+
+    async def test_a_crowd_arriving_together_is_announced_together(
+        self,
+        owner: User,
+        workspace: Workspace,
+        sockets: list[WebsocketCommunicator],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr("apps.chat.consumers.PRESENCE_BATCH_SECONDS", 2.0)
+        watcher = await open_socket(owner, sockets)
+        await raw(watcher, "presence")
+        crowd = [
+            await database_sync_to_async(join)(workspace, Role.MEMBER, f"person{number}")
+            for number in range(5)
+        ]
+
+        for person in crowd:
+            await open_socket(person, sockets)
+        batch = await raw(watcher, "presence_changes", wait=5)
+
+        assert sorted(change["user"] for change in batch["changes"]) == sorted(
+            person.pk for person in crowd
+        )
 
     async def test_closing_one_of_two_tabs_keeps_the_person_online(
         self, owner: User, workspace: Workspace, sockets: list[WebsocketCommunicator]
@@ -468,12 +496,12 @@ class TestPresence:
         await raw(watcher, "presence")
         first = await open_socket(bilal, sockets)
         await open_socket(bilal, sockets)
-        await raw(watcher, "presence_change")
+        await raw(watcher, "presence_changes")
 
         await first.disconnect()
         sockets.remove(first)
 
-        assert await watcher.receive_nothing()
+        assert await watcher.receive_nothing(timeout=0.3)
         assert bilal.pk in await presence.online_users(workspace.pk)
 
     async def test_people_in_another_workspace_hear_nothing(

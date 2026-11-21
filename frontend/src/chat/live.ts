@@ -84,9 +84,12 @@ export function useLive(slug: string, meId: number): { status: Status; sendTypin
           else refreshChannels();
         } else if (event.type === "presence") {
           client.setQueryData(presenceKey(slug), event.online);
-        } else if (event.type === "presence_change") {
+        } else if (event.type === "presence_changes") {
           client.setQueryData<number[]>(presenceKey(slug), (now) =>
-            applyPresence(now ?? [], event.user, event.online),
+            event.changes.reduce(
+              (online, change) => applyPresence(online, change.user, change.online),
+              now ?? [],
+            ),
           );
         } else if (event.type === "typing") {
           typing((state) =>

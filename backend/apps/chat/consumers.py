@@ -1,4 +1,6 @@
+import asyncio
 import time
+import weakref
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -15,6 +17,55 @@ from apps.workspaces.models import Member
 # Close codes in the 4000 range are free for applications (RFC 6455, 7.4.2).
 NOT_SIGNED_IN = 4401
 NOT_A_MEMBER = 4404
+
+
+# How long join and leave announcements gather before they go out together.
+PRESENCE_BATCH_SECONDS = 1.0
+
+
+class PresenceBatcher:
+    """Join and leave announcements, gathered per workspace and sent as one message.
+
+    Sent one by one, N people arriving at once (a server restart, the morning) meant N x N
+    messages, and the channel layer drops whatever is past each socket's queue of 100, so most
+    were lost and online dots went wrong. Gathered, each socket gets about one per second.
+    Pending changes are kept per event loop: tests run each in a loop of its own.
+    """
+
+    def __init__(self) -> None:
+        self._pending: weakref.WeakKeyDictionary[
+            asyncio.AbstractEventLoop, dict[int, dict[int, bool]]
+        ] = weakref.WeakKeyDictionary()
+
+    def add(self, layer: Any, workspace_id: int, user_id: int, *, online: bool) -> None:
+        loop = asyncio.get_running_loop()
+        pending = self._pending.setdefault(loop, {})
+        changes = pending.get(workspace_id)
+        if changes is None:
+            changes = pending[workspace_id] = {}
+            loop.call_later(
+                PRESENCE_BATCH_SECONDS,
+                lambda: loop.create_task(self._flush(layer, pending, workspace_id)),
+            )
+        # Gone and back within the batch: only the latest state goes out.
+        changes[user_id] = online
+
+    async def _flush(
+        self, layer: Any, pending: dict[int, dict[int, bool]], workspace_id: int
+    ) -> None:
+        changes = pending.pop(workspace_id, {})
+        if changes:
+            await layer.group_send(
+                workspace_group(workspace_id),
+                {
+                    "type": "chat.presence",
+                    # Pairs, not a dict: the channel layer's msgpack wants string keys.
+                    "changes": [[user, online] for user, online in changes.items()],
+                },
+            )
+
+
+presence_batches = PresenceBatcher()
 
 
 @dataclass(frozen=True)
@@ -110,10 +161,7 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
         )
 
     async def _announce(self, *, online: bool) -> None:
-        await self.channel_layer.group_send(
-            workspace_group(self.workspace_id),
-            {"type": "chat.presence", "user": self.user_id, "online": online},
-        )
+        presence_batches.add(self.channel_layer, self.workspace_id, self.user_id, online=online)
 
     @database_sync_to_async
     def _readable(self) -> Readable | None:
@@ -185,10 +233,13 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
             )
 
     async def chat_presence(self, event: dict[str, Any]) -> None:
-        if event["user"] != self.user_id:
-            await self.send_json(
-                {"type": "presence_change", "user": event["user"], "online": event["online"]}
-            )
+        changes = [
+            {"user": user, "online": online}
+            for user, online in event["changes"]
+            if user != self.user_id
+        ]
+        if changes:
+            await self.send_json({"type": "presence_changes", "changes": changes})
 
     async def chat_notifications(self, event: dict[str, Any]) -> None:
         await self.send_json({"type": "notifications"})

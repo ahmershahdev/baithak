@@ -67,6 +67,9 @@ class Run:
     presence_frames: int = 0
     last_presence: float = 0.0
     sending_from: float = 0.0
+    views: list[set[int]] = field(default_factory=list)
+    online_at_send: set[int] = field(default_factory=set)
+    complete_views: int = 0
     sent: dict[int, float] = field(default_factory=dict)
     arrivals: dict[int, list[float]] = field(default_factory=lambda: defaultdict(list))
 
@@ -159,6 +162,10 @@ class Command(BaseCommand):
         expected = options["messages"]
 
         async def client(key: str) -> None:
+            # Who this client believes is online: the snapshot, then the changes since.
+            online: set[int] = set()
+            pinger: asyncio.Task[None] | None = None
+            run.views.append(online)
             try:
                 async with gate:
                     socket = await connect(
@@ -173,13 +180,22 @@ class Command(BaseCommand):
                 return
             try:
                 async with socket:
+                    # Ping like the web app, or presence lets the connection lapse (60 s).
+                    pinger = asyncio.create_task(ping(socket))
                     async for raw in socket:
                         event = json.loads(raw)
                         if event["type"] == "subscribed":
                             count_in(failed=False)
-                        elif event["type"] == "presence_change":
+                        elif event["type"] == "presence":
+                            online.update(event["online"])
+                        elif event["type"] == "presence_changes":
                             run.presence_frames += 1
                             run.last_presence = time.perf_counter()
+                            for change in event["changes"]:
+                                if change["online"]:
+                                    online.add(change["user"])
+                                else:
+                                    online.discard(change["user"])
                         elif event["type"] == "message" and event["channel"] == run.channel_id:
                             seq = event["message"]["seq"]
                             # It can land before post() returns and its send time is noted.
@@ -189,6 +205,17 @@ class Command(BaseCommand):
                             return
             except WebSocketException:
                 run.dropped += 1
+            finally:
+                if pinger is not None:
+                    pinger.cancel()
+
+        async def ping(socket: Any) -> None:
+            try:
+                while True:
+                    await asyncio.sleep(25)
+                    await socket.send(json.dumps({"type": "ping"}))
+            except WebSocketException:
+                return
 
         def count_in(*, failed: bool) -> None:
             if failed:
@@ -207,6 +234,8 @@ class Command(BaseCommand):
             "Settling."
         )
         await asyncio.sleep(options["settle"])
+        run.online_at_send = await sync_to_async(self._online_now)(channel.workspace_id)
+        run.complete_views = sum(1 for view in run.views if run.online_at_send <= view)
         self.stdout.write("Sending.")
         run.sending_from = time.perf_counter()
         post = sync_to_async(messages.post)
@@ -239,6 +268,8 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Clients: {run.connected} connected of {run.clients} ({run.failed} failed, "
             f"{run.dropped} dropped) in {run.connect_seconds:.1f} s\n"
+            f"Online lists complete when sending: {run.complete_views} of {len(run.views)} "
+            f"({len(run.online_at_send)} online)\n"
             f"Join announcements heard: {run.presence_frames}, the last one "
             f"{run.last_presence - run.sending_from:+.1f} s from the first send\n"
             f"Messages: {len(run.sent)} of {expected}\n"
@@ -247,6 +278,11 @@ class Command(BaseCommand):
             f"p95 {stats['p95']:.1f}, p99 {stats['p99']:.1f}, max {stats['max']:.1f}\n"
             f"Whole run: {seconds:.1f} s"
         )
+
+    def _online_now(self, workspace_id: int) -> set[int]:
+        from apps.chat import presence
+
+        return asyncio.run(presence.online_users(workspace_id))
 
     def _cleanup(self) -> None:
         Workspace.objects.filter(slug=SLUG).delete()
