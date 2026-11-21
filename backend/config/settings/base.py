@@ -92,7 +92,9 @@ REDIS_URL = env("REDIS_URL", "redis://127.0.0.1:6379/0")
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [REDIS_URL]},
+        # redis-py 8 times reads out after 5 s by default, the same as channels_redis's blocking
+        # wait for the next event, so every idle socket crashed and reconnected. Keep it above.
+        "CONFIG": {"hosts": [{"address": REDIS_URL, "socket_timeout": 30}]},
     }
 }
 
