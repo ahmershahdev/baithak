@@ -17,6 +17,7 @@ import { VerifyEmail } from "./pages/VerifyEmail";
 import { Audit } from "./pages/workspace/Audit";
 import { Channels } from "./pages/workspace/Channels";
 import { ChannelView } from "./pages/workspace/ChannelView";
+import { Notifications } from "./pages/workspace/Notifications";
 import { Search } from "./pages/workspace/Search";
 import { StartConversation } from "./pages/workspace/StartConversation";
 import { Invitations } from "./pages/workspace/Invitations";
@@ -85,6 +86,7 @@ export function App() {
         <Route path="c/:channelId" element={<ChannelView />} />
         <Route path="dm" element={<StartConversation />} />
         <Route path="search" element={<Search />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="members" element={<Members />} />
         <Route path="invitations" element={<Invitations />} />
         <Route path="settings" element={<Settings />} />

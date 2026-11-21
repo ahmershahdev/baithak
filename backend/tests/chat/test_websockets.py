@@ -558,3 +558,26 @@ class TestTyping:
         await me.send_json_to({"type": "typing", "channel": target})
 
         assert await quiet(other)
+
+
+class TestNotifications:
+    async def test_a_mention_reaches_the_person_named_only(
+        self,
+        owner: User,
+        workspace: Workspace,
+        general: Channel,
+        sockets: list[WebsocketCommunicator],
+    ) -> None:
+        bilal = await database_sync_to_async(join)(workspace, Role.MEMBER, "bilal")
+        theirs = await open_socket(bilal, sockets)
+        mine = await open_socket(owner, sockets)
+        await receive(theirs)
+        await receive(mine)
+
+        await post(general, owner, "@bilal look at this")
+
+        assert (await receive(theirs))["type"] == "message"
+        assert await receive(theirs) == {"type": "notifications"}
+        assert (await receive(mine))["type"] == "message"
+        assert (await receive(mine))["type"] == "read"
+        assert await quiet(mine)

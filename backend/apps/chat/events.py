@@ -60,6 +60,11 @@ def read_moved(user_id: int, channel_id: int, last_read_seq: int) -> None:
     transaction.on_commit(lambda: _send(user_group(user_id), payload))
 
 
+def notifications_changed(user_id: int) -> None:
+    """The person's notifications changed (one arrived, some were read): their tabs refetch."""
+    transaction.on_commit(lambda: _send(user_group(user_id), {"type": "chat.notifications"}))
+
+
 def access_changed(user_id: int) -> None:
     """The person joined, left or was added to or removed from something: their open sockets
     work out again which channels they may hear."""

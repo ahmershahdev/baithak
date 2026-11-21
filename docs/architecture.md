@@ -202,6 +202,19 @@ stopwords), then requires every word as a prefix (`+deploy* +notes*`, bound as a
 not yet sent are never found. InnoDB adds rows to a FULLTEXT index at commit, so search tests use
 real transactions.
 
+## Notifications
+
+Sending a message (and editing it, for people newly named) creates one `notification` per
+recipient, with the strongest reason (`apps/core/notifications.py`): named with `@handle`, then
+in a direct or group conversation, then `@channel`. Mentions were already limited to people who
+can read the channel; conversation and `@channel` recipients are channel members. Authors are
+never told about their own messages, and nobody is told twice about one message. Reading a
+channel past a message marks its notifications read (the read marker and posting both do), on
+every device; replies kept in a thread are cleared from the list or by opening them. Every
+change sends `notifications` to the person's sockets, which refetch. The list only shows
+notifications from channels the person can still read. Deleting a message deletes its
+notifications. These rows also drive the email notifications.
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =

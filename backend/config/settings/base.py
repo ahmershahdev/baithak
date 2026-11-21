@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.chat",
     "apps.files",
     "apps.search",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [

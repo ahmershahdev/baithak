@@ -45,7 +45,7 @@ in CI, and seed data.
 - [x] File and image uploads: type and size checks, signed expiring links, previews in Celery
 - [x] Full-text search (MySQL FULLTEXT) over messages, files and issues, filtered by the
       permission check; filters by channel, person and date (issues join it in M5)
-- [ ] In-app notifications for mentions, direct messages and assigned issues
+- [x] In-app notifications for mentions, direct messages and assigned issues (issues join in M5)
 - [ ] Email notifications for unread mentions (Celery), with quiet hours per person
 - [ ] Load check: one channel with 500 connected clients, message delivery time measured
 

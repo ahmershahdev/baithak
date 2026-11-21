@@ -677,6 +677,40 @@ export interface paths {
         patch: operations["workspaces_members_partial_update"];
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My notifications, newest first, with how many are unread */
+        get: operations["workspaces_notifications_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/notifications/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark some or all of my notifications read */
+        post: operations["workspaces_notifications_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/search/files/": {
         parameters: {
             query?: never;
@@ -888,6 +922,11 @@ export interface components {
             email: string;
             role: components["schemas"]["InvitableRoleEnum"];
         };
+        MarkReadRequest: {
+            ids?: number[];
+            /** @default false */
+            all: boolean;
+        };
         Member: {
             readonly user_id: number;
             readonly username: string;
@@ -938,6 +977,27 @@ export interface components {
             /** @description The words searched for; empty when none counted. */
             terms: string[];
             results: components["schemas"]["MessageHit"][];
+            next: number | null;
+        };
+        Notification: {
+            readonly id: number;
+            readonly kind: components["schemas"]["NotificationKindEnum"];
+            readonly channel: number;
+            readonly message: components["schemas"]["Message"];
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly read: boolean;
+        };
+        /**
+         * @description * `mention` - mention
+         *     * `direct` - direct
+         *     * `channel` - channel
+         * @enum {string}
+         */
+        NotificationKindEnum: "mention" | "direct" | "channel";
+        NotificationPage: {
+            unread: number;
+            results: components["schemas"]["Notification"][];
             next: number | null;
         };
         /** @description The code from the email, and who it is for: `uid` from the emailed link, or `email`. */
@@ -1028,6 +1088,9 @@ export interface components {
         UidTokenRequest: {
             uid: string;
             token: string;
+        };
+        Unread: {
+            unread: number;
         };
         UploadRequest: {
             /** Format: binary */
@@ -2548,6 +2611,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_notifications_retrieve: {
+        parameters: {
+            query?: {
+                /** @description The next page. */
+                before_id?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+        };
+    };
+    workspaces_notifications_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MarkReadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Unread"];
                 };
             };
         };
