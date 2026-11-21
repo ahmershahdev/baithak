@@ -97,7 +97,11 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         # redis-py 8 times reads out after 5 s by default, the same as channels_redis's blocking
         # wait for the next event, so every idle socket crashed and reconnected. Keep it above.
-        "CONFIG": {"hosts": [{"address": REDIS_URL, "socket_timeout": 30}]},
+        # It also caps a pool at 100 connections and raises when full: 500 sockets closing at
+        # once (each a group_discard) went over in the load check. Redis allows 10000 clients.
+        "CONFIG": {
+            "hosts": [{"address": REDIS_URL, "socket_timeout": 30, "max_connections": 2000}]
+        },
     }
 }
 

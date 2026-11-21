@@ -147,18 +147,22 @@ M1 in progress. Merged so far:
   that workspace and channels they can no longer read. `/w/<slug>/me` has the settings (email
   on or off, quiet hours, time zone), linked as Settings next to Sign out.
 
+- Load check: `python manage.py load_check` opens N real sockets in an invented workspace and
+  times delivery from send to arrival. Numbers in `docs/architecture.md`. Found and fixed: redis-py
+  8 caps a pool at 100 connections and raised when 500 sockets closed at once (channel layer pool
+  now 2000). Found, not yet fixed: see Next session.
+
 ## Next session
 
-M4: load check, one channel with 500 connected clients, with message delivery time measured.
-Then release `v0.4.0`.
-
-The local Docker image still lacks Pillow (network timeouts while rebuilding); the running
-backend and worker had it copied in by hand. Rebuild with `docker compose build backend worker`
-before recreating them, or the worker fails to start. The worker needs recreating once to pick
-up `--beat`.
-
-Production needs a volume for `FILES_ROOT` and a request body limit of at least 25 MB at the
-proxy.
+1. Presence under a crowd. With the default channel layer each socket's queue holds 100
+   messages and silently drops the rest, so when hundreds join at once most join announcements
+   are lost and online dots can be wrong (chat messages survive drops through catch-up; presence
+   has none). Options: coalesce announcements into one batch per workspace every second or so,
+   or send a fresh presence list now and then instead of only changes. The pub/sub layer
+   (`channels_redis.pubsub.RedisPubSubChannelLayer`) delivers everything but then the N x N join
+   storm slowed connecting (43 of 500 failed); retry it once announcements are coalesced.
+2. Rerun the load check on the production setup (Linux, separate client machine) at deploy.
+3. Release `v0.4.0` once #39 is merged.
 
 ## Open questions
 
