@@ -1,6 +1,6 @@
 from apps.accounts.models import User
 from apps.chat.models import Channel, ChannelMember
-from apps.core.channels import ChannelKind
+from apps.core.channels import CONVERSATIONS, ChannelKind
 from apps.core.roles import Role
 from apps.workspaces import audit
 from apps.workspaces.models import Workspace
@@ -20,6 +20,22 @@ def create_default_channel(workspace: Workspace, creator: User) -> Channel:
     ChannelMember.objects.create(channel=channel, user=creator)
     audit.record(workspace, creator, "channel.create", channel, {"name": channel.name})
     return channel
+
+
+def leave_channels(workspace: Workspace, user: User, actor: User) -> None:
+    """Take someone who became a guest out of every channel; their conversations stay."""
+    held = ChannelMember.objects.filter(channel__workspace=workspace, user=user).exclude(
+        channel__kind__in=CONVERSATIONS
+    )
+    for row in held.select_related("channel"):
+        audit.record(
+            workspace,
+            actor,
+            "channel.remove_member",
+            row.channel,
+            {"user": user.username, "reason": "became a guest"},
+        )
+    held.delete()
 
 
 def join_default_channels(workspace: Workspace, user: User, role: Role) -> None:

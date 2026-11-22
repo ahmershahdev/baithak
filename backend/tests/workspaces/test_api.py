@@ -4,6 +4,8 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.chat.models import Channel, ChannelMember
+from apps.core.channels import ChannelKind
 from apps.core.roles import Role
 from apps.workspaces.models import AuditEvent, Member, Workspace
 from tests.accounts.factories import make_user
@@ -227,6 +229,36 @@ class TestMembers:
         response = api.delete("/api/v1/workspaces/karachi-team/members/999999/")
 
         assert response.status_code == 404
+
+
+class TestBecomingAGuest:
+    def test_leaves_every_channel_but_keeps_conversations(
+        self, api: APIClient, owner: User, workspace: Workspace
+    ) -> None:
+        bilal = join(workspace, Role.MEMBER, "bilal")
+        general = Channel.objects.for_workspace(workspace).get(name="general")
+        ChannelMember.objects.create(channel=general, user=bilal)
+        chat = Channel.objects.create(
+            workspace=workspace, name=f"~{owner.pk}-{bilal.pk}", kind=ChannelKind.DIRECT
+        )
+        ChannelMember.objects.create(channel=chat, user=bilal)
+
+        response = api.patch(member_url(bilal), {"role": "guest"}, format="json")
+
+        assert response.status_code == 200
+        kept = ChannelMember.objects.filter(user=bilal).values_list("channel_id", flat=True)
+        assert list(kept) == [chat.pk]
+        assert actions(workspace)[-2:] == ["member.update", "channel.remove_member"]
+
+    def test_a_guest_made_a_member_joins_the_default_channel(
+        self, api: APIClient, workspace: Workspace
+    ) -> None:
+        guest = join(workspace, Role.GUEST, "guest")
+
+        api.patch(member_url(guest), {"role": "member"}, format="json")
+
+        rooms = ChannelMember.objects.filter(user=guest).values_list("channel__name", flat=True)
+        assert list(rooms) == ["general"]
 
 
 class TestAuditLog:

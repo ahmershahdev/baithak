@@ -48,8 +48,8 @@ def test_seeding_makes_two_lived_in_teams() -> None:
     assert mail.outbox == []
 
     daniel = User.objects.get(username="daniel")
-    rooms = ChannelMember.objects.filter(user=daniel).values_list("channel__name", flat=True)
-    assert list(rooms) == ["client-bazaar"]
+    rooms = ChannelMember.objects.filter(user=daniel).values_list("channel__kind", flat=True)
+    assert list(rooms) == ["group"]
     assert Member.objects.get(user=daniel).role == "guest"
 
     marker = ChannelMember.objects.get(channel=dev, user=amna).last_read_seq

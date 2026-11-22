@@ -34,6 +34,7 @@ from apps.workspaces.access import membership
 from apps.workspaces.models import Member
 
 NAME_TAKEN = "A channel with this name already exists."
+GUESTS_DM_ONLY = "Guests can only use direct messages. Make them a member to add them."
 
 
 def _user(request: Request) -> User:
@@ -229,6 +230,8 @@ class ChannelMembersView(APIView):
                 {"detail": "That person is not in this workspace."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        if not rules.can_be_in(Role(target.role), access.kind):
+            raise ValidationError({"user_id": [GUESTS_DM_ONLY]})
         with transaction.atomic():
             added, created = ChannelMember.objects.get_or_create(
                 channel=access.channel,

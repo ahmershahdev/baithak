@@ -857,6 +857,28 @@ describe("your settings", () => {
   });
 });
 
+describe("guests", () => {
+  test("see direct messages only, with no channels to browse", async () => {
+    const asGuest = {
+      slug: "team",
+      name: "Team",
+      created_at: "2026-11-01T10:00:00Z",
+      role: "guest",
+    };
+    backend({
+      "GET /api/v1/workspaces/": () => json(200, [asGuest]),
+      "GET /api/v1/workspaces/team/": () => json(200, asGuest),
+      "GET /api/v1/workspaces/team/channels/": () => json(200, []),
+    });
+    renderAt("/w/team/channels");
+
+    expect(await screen.findByText(/Guests talk in direct and group messages only/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Direct messages" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Browse" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create channel" })).not.toBeInTheDocument();
+  });
+});
+
 describe("deleting your account", () => {
   const settings = () =>
     json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" });

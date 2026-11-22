@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
 from apps.chat.events import access_changed
-from apps.chat.services import create_default_channel
+from apps.chat.services import create_default_channel, join_default_channels, leave_channels
 from apps.core import roles
 from apps.core.roles import Role
 from apps.workspaces import audit
@@ -165,6 +165,10 @@ class MemberDetailView(APIView):
                 target.role = new
                 target.save(update_fields=["role"])
                 audit.record(workspace, user, "member.update", target, {"role": [old, new]})
+                if new == Role.GUEST:
+                    leave_channels(workspace, target.user, user)
+                elif old == Role.GUEST:
+                    join_default_channels(workspace, target.user, new)
                 access_changed(target.user_id)
         return Response(MemberSerializer(target).data)
 

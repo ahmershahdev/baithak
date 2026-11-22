@@ -21,9 +21,14 @@ class ChannelKind(StrEnum):
 CONVERSATIONS = frozenset({ChannelKind.DIRECT, ChannelKind.GROUP})
 
 
+def can_be_in(role: Role, kind: ChannelKind) -> bool:
+    """Guests talk only in direct and group messages; channels need a member account."""
+    return role != Role.GUEST or kind in CONVERSATIONS
+
+
 def can_read(role: Role | None, kind: ChannelKind, *, is_member: bool) -> bool:
     """`role` is None for someone outside the workspace."""
-    if role is None:
+    if role is None or not can_be_in(role, kind):
         return False
     if kind == ChannelKind.PUBLIC and role != Role.GUEST:
         return True
@@ -52,7 +57,7 @@ def can_manage(role: Role | None, kind: ChannelKind, *, is_creator: bool, is_mem
 
 def can_add_member(role: Role | None, kind: ChannelKind, *, is_member: bool) -> bool:
     """Bring another workspace member into a channel you are in. A conversation is fixed to its
-    people; adding someone starts a new one."""
+    people; adding someone starts a new one. Who may be added: `can_be_in`."""
     return role is not None and role != Role.GUEST and is_member and kind not in CONVERSATIONS
 
 

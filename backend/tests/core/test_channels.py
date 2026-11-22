@@ -3,6 +3,7 @@ import pytest
 from apps.core.channels import (
     ChannelKind,
     can_add_member,
+    can_be_in,
     can_create,
     can_join,
     can_manage,
@@ -17,6 +18,22 @@ DIRECT, GROUP = ChannelKind.DIRECT, ChannelKind.GROUP
 
 
 @pytest.mark.parametrize(
+    ("role", "kind", "expected"),
+    [
+        (MEMBER, PUBLIC, True),
+        (MEMBER, PRIVATE, True),
+        (OWNER, DIRECT, True),
+        (GUEST, PUBLIC, False),
+        (GUEST, PRIVATE, False),
+        (GUEST, DIRECT, True),
+        (GUEST, GROUP, True),
+    ],
+)
+def test_can_be_in(role: Role, kind: ChannelKind, expected: bool) -> None:
+    assert can_be_in(role, kind) is expected
+
+
+@pytest.mark.parametrize(
     ("role", "kind", "is_member", "expected"),
     [
         (None, PUBLIC, False, False),
@@ -25,12 +42,13 @@ DIRECT, GROUP = ChannelKind.DIRECT, ChannelKind.GROUP
         (ADMIN, PUBLIC, False, True),
         (MEMBER, PUBLIC, False, True),
         (GUEST, PUBLIC, False, False),
-        (GUEST, PUBLIC, True, True),
+        (GUEST, PUBLIC, True, False),
         (OWNER, PRIVATE, False, False),
         (ADMIN, PRIVATE, False, False),
         (MEMBER, PRIVATE, False, False),
         (MEMBER, PRIVATE, True, True),
-        (GUEST, PRIVATE, True, True),
+        (GUEST, PRIVATE, True, False),
+        (GUEST, DIRECT, True, True),
         (OWNER, DIRECT, False, False),
         (MEMBER, DIRECT, True, True),
         (ADMIN, GROUP, False, False),
@@ -62,8 +80,9 @@ def test_can_join(role: Role | None, kind: ChannelKind, archived: bool, expected
         (MEMBER, PUBLIC, True, False, True),
         (MEMBER, PUBLIC, False, False, False),
         (MEMBER, PUBLIC, True, True, False),
-        (GUEST, PUBLIC, True, False, True),
-        (GUEST, PRIVATE, True, False, True),
+        (GUEST, PUBLIC, True, False, False),
+        (GUEST, PRIVATE, True, False, False),
+        (GUEST, GROUP, True, False, True),
         (None, PUBLIC, True, False, False),
     ],
 )

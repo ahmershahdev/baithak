@@ -5,7 +5,7 @@ import { useChannels, useCreateChannel, useJoinChannel, type ChannelKind } from 
 import type { ApiErrors } from "../../api/client";
 import { ApiError } from "../../api/workspaces";
 import { isConversation } from "../../chat/conversations";
-import { Button, ErrorMessage, Field } from "../../components/ui";
+import { Button, ErrorMessage, Field, Notice } from "../../components/ui";
 import { Select } from "../../components/Select";
 import { ChannelIcon, PageHeader, Panel } from "../../components/workspace";
 import { textField } from "../../forms";
@@ -50,9 +50,15 @@ export function Channels() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Channels"
-        intro="Public channels are open to everyone here except guests. Private ones only show up for the people in them."
+        intro="Public channels are open to every member. Private ones only show up for the people in them. Guests use direct messages only."
       />
-      {channels.data && (
+      {guest && (
+        <Notice>
+          Guests talk in direct and group messages only. Ask an admin to make you a member to join
+          channels.
+        </Notice>
+      )}
+      {channels.data && !guest && (
         <Panel className="settle">
           <ul className="divide-y divide-border">
             {channels.data

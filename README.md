@@ -40,7 +40,8 @@ English.
 ## What it does
 
 - **Workspaces and channels.** Public and private channels, members and roles (owner, admin,
-  member, guest), invitations by email, channel topics and an audit log.
+  member, and guests who use direct messages only), invitations by email, channel topics and
+  an audit log.
 - **Messages.** Live messages over WebSockets, threads, direct and group messages, mentions,
   reactions, edits and deletes, typing and online status, and unread counts that stay right
   across devices.
