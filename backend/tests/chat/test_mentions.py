@@ -95,12 +95,20 @@ class TestResolving:
     def test_a_member_can_mention_the_channel(self, api: APIClient, general: Channel) -> None:
         assert send(api, general, "@channel lunch")["mentions_channel"] is True
 
-    def test_a_guest_cannot(self, api: APIClient, workspace: Workspace, general: Channel) -> None:
+    def test_a_guest_cannot(self, api: APIClient, owner: User, workspace: Workspace) -> None:
         guest = join(workspace, "guest", Role.GUEST)
-        ChannelMember.objects.create(channel=general, user=guest)
+        bilal = join(workspace, "bilal")
+        group = Channel.objects.create(
+            workspace=workspace,
+            name=f"~{owner.pk}-{bilal.pk}-{guest.pk}",
+            kind=ChannelKind.GROUP,
+            created_by=owner,
+        )
+        for person in (owner, bilal, guest):
+            ChannelMember.objects.create(channel=group, user=person)
         api.force_authenticate(guest)
 
-        assert send(api, general, "@channel lunch")["mentions_channel"] is False
+        assert send(api, group, "@channel lunch")["mentions_channel"] is False
 
 
 class TestChanging:

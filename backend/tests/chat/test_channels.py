@@ -110,16 +110,18 @@ class TestListing:
             ("random", False),
         ]
 
-    def test_guests_see_only_channels_they_were_added_to(
-        self, api: APIClient, workspace: Workspace
+    def test_guests_see_only_their_conversations(
+        self, api: APIClient, owner: User, workspace: Workspace
     ) -> None:
         guest = join(workspace, Role.GUEST, "guest")
-        make_channel(workspace, "with-guest", ChannelKind.PUBLIC, guest)
+        stale = make_channel(workspace, "with-guest", ChannelKind.PUBLIC, guest)
+        chat = make_channel(workspace, f"~{owner.pk}-{guest.pk}", ChannelKind.DIRECT, owner, guest)
         api.force_authenticate(guest)
 
-        names = [c["name"] for c in api.get(CHANNELS).json()]
+        ids = [c["id"] for c in api.get(CHANNELS).json()]
 
-        assert names == ["with-guest"]
+        assert ids == [chat.pk]
+        assert api.get(f"{CHANNELS}{stale.pk}/").status_code == 404
 
 
 class TestCreating:
@@ -271,14 +273,18 @@ class TestMembership:
 
         assert response.status_code == 403
 
-    def test_guests_cannot_add_people(self, api: APIClient, workspace: Workspace) -> None:
+    @pytest.mark.parametrize("kind", [ChannelKind.PUBLIC, ChannelKind.PRIVATE])
+    def test_guests_cannot_be_added(
+        self, api: APIClient, owner: User, workspace: Workspace, kind: ChannelKind
+    ) -> None:
         guest = join(workspace, Role.GUEST, "guest")
-        room = make_channel(workspace, "room", ChannelKind.PUBLIC, guest)
-        api.force_authenticate(guest)
+        room = make_channel(workspace, "room", kind, owner)
 
         response = api.post(f"{CHANNELS}{room.pk}/members/", {"user_id": guest.pk}, format="json")
 
-        assert response.status_code == 403
+        assert response.status_code == 400
+        assert "direct messages" in response.json()["user_id"][0]
+        assert not ChannelMember.objects.filter(channel=room, user=guest).exists()
 
     def test_leaving_a_channel_you_are_not_in_does_nothing(
         self, api: APIClient, workspace: Workspace

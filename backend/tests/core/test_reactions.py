@@ -43,7 +43,7 @@ def test_anything_else_is_refused(text: str) -> None:
     ("role", "is_member", "archived", "deleted", "expected"),
     [
         (Role.MEMBER, True, False, False, True),
-        (Role.GUEST, True, False, False, True),
+        (Role.GUEST, True, False, False, False),
         (Role.MEMBER, False, False, False, False),
         (Role.MEMBER, True, True, False, False),
         (Role.MEMBER, True, False, True, False),

@@ -14,6 +14,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.chat import messages
 from apps.chat.models import Channel, ChannelMember, Message
+from apps.core import conversations
 from apps.core.channels import ChannelKind
 from apps.core.issues import Priority, Status
 from apps.core.roles import Role
@@ -103,11 +104,15 @@ class Builder:
     def _channel(self, workspace: Workspace, plan: ChannelPlan) -> None:
         owner = self.users[self.team.people[0].handle]
         handles = plan.members or [p.handle for p in self.team.people if p.role != "guest"]
+        if plan.group:
+            kind = ChannelKind.GROUP
+        else:
+            kind = ChannelKind.PRIVATE if plan.private else ChannelKind.PUBLIC
         channel = Channel.objects.create(
             workspace=workspace,
-            name=plan.name,
-            kind=ChannelKind.PRIVATE if plan.private else ChannelKind.PUBLIC,
-            topic=plan.topic,
+            name=conversations.key(self.users[h].pk for h in handles) if plan.group else plan.name,
+            kind=kind,
+            topic="" if plan.group else plan.topic,
             is_default=plan.name == "general",
             created_by=owner,
         )

@@ -36,7 +36,7 @@ def readable_channels(member: Member) -> QuerySet[Channel]:
     mine = ChannelMember.objects.filter(channel=OuterRef("pk"), user_id=member.user_id)
     channels = Channel.objects.for_workspace(member.workspace).annotate(is_member=Exists(mine))
     if Role(member.role) == Role.GUEST:
-        return channels.filter(is_member=True)
+        return channels.filter(is_member=True, kind__in=rules.CONVERSATIONS)
     return channels.filter(Q(kind=ChannelKind.PUBLIC) | Q(is_member=True))
 
 

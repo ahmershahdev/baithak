@@ -277,8 +277,8 @@ the production setup.
 
 ## Issues
 
-Projects belong to a workspace and are for members and up; guests, who only see channels they are
-added to, get 404 like outsiders. Admins and owners create, rename and archive projects and keep
+Projects belong to a workspace and are for members and up; guests, who only have direct and
+group messages, get 404 like outsiders. Admins and owners create, rename and archive projects and keep
 their labels; members open and change issues; an archived project is read only
 (`apps/core/issues.py`). An issue is `KEY-number`: the number comes from `project.next_number`,
 taken under a lock on the project row in the same transaction that saves the issue, and issues
@@ -299,9 +299,9 @@ and not deleted, at most one issue each (`issue.message_id` is unique, so a race
 400). Reading the message goes through `channel_access`, so a message the person can't read is
 404. That message's thread is the issue's discussion. Both ends show the link: the message
 carries `issue` (only the ref, project and number; it goes out on the channel's socket group, so
-guests in the channel get the ref too, but no title and no way in), and the issue carries
-`thread` (channel and seq), null for readers who can't read that channel. Opening the issue gives
-the message a new event, so open sockets and catch-up see the link. The issue page embeds the
+everyone in it gets the ref, but only project readers get the title or a way in), and the issue
+carries `thread` (channel and seq), null for readers who can't read that channel. Opening the
+issue gives the message a new event, so open sockets and catch-up see the link. The issue page embeds the
 thread with its composer.
 
 What happens to such an issue is said in that thread, as replies of kind `activity` written in
@@ -374,7 +374,8 @@ Admins see a webhook's latest 50 deliveries on Settings
 ## Demo data
 
 `python manage.py seed_demo --password ...` makes two invented teams, Chai and Code (a
-software studio with a client guest) and Monsoon Press (a newsroom with a freelance guest),
+software studio with a client guest) and Monsoon Press (a newsroom with a freelance guest), each
+guest talking to their team in a group conversation,
 from `apps/workspaces/demo_content.py`: about 120 days of channel messages in office hours,
 threads, mentions, reactions and a project of issues each, every third one raised from a
 message. It goes through the app's own services (posting, issues), then backdates rows, so
@@ -454,7 +455,7 @@ when the channel opens and stays there while the marker moves past it.
 | `<meta name="referrer" content="same-origin">` on the web app | Invitation, reset and verification links carry one-time tokens that must not leak to other sites |
 | Channel rules in `apps/core/channels.py`; the list query is checked against them | `can_read` decides one channel; `readable_channels` writes the same rule as SQL for lists, and a test compares the two for every role, kind and membership so they can't drift |
 | Private channels are closed to admins who aren't in them | Membership, not rank, opens a private conversation; admins can still archive it once added |
-| Guests see only channels they were added to | Guests are for outside collaborators; they don't browse the workspace |
+| Guests use direct and group messages only | Guests are outside collaborators. They can't be added to any channel, public or private, and `can_read` refuses them one even if a row is left over (`apps/core/channels.can_be_in`). Becoming a guest removes someone from every channel, with an audit row each, and keeps their conversations; a guest made a member joins the default channels. To work in channels, an admin makes them a member |
 | `#general` made with every workspace, joined by every non-guest | People land somewhere to talk on day one |
 | Channels addressed by id in the API | Names can be renamed; ids never change |
 | `client_id` on sends, unique per channel and author | A send retried after a dropped connection returns the stored message instead of a second copy |
@@ -473,6 +474,5 @@ when the channel opens and stays there while the marker moves past it.
 
 ## Open questions
 
-- Which channels guests can be added to. (They can start direct messages: decided with #33.)
 - Message formatting: a small Markdown subset rendered on the client, and which parts are allowed.
 - Whether HolidayOps working days feed quiet hours and issue due dates.

@@ -39,6 +39,10 @@ progress, with its last two items on hold.
   deletion, and an answer to requests within two weeks.
 - **Dependencies** (#45 to #48): Vitest 5.1.1, user-event 14.6.13, TanStack Query 5.108.0,
   React Router 8.5.2, jest-dom 8.0.0 and mysqlclient 2.3.2.
+- **Guests use direct messages only**: a guest can't be added to any channel and is taken out of
+  every channel on becoming one (a migration clears existing rows); conversations stay. The
+  sidebar and channel browser show guests direct messages only. The demo guests now talk to
+  their teams in group conversations.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -63,15 +67,15 @@ branches are deleted on GitHub.
 
 ## Open questions
 
-- Which channels guests can be added to. (They can start direct messages, decided with #33.)
-- Message formatting: a small Markdown subset rendered on the client, and which parts are
-  allowed.
+- Message formatting: decided as Discord-style Markdown rendered on the client; being built
+  next.
 - A theme picker (light, dark, system) stored per person; today the system setting decides.
 - Spacing, radius and type scale tokens (see [design.md](design.md)).
 - Whether HolidayOps working days feed quiet hours and issue due dates.
 
-Decided and no longer open: an unverified person can sign in but can't create or join a
-workspace; Fraunces and Instrument Sans are the typefaces; `apps/core` has its own 100% branch
+Decided and no longer open: guests use direct and group messages only and can't be added to
+any channel; an unverified person can sign in but can't
+create or join a workspace; Fraunces and Instrument Sans are the typefaces; `apps/core` has its own 100% branch
 coverage gate in CI.
 
 ## History

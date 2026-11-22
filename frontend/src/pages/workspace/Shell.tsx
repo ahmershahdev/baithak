@@ -210,7 +210,7 @@ function NotificationsLink({ slug }: { slug: string }) {
   );
 }
 
-function ChannelList({ slug, meId }: { slug: string; meId: number }) {
+function ChannelList({ slug, meId, guest }: { slug: string; meId: number; guest: boolean }) {
   const channels = useChannels(slug);
   const mine = channels.data?.filter((channel) => channel.is_member) ?? [];
   const rooms = mine.filter((channel) => !isConversation(channel));
@@ -218,19 +218,27 @@ function ChannelList({ slug, meId }: { slug: string; meId: number }) {
   const online = useOnline(slug);
   return (
     <>
-      <SidebarSection
-        id="channels-heading"
-        title="Channels"
-        action={
-          <Link to={`/w/${slug}/channels`} className={sectionAction}>
-            Browse
-          </Link>
-        }
-      >
-        {rooms.map((channel) => (
-          <ChannelLink key={channel.id} slug={slug} channel={channel} meId={meId} online={online} />
-        ))}
-      </SidebarSection>
+      {!guest && (
+        <SidebarSection
+          id="channels-heading"
+          title="Channels"
+          action={
+            <Link to={`/w/${slug}/channels`} className={sectionAction}>
+              Browse
+            </Link>
+          }
+        >
+          {rooms.map((channel) => (
+            <ChannelLink
+              key={channel.id}
+              slug={slug}
+              channel={channel}
+              meId={meId}
+              online={online}
+            />
+          ))}
+        </SidebarSection>
+      )}
       <SidebarSection
         id="conversations-heading"
         title="Direct messages"
@@ -364,7 +372,11 @@ export function WorkspaceShell({ me }: { me: User }) {
           <SearchBox slug={workspace.data.slug} />
           <NotificationsLink slug={workspace.data.slug} />
         </div>
-        <ChannelList slug={workspace.data.slug} meId={me.id} />
+        <ChannelList
+          slug={workspace.data.slug}
+          meId={me.id}
+          guest={workspace.data.role === "guest"}
+        />
         <Nav workspace={workspace.data} />
         <div className="mt-auto hidden md:block">
           <Account me={me} slug={slug} />

@@ -22,6 +22,8 @@ class ChannelPlan:
     private: bool = False
     # Handles; empty means everyone but guests.
     members: list[str] = field(default_factory=list)
+    # A group conversation instead of a channel: the only place a guest can talk.
+    group: bool = False
 
 
 @dataclass(frozen=True)
@@ -138,6 +140,7 @@ CHAI_CODE = Team(
                 "Invoices for last month are in your inbox.",
             ],
             members=["amna", "omar", "sana", "bilal", "daniel"],
+            group=True,
         ),
         ChannelPlan(
             "leads",
@@ -239,6 +242,7 @@ MONSOON_PRESS = Team(
                 "{who} can you caption the {thing} set?",
             ],
             members=["ayesha", "kamran", "mehwish", "ali", "leila"],
+            group=True,
         ),
         ChannelPlan("random", "Off topic", RANDOM),
     ],

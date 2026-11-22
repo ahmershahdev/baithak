@@ -71,6 +71,7 @@ in CI, and seed data.
 - [x] Privacy page: what is kept, reCAPTCHA and Resend, retention, deletion
 - [x] Self-serve account deletion, with posts kept anonymised in shared workspaces
 - [x] Contributor docs: README with logo, CONTRIBUTING, code of conduct, security policy
+- [x] Guests limited to direct and group messages
 - [ ] End-to-end tests with Playwright for the main flows, including two browsers in one channel
       (on hold)
 - [ ] Deploy at `baithak.ahmershah.dev`; tag `v1.0.0` (on hold, not confirmed yet)
