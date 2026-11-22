@@ -341,3 +341,24 @@ describe("bot checks", () => {
     expect(grecaptcha.reset).toHaveBeenCalledWith(0);
   });
 });
+
+describe("privacy", () => {
+  test("is open to signed-out visitors and names reCAPTCHA and Resend", async () => {
+    fakeBackend(signedOut);
+    renderAt("/privacy");
+
+    expect(await screen.findByRole("heading", { name: "Privacy" })).toBeInTheDocument();
+    expect(screen.getByText(/Google receives details/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Resend" })).toBeInTheDocument();
+  });
+
+  test("is linked from the sign-in page", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signin");
+
+    expect(await screen.findByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+  });
+});

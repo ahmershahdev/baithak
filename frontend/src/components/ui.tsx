@@ -49,6 +49,9 @@ export function AuthLayout({
             <Link to="/contact" className="hover:text-text">
               Contact
             </Link>
+            <Link to="/privacy" className="hover:text-text">
+              Privacy
+            </Link>
             <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-text">
               {SUPPORT_EMAIL}
             </a>
