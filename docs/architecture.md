@@ -367,6 +367,19 @@ are acted on, so a duplicated task does nothing. The text is cleared once done.
 Admins see a webhook's latest 50 deliveries on Settings
 (`.../webhooks/{id}/deliveries/`). Celery beat deletes finished ones after 30 days.
 
+## Demo data
+
+`python manage.py seed_demo --password ...` makes two invented teams, Chai and Code (a
+software studio with a client guest) and Monsoon Press (a newsroom with a freelance guest),
+from `apps/workspaces/demo_content.py`: about 120 days of channel messages in office hours,
+threads, mentions, reactions and a project of issues each, every third one raised from a
+message. It goes through the app's own services (posting, issues), then backdates rows, so
+sequence numbers, threads and unread counts are real; the owner is left a few unread
+messages. People sign in as handle@slug.example; their email notifications are off and
+`.example` is a reserved domain, so nothing is ever mailed. A second run refuses unless
+given `--reset`, which deletes the two workspaces and their people first. The full run
+takes about five minutes (`--days` makes it shorter).
+
 ## Unread counts
 
 Each `channel_member` keeps `last_read_seq`, the newest message the person has read. Unread =

@@ -201,12 +201,21 @@ M1 in progress. Merged so far:
   six tries. Admins see the latest 50 per webhook on Settings; beat prunes after 30 days.
   Hooks now answer 202. M6 is complete.
 
+- M6 released as `v0.6.0`, milestone closed.
+- M7 started: `manage.py seed_demo` makes two invented teams (Chai and Code, Monsoon Press)
+  with about 120 days of conversations, threads, reactions and issues, seeded in the local
+  database.
+
 ## Next session
 
 M5, in this order:
 
-1. Release M6 as `v0.6.0` when asked, and close its milestone.
-2. M7: seed data (two invented teams with a few months of conversations and issues).
+M7, in this order:
+
+1. README setup steps and screenshots (from the seeded teams).
+2. End-to-end tests with Playwright for the main flows, including two browsers in one
+   channel.
+3. Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`.
 
 ## Open questions
 
