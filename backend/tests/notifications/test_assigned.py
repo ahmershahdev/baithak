@@ -5,10 +5,10 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.core.roles import Role
-from apps.issues.models import Project
 from apps.notifications.models import Notification
 from apps.workspaces.models import Member, Workspace
 from tests.accounts.factories import make_user
+from tests.issues.team import karachi_team
 
 pytestmark = pytest.mark.django_db
 
@@ -23,11 +23,7 @@ def owner() -> User:
 
 @pytest.fixture
 def workspace(api: APIClient, owner: User) -> Workspace:
-    api.force_authenticate(owner)
-    response = api.post("/api/v1/workspaces/", {"name": "Karachi Team"}, format="json")
-    workspace = Workspace.objects.get(slug=response.json()["slug"])
-    Project.objects.create(workspace=workspace, key="BAI", name="Baithak")
-    return workspace
+    return karachi_team(api, owner)
 
 
 def join(workspace: Workspace, username: str) -> User:
