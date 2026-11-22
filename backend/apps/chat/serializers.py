@@ -10,6 +10,7 @@ from apps.core.channels import CONVERSATIONS, ChannelKind
 from apps.files.serializers import ATTACHMENT_PREFETCH, AttachmentSerializer
 
 KIND_CHOICES = [kind.value for kind in ChannelKind]
+MESSAGE_KIND_CHOICES = ["message", "activity", "integration"]
 # Conversations are started through their own endpoint, never created as channels.
 CREATE_KIND_CHOICES = [ChannelKind.PUBLIC.value, ChannelKind.PRIVATE.value]
 
@@ -144,9 +145,10 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
     reactions = serializers.SerializerMethodField()
     attachments = AttachmentSerializer(many=True, read_only=True)
     kind = serializers.ChoiceField(
-        choices=["message", "activity"],
+        choices=MESSAGE_KIND_CHOICES,
         read_only=True,
-        help_text="activity: a line Baithak wrote for the author, such as an issue change.",
+        help_text="activity: an issue change written for the author. integration: from an app "
+        "(no author; see sender_name).",
     )
     parent_seq = serializers.IntegerField(
         source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
@@ -178,6 +180,7 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "attachments",
             "issue",
             "kind",
+            "sender_name",
         )
         read_only_fields = fields
 

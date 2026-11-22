@@ -85,11 +85,13 @@ class Message(models.Model):
     )
     body = models.TextField(blank=True)
     # "activity": an issue change, written for the author (docs/architecture.md, Issues).
+    # "integration": posted by an app such as GitHub, with no author and `sender_name` shown.
     kind = models.CharField(
-        max_length=10,
-        choices=[("message", "Message"), ("activity", "Activity")],
+        max_length=12,
+        choices=[("message", "Message"), ("activity", "Activity"), ("integration", "Integration")],
         default="message",
     )
+    sender_name = models.CharField(max_length=40, blank=True)
     # Chosen by the sender's device so a send retried after a dropped connection is stored once.
     client_id = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

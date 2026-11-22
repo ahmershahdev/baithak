@@ -38,6 +38,7 @@ function notification(kind: Notification["kind"]): Notification {
       attachments: [],
       issue: null,
       kind: "message",
+      sender_name: "",
     },
   };
 }

@@ -152,7 +152,32 @@ function Attachments({ attachments }: { attachments: Attachment[] }) {
   );
 }
 
+// Only an app's own messages get links, and only into GitHub (apps/core/github.py); what
+// people may format is still an open question.
+const GITHUB_LINK = /^https:\/\/github\.com\/\S+$/;
+
 function Body({ message, meId }: { message: Message; meId: number }) {
+  if (message.kind === "integration") {
+    return (
+      <>
+        {message.body.split(/(\s+)/).map((part, index) =>
+          GITHUB_LINK.test(part) ? (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-accent-text underline"
+            >
+              {part}
+            </a>
+          ) : (
+            part
+          ),
+        )}
+      </>
+    );
+  }
   return (
     <>
       {segments(message, meId).map((part, index) =>
@@ -191,7 +216,9 @@ export function MessageRow({
   const [draft, setDraft] = useState(message.body);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const name = message.author ? message.author.display_name || message.author.username : "Someone";
+  const name = message.author
+    ? message.author.display_name || message.author.username
+    : message.sender_name || "Someone";
   const mine = message.author?.id === meId;
   const forMe = !mine && !message.deleted && mentionsMe(message, meId);
   const threadSeq = message.parent_seq === null ? message.seq : null;
@@ -270,7 +297,9 @@ export function MessageRow({
       } ${grouped ? "py-0.5" : "mt-3 py-1"}`}
     >
       <div className="w-9 shrink-0">
-        {!grouped && message.author && <Avatar name={name} colorKey={message.author.username} />}
+        {!grouped && (message.author || message.sender_name) && (
+          <Avatar name={name} colorKey={message.author?.username ?? name} />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         {onOpenThread && message.parent_seq !== null && (
@@ -287,6 +316,11 @@ export function MessageRow({
         {!grouped && (
           <p className="flex items-baseline gap-2">
             <span className="font-semibold">{name}</span>
+            {message.kind === "integration" && (
+              <span className="rounded bg-surface-sunken px-1.5 text-xs font-semibold text-text-muted">
+                App
+              </span>
+            )}
             <time dateTime={message.created_at} className="text-xs text-text-subtle tabular-nums">
               {clock.format(new Date(message.created_at))}
             </time>

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.search",
     "apps.notifications",
     "apps.issues",
+    "apps.integrations",
 ]
 
 MIDDLEWARE = [
@@ -168,6 +169,8 @@ REST_FRAMEWORK = {
         "contact": "5/hour",
         "upload": "60/hour",
         "search": "60/minute",
+        # Per sending address; GitHub sends from addresses shared by everyone it serves.
+        "hooks": "300/minute",
     },
     # How many proxies sit in front of the app. 0 means the client address is REMOTE_ADDR and a
     # client-sent X-Forwarded-For is ignored, so nobody can dodge the throttle by forging it.
@@ -196,6 +199,8 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "RoleEnum": "apps.workspaces.serializers.ROLE_CHOICES",
         "InvitableRoleEnum": "apps.workspaces.serializers.INVITABLE_ROLE_CHOICES",
+        "MessageKindEnum": "apps.chat.serializers.MESSAGE_KIND_CHOICES",
+        "WebhookKindEnum": "apps.integrations.serializers.WEBHOOK_KIND_CHOICES",
     },
 }
 

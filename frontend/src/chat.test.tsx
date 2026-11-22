@@ -48,6 +48,7 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     attachments: [],
     issue: null,
     kind: "message",
+    sender_name: "",
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -953,4 +954,29 @@ test("the Issues tab finds issues and opens them", async () => {
   expect(link).toHaveAttribute("href", "/w/team/projects/BAI/issues/7");
   expect(link).toHaveTextContent("BAI-7Upload fails on SafariIn progress");
   expect(within(link).getAllByText("upload", { selector: "mark" })).toHaveLength(1);
+});
+
+test("a GitHub message shows its app name and links into GitHub", async () => {
+  const fromGitHub: Message = {
+    ...message(
+      2,
+      2,
+      "amna opened pull request #12 in team/app: Fix uploads\nhttps://github.com/team/app/pull/12",
+    ),
+    author: null,
+    kind: "integration",
+    sender_name: "GitHub",
+  };
+  backend({
+    "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+      json(200, page([message(1, 1, "Hi"), fromGitHub], 2)),
+  });
+  await openChannel();
+
+  const link = await screen.findByRole("link", { name: "https://github.com/team/app/pull/12" });
+  const row = link.closest("li") as HTMLElement;
+
+  expect(link).toHaveAttribute("href", "https://github.com/team/app/pull/12");
+  expect(within(row).getByText("GitHub")).toBeInTheDocument();
+  expect(within(row).getByText("App")).toBeInTheDocument();
 });

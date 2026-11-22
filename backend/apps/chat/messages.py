@@ -19,14 +19,15 @@ def _lock(channel: Channel) -> Channel:
 
 def post(
     channel: Channel,
-    author: User,
+    author: User | None,
     body: str,
     client_id: str = "",
     *,
     parent: Message | None = None,
     also_in_channel: bool = False,
     attachment_ids: Sequence[int] = (),
-    activity: bool = False,
+    kind: str = "message",
+    sender_name: str = "",
 ) -> tuple[Message, bool]:
     """Save a message, or a reply to `parent`, with the channel's next event. Returns
     (message, created).
@@ -35,6 +36,9 @@ def post(
     also gives the parent a new event carrying its reply count, so catching up by event brings
     thread changes too. A repeated client_id from the same author returns the stored message,
     so a send retried after a dropped connection is not duplicated.
+
+    Only kind "message" is read for mentions and notifies anyone. An "integration" message has
+    no author, just `sender_name`.
     """
     with transaction.atomic():
         locked = _lock(channel)
@@ -58,7 +62,7 @@ def post(
             thread_seq = parent.reply_count + 1
         named: list[User] = []
         everyone = False
-        if not activity:
+        if kind == "message" and author is not None:
             named, everyone = mentions.resolve(locked, author.pk, body)
         message = Message.objects.create(
             channel=locked,
@@ -71,7 +75,8 @@ def post(
             body=body,
             client_id=client_id,
             mentions_channel=everyone,
-            kind="activity" if activity else "message",
+            kind=kind,
+            sender_name=sender_name,
         )
         message.mentions.set(named)
         if attachment_ids:
@@ -83,7 +88,7 @@ def post(
             if taken != len(set(attachment_ids)):
                 raise FilesUnavailable
         events.message_changed(message)
-        if not activity:
+        if kind == "message":
             notifications.notify(message)
         if parent is not None:
             locked.last_event += 1
@@ -94,9 +99,13 @@ def post(
             events.message_changed(parent)
         locked.save(update_fields=["last_seq", "last_event"])
         # Posting means the author has seen the channel up to here.
-        if seq is not None and ChannelMember.objects.filter(
-            channel=locked, user=author, last_read_seq__lt=seq
-        ).update(last_read_seq=seq):
+        if (
+            author is not None
+            and seq is not None
+            and ChannelMember.objects.filter(
+                channel=locked, user=author, last_read_seq__lt=seq
+            ).update(last_read_seq=seq)
+        ):
             events.read_moved(author.pk, locked.pk, seq)
             notifications.read_up_to(author.pk, locked.pk, seq)
     return message, True

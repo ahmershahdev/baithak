@@ -25,6 +25,7 @@ function message(seq: number, event = seq, extra: Partial<Message> = {}): Messag
     attachments: [],
     issue: null,
     kind: "message",
+    sender_name: "",
     author: { id: 1, username: "amna", display_name: "Amna" },
     body: `m${String(seq)}`,
     client_id: "",

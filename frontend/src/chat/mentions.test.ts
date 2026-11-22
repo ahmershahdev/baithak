@@ -34,6 +34,7 @@ function message(body: string, extra: Partial<Message> = {}): Message {
     attachments: [],
     issue: null,
     kind: "message",
+    sender_name: "",
     ...extra,
   };
 }
