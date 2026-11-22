@@ -7,9 +7,10 @@ from rest_framework import serializers
 from apps.chat.message_views import MAX_BODY
 from apps.chat.serializers import AuthorSerializer
 from apps.core.github import valid_repo
-from apps.integrations.models import Webhook
+from apps.integrations.models import Webhook, WebhookDelivery
 
 WEBHOOK_KIND_CHOICES = ["github", "incoming"]
+DELIVERY_STATUS_CHOICES = ["pending", "posted", "ignored", "failed"]
 
 
 def delivery_url(webhook: Webhook, token: str) -> str:
@@ -87,3 +88,12 @@ class WebhookCreateSerializer(serializers.Serializer[None]):
 
 class IncomingSerializer(serializers.Serializer[None]):
     text = serializers.CharField(max_length=MAX_BODY, trim_whitespace=True)
+
+
+class DeliverySerializer(serializers.ModelSerializer[WebhookDelivery]):
+    status = serializers.ChoiceField(choices=DELIVERY_STATUS_CHOICES, read_only=True)
+
+    class Meta:
+        model = WebhookDelivery
+        fields = ("id", "event", "status", "detail", "attempts", "received_at", "finished_at")
+        read_only_fields = fields

@@ -55,7 +55,9 @@ label             workspace_id, project_id, name, color (one of the six brand hu
 webhook           workspace_id, channel_id, kind (github, incoming), repo (github), name
                   (incoming), token (github: as in the URL; incoming: its SHA-256),
                   secret (github HMAC key), created_by
-webhook_delivery  webhook_id, received_at, event, status, error
+webhook_delivery  workspace_id, webhook_id, event, external_id, text (until done), status
+                  (pending, posted, ignored, failed), detail, attempts, message_id,
+                  received_at, finished_at
 notification      user_id, kind, channel_id and message_id, or issue_id; actor_id, read_at, emailed_at
 ```
 
@@ -324,9 +326,9 @@ checked against the raw body in constant time before anything is parsed (wrong: 
 `apps/core/github.py`). The view has no session authentication, so no CSRF, and a
 `hooks` throttle of 300 a minute per address. `ping` answers 200. Pull requests (opened,
 reopened, marked ready, merged, closed) and issues (opened, closed, reopened) from the
-connected repository become one message each; everything else answers 202 and posts
-nothing, as does an archived channel. GitHub's `X-GitHub-Delivery` is the message's
-`client_id`, so a redelivery is stored once.
+connected repository are queued to become one message each (202, see Webhook
+deliveries); everything else answers 202 and posts nothing. GitHub's
+`X-GitHub-Delivery` is the message's `client_id`, so a redelivery is stored once.
 
 Those messages are kind `integration`: no author, `sender_name` "GitHub", never read for
 mentions, notify nobody, and nobody can edit them. They end with the item's link, which
@@ -341,11 +343,29 @@ the token's SHA-256 is stored (`apps/core/webhooks.py`): a database leak gives n
 URL, and a plain hash is enough because the token is random, not a password. To change
 the URL, remove the webhook and make another.
 
-A call posts `{"text": "..."}` (up to 4000 characters) and becomes a kind `integration`
-message under the webhook's name, like GitHub's (no mentions, no notifications, no links
+A call posts `{"text": "..."}` (up to 4000 characters), answered 202, and is queued to
+become a kind `integration` message under the webhook's name, like GitHub's (no mentions, no notifications, no links
 but GitHub's). Unknown URL: 404; archived channel: 409. Each webhook allows 30 calls a
 minute counted by webhook, not by address, so a leaked URL called from many machines
 still can't flood its channel (`PerWebhookThrottle`).
+
+## Webhook deliveries
+
+Every delivery that passes its check (GitHub's signature, an incoming webhook's URL)
+gets a `webhook_delivery` row; unsigned calls don't, so nobody can fill the log without
+the secret. One with nothing to post is finished at once, with why (`Connected.`,
+`Another repository.`, `Not JSON.`, `No usable text.`). One to post is saved as pending
+with its text, and `deliver` is queued after commit (`apps/integrations/deliveries.py`).
+
+The task posts it and marks it posted, linking the message. Any error is written to
+`detail` and retried after 30 s, 1, 2, 4 and 8 minutes (at most an hour; six tries in
+all, `apps/core/webhooks.py`), then marked failed. A pending row survives a crash, and
+the post's `client_id` is fixed per delivery, so a retry after a post that did commit
+doesn't post twice; a channel archived meanwhile ends it as ignored. Only pending rows
+are acted on, so a duplicated task does nothing. The text is cleared once done.
+
+Admins see a webhook's latest 50 deliveries on Settings
+(`.../webhooks/{id}/deliveries/`). Celery beat deletes finished ones after 30 days.
 
 ## Unread counts
 

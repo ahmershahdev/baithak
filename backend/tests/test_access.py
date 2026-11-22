@@ -82,6 +82,12 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
         {"kind": "github", "channel_id": 1, "repo": "team/app"},
     ),
     (
+        "integrations:deliveries",
+        "get",
+        "/api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/deliveries/",
+        None,
+    ),
+    (
         "integrations:webhook",
         "delete",
         "/api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/",

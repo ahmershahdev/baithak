@@ -196,13 +196,17 @@ M1 in progress. Merged so far:
   URL once (only its SHA-256 is stored). Posting `{"text": ...}` adds a message under that
   name. 30 calls a minute per webhook, whatever the caller's address.
 
+- Webhook deliveries: every checked delivery is logged (posted, ignored, failed, with why
+  and the number of tries); posting happens in Celery and is retried with back-off up to
+  six tries. Admins see the latest 50 per webhook on Settings; beat prunes after 30 days.
+  Hooks now answer 202. M6 is complete.
+
 ## Next session
 
 M5, in this order:
 
-M6, in this order:
-
-1. Webhook deliveries logged with their result; failed ones retried by Celery.
+1. Release M6 as `v0.6.0` when asked, and close its milestone.
+2. M7: seed data (two invented teams with a few months of conversations and issues).
 
 ## Open questions
 
