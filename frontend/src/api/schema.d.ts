@@ -801,6 +801,23 @@ export interface paths {
         patch: operations["workspaces_projects_issues_partial_update"];
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/projects/{key}/issues/{number}/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An issue's history from the audit log, oldest first (the latest 200) */
+        get: operations["workspaces_projects_issues_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/projects/{key}/labels/": {
         parameters: {
             query?: never;
@@ -1100,6 +1117,14 @@ export interface components {
             /** @description Open it from this message; its thread becomes the discussion. */
             from_message?: components["schemas"]["FromMessageRequest"];
         };
+        IssueHistory: {
+            readonly id: number;
+            /** Format: date-time */
+            readonly at: string;
+            readonly actor: components["schemas"]["Author"] | null;
+            /** @description "moved it to Done" */
+            readonly lines: string[];
+        };
         IssuePage: {
             results: components["schemas"]["Issue"][];
             /** @description `before` for the next page. */
@@ -1163,6 +1188,13 @@ export interface components {
             readonly attachments: components["schemas"]["Attachment"][];
             /** @description The issue opened from it. Sent to every reader, guests too: only the ref. */
             readonly issue: components["schemas"]["MessageIssue"] | null;
+            /**
+             * @description activity: a line Baithak wrote for the author, such as an issue change.
+             *
+             *     * `message` - message
+             *     * `activity` - activity
+             */
+            readonly kind: components["schemas"]["MessageKindEnum"];
         };
         MessageHit: {
             channel: number;
@@ -1174,6 +1206,12 @@ export interface components {
             project: string;
             number: number;
         };
+        /**
+         * @description * `message` - message
+         *     * `activity` - activity
+         * @enum {string}
+         */
+        MessageKindEnum: "message" | "activity";
         MessagePage: {
             messages: components["schemas"]["Message"][];
             has_more: boolean;
@@ -3242,6 +3280,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_projects_issues_history_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                number: number;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueHistory"][];
                 };
             };
         };

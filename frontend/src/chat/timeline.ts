@@ -76,6 +76,8 @@ export function applyEvent(timeline: Timeline, event: number, message: Message):
 /** Consecutive messages from one person within five minutes are shown as one group. */
 export function startsGroup(previous: Message | undefined, message: Message): boolean {
   if (!previous || previous.author?.id !== message.author?.id) return true;
+  // An issue update is its own line; the author's next message shows their name again.
+  if (previous.kind === "activity") return true;
   const gap = new Date(message.created_at).getTime() - new Date(previous.created_at).getTime();
   return gap > 5 * 60_000;
 }

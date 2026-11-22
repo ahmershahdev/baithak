@@ -238,6 +238,7 @@ describe("an issue opened from a message", () => {
       reactions: [],
       attachments: [],
       issue: threadSeq === null ? { ref: "BAI-1", project: "BAI", number: 1 } : null,
+      kind: "message",
       author: { id: 2, username: "bilal", display_name: "Bilal" },
       body,
       client_id: "",
@@ -266,4 +267,29 @@ describe("an issue opened from a message", () => {
     );
     expect(within(discussion).getByRole("combobox", { name: "Reply" })).toBeInTheDocument();
   });
+});
+
+test("an issue's page shows its history", async () => {
+  backend({
+    "GET /api/v1/workspaces/team/projects/BAI/issues/1/": () => json(200, issue()),
+    "GET /api/v1/workspaces/team/projects/BAI/issues/1/history/": () =>
+      json(200, [
+        { id: 1, at: "2026-11-20T10:00:00Z", actor: amna, lines: ["opened it"] },
+        {
+          id: 2,
+          at: "2026-11-20T11:00:00Z",
+          actor: { id: 2, username: "bilal", display_name: "Bilal" },
+          lines: ["moved it to Done", "set priority to high"],
+        },
+      ]),
+  });
+  renderAt("/w/team/projects/BAI/issues/1");
+
+  const history = await screen.findByRole("region", { name: "History" });
+  const rows = within(history).getAllByRole("listitem");
+
+  expect(rows.map((row) => row.textContent.split(" Nov")[0])).toEqual([
+    "Amna Khan opened it",
+    "Bilal moved it to Done, set priority to high",
+  ]);
 });

@@ -198,6 +198,7 @@ class _EditDeleteView(APIView):
             is_author=message.author_id == user.pk,
             deleted=message.deleted,
             archived=access.channel.archived,
+            activity=message.kind == "activity",
         )
         if not allowed:
             raise PermissionDenied("You can only edit your own messages.")

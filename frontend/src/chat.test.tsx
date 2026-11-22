@@ -47,6 +47,7 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     reactions: [],
     attachments: [],
     issue: null,
+    kind: "message",
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -898,4 +899,25 @@ describe("issues from messages", () => {
     expect(chip).toHaveAttribute("href", "/w/team/projects/BAI/issues/7");
     expect(within(row).queryByRole("button", { name: "Issue" })).not.toBeInTheDocument();
   });
+});
+
+test("an issue update shows as a short line with no actions", async () => {
+  backend({
+    "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+      json(
+        200,
+        page(
+          [message(1, 1, "Hi"), { ...message(2, 2, "BAI-7: moved it to Done"), kind: "activity" }],
+          2,
+        ),
+      ),
+  });
+  await openChannel();
+
+  const row = (await screen.findByText("BAI-7: moved it to Done", { exact: false })).closest(
+    "li",
+  ) as HTMLElement;
+
+  expect(within(row).queryByRole("button")).not.toBeInTheDocument();
+  expect(row).toHaveTextContent("bilal BAI-7: moved it to Done");
 });

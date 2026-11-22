@@ -67,6 +67,7 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("projects:issues", "post", PROJECT + "issues/", {"title": "Let me in"}),
     ("projects:issue", "get", PROJECT + "issues/1/", None),
     ("projects:issue", "patch", PROJECT + "issues/1/", {"title": "Changed"}),
+    ("projects:issue-history", "get", PROJECT + "issues/1/history/", None),
     ("notifications:list", "get", "/api/v1/workspaces/{slug}/notifications/", None),
     ("notifications:read", "post", "/api/v1/workspaces/{slug}/notifications/read/", {"all": True}),
     ("search:messages", "get", "/api/v1/workspaces/{slug}/search/messages/?q=secret", None),

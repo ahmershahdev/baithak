@@ -56,8 +56,11 @@ def can_add_member(role: Role | None, kind: ChannelKind, *, is_member: bool) -> 
     return role is not None and role != Role.GUEST and is_member and kind not in CONVERSATIONS
 
 
-def can_edit_message(*, is_author: bool, deleted: bool, archived: bool) -> bool:
-    return is_author and not deleted and not archived
+def can_edit_message(
+    *, is_author: bool, deleted: bool, archived: bool, activity: bool = False
+) -> bool:
+    """`activity`: a line Baithak wrote for the author (an issue change), not their words."""
+    return is_author and not deleted and not archived and not activity
 
 
 def can_delete_message(role: Role | None, *, is_author: bool, deleted: bool) -> bool:

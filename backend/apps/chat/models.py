@@ -84,6 +84,12 @@ class Message(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
     body = models.TextField(blank=True)
+    # "activity": an issue change, written for the author (docs/architecture.md, Issues).
+    kind = models.CharField(
+        max_length=10,
+        choices=[("message", "Message"), ("activity", "Activity")],
+        default="message",
+    )
     # Chosen by the sender's device so a send retried after a dropped connection is stored once.
     client_id = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

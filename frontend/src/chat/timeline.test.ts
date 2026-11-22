@@ -24,6 +24,7 @@ function message(seq: number, event = seq, extra: Partial<Message> = {}): Messag
     reactions: [],
     attachments: [],
     issue: null,
+    kind: "message",
     author: { id: 1, username: "amna", display_name: "Amna" },
     body: `m${String(seq)}`,
     client_id: "",
@@ -86,6 +87,12 @@ describe("startsGroup", () => {
     expect(startsGroup(first, soon)).toBe(false);
     expect(startsGroup(soon, later)).toBe(true);
     expect(startsGroup(later, other)).toBe(true);
+  });
+
+  test("a message after an issue update by the same person starts a group", () => {
+    const update = message(1, 1, { kind: "activity" });
+
+    expect(startsGroup(update, message(2))).toBe(true);
   });
 });
 
