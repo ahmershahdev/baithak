@@ -212,6 +212,10 @@ M1 in progress. Merged so far:
   repeat word for word. New dependency: `@playwright/test` 1.65.1, also for the end-to-end
   tests next.
 
+- Fixed: the signed-in name at the bottom of the sidebar was cut to one letter; Settings and
+  Sign out now sit on their own row. The workspace nav no longer shrinks in a tall sidebar,
+  which had hidden Settings and Audit log for admins. Screenshots retaken.
+
 ## Next session
 
 M5, in this order:
@@ -222,8 +226,6 @@ M7, in this order:
    channel.
 2. Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`.
 
-Small fixes seen in the screenshots: the signed-in name at the bottom of the sidebar is
-cut to one letter at 1440 px.
 
 ## Open questions
 

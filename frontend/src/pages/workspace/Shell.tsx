@@ -252,7 +252,7 @@ function Nav({ workspace }: { workspace: Workspace }) {
   const base = `/w/${workspace.slug}`;
   const admin = isAdmin(workspace.role);
   return (
-    <nav aria-label="Workspace" className="flex gap-1 overflow-x-auto md:flex-col">
+    <nav aria-label="Workspace" className="flex shrink-0 gap-1 overflow-x-auto md:flex-col">
       <NavLink end to={base} className={linkClass}>
         Overview
       </NavLink>
@@ -293,30 +293,34 @@ function Account({ me, slug }: { me: User; slug: string }) {
     },
   });
   return (
-    <div className="flex items-center gap-3 rounded-xl p-2">
-      <Avatar name={me.display_name || me.username} colorKey={me.username} size="sm" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">
-          {me.display_name || me.username}
+    <div className="flex flex-col gap-1 rounded-xl p-2">
+      <div className="flex items-center gap-3">
+        <Avatar name={me.display_name || me.username} colorKey={me.username} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">
+            {me.display_name || me.username}
+          </span>
+          <span className="block truncate text-xs text-text-subtle">@{me.username}</span>
         </span>
-        <span className="block truncate text-xs text-text-subtle">@{me.username}</span>
-      </span>
-      <Link
-        to={`/w/${slug}/me`}
-        className="rounded-lg px-2 py-1 text-xs font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
-      >
-        Settings
-      </Link>
-      <button
-        type="button"
-        onClick={() => {
-          signOut.mutate();
-        }}
-        disabled={signOut.isPending}
-        className="rounded-lg px-2 py-1 text-xs font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
-      >
-        Sign out
-      </button>
+      </div>
+      <div className="-ml-2 flex items-center gap-1">
+        <Link
+          to={`/w/${slug}/me`}
+          className="rounded-lg px-2 py-1 text-xs font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+        >
+          Settings
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            signOut.mutate();
+          }}
+          disabled={signOut.isPending}
+          className="rounded-lg px-2 py-1 text-xs font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }
