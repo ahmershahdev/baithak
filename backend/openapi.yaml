@@ -1819,7 +1819,7 @@ paths:
           description: ''
     post:
       operationId: workspaces_projects_issues_create
-      summary: Open an issue
+      summary: Open an issue, on its own or from a message
       parameters:
       - in: path
         name: key
@@ -1837,7 +1837,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IssueWriteRequest'
+              $ref: '#/components/schemas/IssueCreateRequest'
         required: true
       security:
       - cookieAuth: []
@@ -2617,6 +2617,16 @@ components:
       - next
       - results
       - terms
+    FromMessageRequest:
+      type: object
+      properties:
+        channel_id:
+          type: integer
+        seq:
+          type: integer
+      required:
+      - channel_id
+      - seq
     InvitableRoleEnum:
       enum:
       - admin
@@ -2693,7 +2703,9 @@ components:
       - role
     Issue:
       type: object
-      description: Needs `project`, `assignee`, `created_by` loaded and `labels` prefetched.
+      description: |-
+        Needs `project`, `assignee`, `created_by`, `message` loaded and `labels` prefetched, and
+        `readable` in the context: the ids of the reader's channels among the issues' messages.
       properties:
         number:
           type: integer
@@ -2731,6 +2743,13 @@ components:
           items:
             $ref: '#/components/schemas/Label'
           readOnly: true
+        thread:
+          allOf:
+          - $ref: '#/components/schemas/IssueThread'
+          nullable: true
+          readOnly: true
+          description: Where it is discussed; null when it has no message or the reader
+            can't see it.
         created_by:
           allOf:
           - $ref: '#/components/schemas/Author'
@@ -2761,27 +2780,10 @@ components:
       - priority
       - ref
       - status
+      - thread
       - title
       - updated_at
-    IssuePage:
-      type: object
-      properties:
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/Issue'
-        next:
-          type: integer
-          nullable: true
-          description: '`before` for the next page.'
-        total:
-          type: integer
-          description: How many match the filters, on every page.
-      required:
-      - next
-      - results
-      - total
-    IssueWriteRequest:
+    IssueCreateRequest:
       type: object
       properties:
         title:
@@ -2807,8 +2809,41 @@ components:
           items:
             type: integer
           maxItems: 20
+        from_message:
+          allOf:
+          - $ref: '#/components/schemas/FromMessageRequest'
+          description: Open it from this message; its thread becomes the discussion.
       required:
       - title
+    IssuePage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        next:
+          type: integer
+          nullable: true
+          description: '`before` for the next page.'
+        total:
+          type: integer
+          description: How many match the filters, on every page.
+      required:
+      - next
+      - results
+      - total
+    IssueThread:
+      type: object
+      properties:
+        channel:
+          type: integer
+        seq:
+          type: integer
+          description: The message whose thread is the discussion.
+      required:
+      - channel
+      - seq
     Label:
       type: object
       properties:
@@ -2950,6 +2985,13 @@ components:
           items:
             $ref: '#/components/schemas/Attachment'
           readOnly: true
+        issue:
+          allOf:
+          - $ref: '#/components/schemas/MessageIssue'
+          nullable: true
+          readOnly: true
+          description: 'The issue opened from it. Sent to every reader, guests too:
+            only the ref.'
       required:
       - also_in_channel
       - attachments
@@ -2961,6 +3003,7 @@ components:
       - edited_at
       - event
       - id
+      - issue
       - last_reply_at
       - mentions
       - mentions_channel
@@ -2979,6 +3022,20 @@ components:
       required:
       - channel
       - message
+    MessageIssue:
+      type: object
+      properties:
+        ref:
+          type: string
+          description: KEY-12
+        project:
+          type: string
+        number:
+          type: integer
+      required:
+      - number
+      - project
+      - ref
     MessagePage:
       type: object
       properties:

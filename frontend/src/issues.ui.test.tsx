@@ -37,6 +37,7 @@ function issue(extra: Partial<Issue> = {}): Issue {
     assignee: null,
     due: null,
     labels: [],
+    thread: null,
     created_by: { id: 1, username: "amna", display_name: "Amna Khan" },
     created_at: "2026-11-20T10:00:00Z",
     updated_at: "2026-11-20T10:00:00Z",
@@ -204,5 +205,65 @@ describe("board", () => {
       await screen.findByText("That move did not save, so the card went back."),
     ).toBeInTheDocument();
     expect(within(todo).getByText("Search misses Urdu words")).toBeInTheDocument();
+  });
+});
+
+describe("an issue opened from a message", () => {
+  test("shows the message's thread as its discussion", async () => {
+    const channel = {
+      id: 5,
+      name: "general",
+      kind: "public",
+      topic: "",
+      is_default: true,
+      archived: false,
+      is_member: true,
+      last_seq: 2,
+      last_read_seq: 2,
+      unread: 0,
+      people: [],
+      created_at: "2026-11-01T10:00:00Z",
+    };
+    const said = (id: number, body: string, threadSeq: number | null) => ({
+      id,
+      seq: threadSeq === null ? 2 : null,
+      event: id,
+      parent_seq: threadSeq === null ? null : 2,
+      thread_seq: threadSeq,
+      also_in_channel: false,
+      reply_count: threadSeq === null ? 1 : 0,
+      last_reply_at: null,
+      mentions: [],
+      mentions_channel: false,
+      reactions: [],
+      attachments: [],
+      issue: threadSeq === null ? { ref: "BAI-1", project: "BAI", number: 1 } : null,
+      author: { id: 2, username: "bilal", display_name: "Bilal" },
+      body,
+      client_id: "",
+      created_at: "2026-11-20T10:00:00Z",
+      edited_at: null,
+      deleted: false,
+    });
+    backend({
+      "GET /api/v1/workspaces/team/channels/": () => json(200, [channel]),
+      "GET /api/v1/workspaces/team/projects/BAI/issues/1/": () =>
+        json(200, issue({ thread: { channel: 5, seq: 2 } })),
+      "GET /api/v1/workspaces/team/channels/5/messages/2/replies/": () =>
+        json(200, {
+          parent: said(10, "Search misses Urdu words", null),
+          replies: [said(11, "Only with diacritics", 1)],
+          has_more: false,
+        }),
+    });
+    renderAt("/w/team/projects/BAI/issues/1");
+
+    const discussion = await screen.findByRole("complementary", { name: "Discussion" });
+    expect(await within(discussion).findByText("Only with diacritics")).toBeInTheDocument();
+    expect(within(discussion).getByRole("link", { name: "Open in channel" })).toHaveAttribute(
+      "href",
+      "/w/team/c/5?thread=2",
+    );
+    expect(within(discussion).getByRole("combobox", { name: "Reply" })).toBeInTheDocument();
   });
 });

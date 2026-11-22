@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.chat import messages
 from apps.core.issues import Status, is_closed
 from apps.issues.models import Issue, Label, Project
 from apps.workspaces import audit
@@ -29,7 +30,8 @@ def _for_log(changes: dict[str, list[Any]]) -> dict[str, list[Any]]:
 
 
 def create_issue(project: Project, author: User, data: dict[str, Any]) -> Issue:
-    """Take the project's next number and save the issue, in one transaction."""
+    """Take the project's next number and save the issue, in one transaction. With `message`,
+    that message gets a new event so its readers see it now has an issue."""
     labels: list[Label] = data.pop("labels", [])
     with transaction.atomic():
         locked = Project.objects.select_for_update().get(pk=project.pk)
@@ -47,13 +49,11 @@ def create_issue(project: Project, author: User, data: dict[str, Any]) -> Issue:
             **data,
         )
         issue.labels.set(labels)
-        audit.record(
-            project.workspace,
-            author,
-            "issue.create",
-            issue,
-            {"issue": f"{project.key}-{number}", "title": issue.title},
-        )
+        detail = {"issue": f"{project.key}-{number}", "title": issue.title}
+        if issue.message is not None:
+            detail["from_message"] = f"{issue.message.channel_id}#{issue.message.seq}"
+            messages.touch(issue.message)
+        audit.record(project.workspace, author, "issue.create", issue, detail)
     return issue
 
 

@@ -166,13 +166,19 @@ M1 in progress. Merged so far:
   once, goes back if refused), and a status menu on every card for the keyboard and phones.
   List and Board switch at the top of a project.
 
+- Issues from messages: an Issue action on a channel message picks a project and a title (the
+  message's first line) and opens the issue with `from_message`. The message then shows a
+  `BAI-7` chip linking to it, and the issue page shows the message's thread as its Discussion,
+  with a composer and a link back into the channel. One issue per message; replies and deleted
+  messages can't have one; a message in a channel the person can't read is 404, and the
+  discussion is hidden from people outside that channel.
+
 ## Next session
 
 M5, in this order:
 
-1. Create an issue from a message; the issue's discussion is a thread linked both ways.
-2. Issue changes posted into the linked channel; issue history in the audit log.
-3. Notify people when an issue is assigned to them (the in-app notifications from M4).
+1. Issue changes posted into the linked channel; issue history in the audit log.
+2. Notify people when an issue is assigned to them (the in-app notifications from M4).
 
 ## Open questions
 

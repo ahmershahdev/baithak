@@ -29,6 +29,7 @@ function notification(kind: Notification["kind"]): Notification {
       mentions_channel: false,
       reactions: [],
       attachments: [],
+      issue: null,
     },
   };
 }

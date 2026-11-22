@@ -1,8 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
+import { Link } from "react-router";
 
 import { remember, sendReply, uploadFile, useThread, type Channel } from "../../api/chat";
 import type { User } from "../../api/client";
+import { channelTitle, isConversation } from "../../chat/conversations";
 import { TypingContext, useTypers } from "../../chat/live";
 import type { Candidate } from "../../chat/mentions";
 import { startsGroup, storedIds } from "../../chat/timeline";
@@ -15,6 +17,7 @@ export function ThreadPanel({
   me,
   seq,
   candidates,
+  canSeeIssues = false,
   onClose,
 }: {
   slug: string;
@@ -22,7 +25,9 @@ export function ThreadPanel({
   me: User;
   seq: number;
   candidates: Candidate[];
-  onClose: () => void;
+  canSeeIssues?: boolean;
+  /** Left out where the thread is part of the page (an issue's discussion), not a side panel. */
+  onClose?: () => void;
 }) {
   const client = useQueryClient();
   const thread = useThread(slug, channel.id, seq);
@@ -46,21 +51,38 @@ export function ThreadPanel({
 
   return (
     <aside
-      aria-label="Thread"
-      className="settle fixed inset-0 z-30 flex flex-col gap-4 bg-bg p-5 lg:static lg:z-auto lg:w-96 lg:shrink-0 lg:border-l lg:border-border lg:bg-transparent lg:p-0 lg:pl-6"
+      aria-label={onClose ? "Thread" : "Discussion"}
+      className={
+        onClose
+          ? "settle fixed inset-0 z-30 flex flex-col gap-4 bg-bg p-5 lg:static lg:z-auto lg:w-96 lg:shrink-0 lg:border-l lg:border-border lg:bg-transparent lg:p-0 lg:pl-6"
+          : "flex max-h-[70dvh] flex-col gap-4"
+      }
     >
       <header className="flex items-center justify-between gap-3 border-b border-border pb-4">
         <div>
-          <h2 className="font-display text-xl font-semibold">Thread</h2>
-          <p className="text-sm text-text-muted">#{channel.name}</p>
+          <h2 className="font-display text-xl font-semibold">
+            {onClose ? "Thread" : "Discussion"}
+          </h2>
+          <p className="text-sm text-text-muted">
+            {isConversation(channel) ? channelTitle(channel, me.id) : `#${channel.name}`}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg px-3 py-1 text-sm font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
-        >
-          Close
-        </button>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1 text-sm font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+          >
+            Close
+          </button>
+        ) : (
+          <Link
+            to={`/w/${slug}/c/${String(channel.id)}?thread=${String(seq)}`}
+            className="text-sm font-semibold text-accent-text hover:underline"
+          >
+            Open in channel
+          </Link>
+        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto" aria-live="polite" aria-relevant="additions">
@@ -79,6 +101,7 @@ export function ThreadPanel({
                 meId={me.id}
                 slug={slug}
                 channel={channel}
+                canSeeIssues={canSeeIssues && onClose !== undefined}
               />
             </ol>
             <p className="my-3 flex items-center gap-3 text-xs font-semibold text-text-subtle">

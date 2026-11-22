@@ -119,9 +119,16 @@ class ReactionSerializer(serializers.Serializer[None]):
     users = AuthorSerializer(many=True)
 
 
+class MessageIssueSerializer(serializers.Serializer[None]):
+    ref = serializers.CharField(help_text="KEY-12")
+    project = serializers.CharField()
+    number = serializers.IntegerField()
+
+
 # Every query that serializes messages loads these, or each message costs extra queries.
 MESSAGE_PREFETCH = (
     "mentions",
+    "issue__project",
     ATTACHMENT_PREFETCH,
     Prefetch("reactions", queryset=Reaction.objects.select_related("user").order_by("id")),
 )
@@ -138,6 +145,9 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
     attachments = AttachmentSerializer(many=True, read_only=True)
     parent_seq = serializers.IntegerField(
         source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
+    )
+    issue = serializers.SerializerMethodField(
+        help_text="The issue opened from it. Sent to every reader, guests too: only the ref."
     )
 
     class Meta:
@@ -161,8 +171,17 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "mentions_channel",
             "reactions",
             "attachments",
+            "issue",
         )
         read_only_fields = fields
+
+    @extend_schema_field(MessageIssueSerializer(allow_null=True))
+    def get_issue(self, message: Message) -> dict[str, Any] | None:
+        issue = getattr(message, "issue", None)
+        if issue is None:
+            return None
+        key = issue.project.key
+        return {"ref": f"{key}-{issue.number}", "project": key, "number": issue.number}
 
     @extend_schema_field(ReactionSerializer(many=True))
     def get_reactions(self, message: Message) -> list[dict[str, Any]]:

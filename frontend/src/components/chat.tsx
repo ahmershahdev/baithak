@@ -29,6 +29,7 @@ import {
   type Attachment,
 } from "../chat/files";
 import type { Message } from "../chat/timeline";
+import { IssueChip, IssueFromMessage } from "./IssueFromMessage";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
 
@@ -174,6 +175,7 @@ export function MessageRow({
   slug,
   channel,
   onOpenThread,
+  canSeeIssues = false,
 }: {
   message: Message;
   grouped: boolean;
@@ -182,6 +184,7 @@ export function MessageRow({
   channel: Channel;
   /** Shows the thread links and the Reply action; left out inside a thread. */
   onOpenThread?: (seq: number) => void;
+  canSeeIssues?: boolean;
 }) {
   const client = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -196,6 +199,9 @@ export function MessageRow({
   const canReply = onOpenThread !== undefined && threadSeq !== null && !editing;
   const canReact = channel.is_member && !channel.archived && !message.deleted && !editing;
   const [picking, setPicking] = useState(false);
+  const [filing, setFiling] = useState(false);
+  const canFile =
+    canSeeIssues && threadSeq !== null && !message.issue && !message.deleted && !editing;
 
   async function toggle(emoji: string, on: boolean) {
     setPicking(false);
@@ -313,6 +319,17 @@ export function MessageRow({
           </button>
         )}
         {message.attachments.length > 0 && <Attachments attachments={message.attachments} />}
+        {canSeeIssues && message.issue && <IssueChip slug={slug} issue={message.issue} />}
+        {filing && canFile && (
+          <IssueFromMessage
+            slug={slug}
+            channelId={channel.id}
+            message={message}
+            onDone={() => {
+              setFiling(false);
+            }}
+          />
+        )}
         {message.reactions.length > 0 && (
           <ul aria-label="Reactions" className="mt-1 flex flex-wrap gap-1">
             {message.reactions.map((reaction) => {
@@ -347,7 +364,7 @@ export function MessageRow({
           }}
         />
       )}
-      {(canEdit || canReply || canReact) && (
+      {(canEdit || canReply || canReact || canFile) && (
         <div className="absolute -top-3 right-2 hidden items-center gap-1 rounded-lg border border-border bg-surface-raised p-0.5 shadow-sm group-focus-within:flex group-hover:flex">
           {canReact && (
             <button
@@ -370,6 +387,18 @@ export function MessageRow({
               className={actionClass}
             >
               Reply
+            </button>
+          )}
+          {canFile && (
+            <button
+              type="button"
+              aria-expanded={filing}
+              onClick={() => {
+                setFiling((now) => !now);
+              }}
+              className={actionClass}
+            >
+              Issue
             </button>
           )}
           {canEdit && !channel.archived && (

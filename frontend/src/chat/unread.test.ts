@@ -35,6 +35,7 @@ function message(seq: number, authorId: number, deleted = false): Message {
     mentions_channel: false,
     reactions: [],
     attachments: [],
+    issue: null,
     author: { id: authorId, username: `u${String(authorId)}`, display_name: "" },
     body: deleted ? "" : "text",
     client_id: "",

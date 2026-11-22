@@ -8,6 +8,7 @@ export type Project = components["schemas"]["Project"];
 export type Issue = components["schemas"]["Issue"];
 export type IssueLabel = components["schemas"]["Label"];
 export type IssueChanges = components["schemas"]["PatchedIssueWriteRequest"];
+export type NewIssue = components["schemas"]["IssueCreateRequest"];
 
 export interface IssueFilters {
   open?: "true" | "false";
@@ -121,17 +122,17 @@ export function useIssue(slug: string, key: string, number: number) {
   });
 }
 
-export function useCreateIssue(slug: string, key: string) {
+export function useOpenIssue(slug: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { title: string }) =>
+    mutationFn: async ({ key, body }: { key: string; body: NewIssue }) =>
       unwrap(
         await api.POST("/api/v1/workspaces/{slug}/projects/{key}/issues/", {
           params: at(slug, key),
           body,
         }),
       ),
-    onSuccess: () => {
+    onSuccess: (_issue, { key }) => {
       void client.invalidateQueries({ queryKey: keys.issues(slug, key) });
       void client.invalidateQueries({ queryKey: keys.projects(slug) });
     },
