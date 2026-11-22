@@ -7,6 +7,7 @@ from apps.accounts.models import User
 from apps.chat import messages
 from apps.core.issues import Status, announce_in_channel, describe, is_closed
 from apps.issues.models import Issue, Label, Project
+from apps.notifications import services as notifications
 from apps.workspaces import audit
 
 
@@ -68,6 +69,7 @@ def create_issue(project: Project, author: User, data: dict[str, Any]) -> Issue:
             **data,
         )
         issue.labels.set(labels)
+        notifications.issue_assigned(issue, author, None)
         detail = {"issue": f"{project.key}-{number}", "title": issue.title}
         if issue.message is not None:
             detail["from_message"] = f"{issue.message.channel_id}#{issue.message.seq}"
@@ -82,6 +84,7 @@ def update_issue(issue: Issue, actor: User, data: dict[str, Any]) -> Issue:
     labels: list[Label] | None = data.pop("labels", None)
     with transaction.atomic():
         before = _state(issue)
+        assignee_before = issue.assignee_id
         was_closed = is_closed(Status(issue.status))
         for field, value in data.items():
             setattr(issue, field, value)
@@ -93,6 +96,7 @@ def update_issue(issue: Issue, actor: User, data: dict[str, Any]) -> Issue:
         issue.save()
         if labels is not None:
             issue.labels.set(labels)
+        notifications.issue_assigned(issue, actor, assignee_before)
         changes = audit.diff(before, _state(issue))
         if changes:
             ref = f"{issue.project.key}-{issue.number}"

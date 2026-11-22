@@ -1,13 +1,20 @@
 import { expect, test } from "vitest";
 
 import type { Notification } from "../api/notifications";
-import { describe as describeNotification, preview } from "./notifications";
+import {
+  describe as describeNotification,
+  notificationHref,
+  notificationText,
+  preview,
+} from "./notifications";
 
 function notification(kind: Notification["kind"]): Notification {
   return {
     id: 1,
     kind,
     channel: 5,
+    issue: null,
+    actor: null,
     created_at: "2026-11-21T10:00:00Z",
     read: false,
     message: {
@@ -48,4 +55,29 @@ test("each kind reads naturally", () => {
 test("preview flattens and shortens", () => {
   expect(preview("one\n\ntwo   three")).toBe("one two three");
   expect(preview("a".repeat(200), 10)).toBe(`${"a".repeat(9)}…`);
+});
+
+test("an assigned issue names who assigned it and links to the issue", () => {
+  const assigned: Notification = {
+    ...notification("assigned"),
+    channel: null,
+    message: null,
+    issue: { ref: "BAI-7", project: "BAI", number: 7, title: "Fix uploads" },
+    actor: { id: 1, username: "amna", display_name: "Amna Khan" },
+  };
+
+  expect(describeNotification(assigned, "a channel")).toBe("Amna Khan assigned you BAI-7");
+  expect(notificationHref("team", assigned)).toBe("/w/team/projects/BAI/issues/7");
+  expect(notificationText(assigned)).toBe("Fix uploads");
+});
+
+test("a message notice links into its thread and previews its text", () => {
+  const reply = notification("mention");
+  const inThread: Notification = {
+    ...reply,
+    message: reply.message && { ...reply.message, parent_seq: 3, body: "" },
+  };
+
+  expect(notificationHref("team", inThread)).toBe("/w/team/c/5?thread=3");
+  expect(notificationText(inThread)).toBe("Shared a file");
 });

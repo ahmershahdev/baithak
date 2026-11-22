@@ -178,11 +178,16 @@ M1 in progress. Merged so far:
   status changes also go to the channel. Activity is never read for mentions, notifies nobody
   and can't be edited. Each issue page lists its History from the audit log.
 
+- Assigned issues notify: assigning an issue to someone else gives them an in-app notification
+  ("Amna assigned you BAI-7", linking to the issue), taken back if it is reassigned before they
+  read it. Not emailed. Notifications now point at a message or an issue.
+
 ## Next session
 
 M5, in this order:
 
-1. Notify people when an issue is assigned to them (the in-app notifications from M4).
+1. Issues in search (promised for M5 in the search item, not yet done).
+2. Then release M5 when asked, and start M6 (GitHub webhooks).
 
 ## Open questions
 

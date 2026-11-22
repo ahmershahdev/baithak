@@ -8,6 +8,7 @@ import asyncio
 from collections import defaultdict
 from datetime import datetime
 from smtplib import SMTPException
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from celery import shared_task
@@ -19,6 +20,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.chat import presence
 from apps.chat.access import readable_channels
+from apps.chat.models import Channel, Message
 from apps.core.channels import ChannelKind
 from apps.core.notifications import EMAIL_AFTER, EMAILED_KINDS, Kind, in_quiet_hours
 from apps.notifications.models import Notification
@@ -70,18 +72,25 @@ def _sendable(user: User, notifications: list[Notification]) -> list[Notificatio
     return keep
 
 
+def _about(item: Notification) -> tuple[Channel, Message]:
+    # Every emailed kind is about a message, so both are set (EMAILED_KINDS).
+    return cast(Channel, item.channel), cast(Message, item.message)
+
+
 def _where(item: Notification) -> str:
-    if item.channel.kind == ChannelKind.DIRECT:
+    channel, _ = _about(item)
+    if channel.kind == ChannelKind.DIRECT:
         return "a direct message"
-    if item.channel.kind == ChannelKind.GROUP:
+    if channel.kind == ChannelKind.GROUP:
         return "a group conversation"
-    return f"#{item.channel.name}"
+    return f"#{channel.name}"
 
 
 def _line(item: Notification) -> str:
-    author = item.message.author
+    _, message = _about(item)
+    author = message.author
     name = (author.display_name or author.username) if author else "Someone"
-    text = " ".join(item.message.body.split()) or "(a file)"
+    text = " ".join(message.body.split()) or "(a file)"
     if len(text) > PREVIEW:
         text = text[: PREVIEW - 3].rstrip() + "..."
     verb = "mentioned you" if item.kind == Kind.MENTION else "wrote to you"
@@ -92,7 +101,7 @@ def _compose(items: list[Notification]) -> tuple[str, str]:
     workspaces: dict[int, Workspace] = {item.workspace_id: item.workspace for item in items}
     first = items[0]
     if len(items) == 1:
-        author = first.message.author
+        author = _about(first)[1].author
         name = (author.display_name or author.username) if author else "Someone"
         verb = "mentioned you" if first.kind == Kind.MENTION else "wrote to you"
         subject = f"{name} {verb} in {first.workspace.name}"

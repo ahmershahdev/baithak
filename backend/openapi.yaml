@@ -3152,6 +3152,7 @@ components:
       - terms
     Notification:
       type: object
+      description: Either `channel` and `message` are set, or `issue` (kind `assigned`).
       properties:
         id:
           type: integer
@@ -3163,10 +3164,24 @@ components:
         channel:
           type: integer
           readOnly: true
+          nullable: true
         message:
           allOf:
           - $ref: '#/components/schemas/Message'
           readOnly: true
+          nullable: true
+        issue:
+          allOf:
+          - $ref: '#/components/schemas/NotificationIssue'
+          nullable: true
+          readOnly: true
+        actor:
+          allOf:
+          - $ref: '#/components/schemas/Author'
+          readOnly: true
+          nullable: true
+          description: Who assigned the issue; null for message notifications (see
+            the author).
         created_at:
           type: string
           format: date-time
@@ -3175,22 +3190,43 @@ components:
           type: boolean
           readOnly: true
       required:
+      - actor
       - channel
       - created_at
       - id
+      - issue
       - kind
       - message
       - read
+    NotificationIssue:
+      type: object
+      properties:
+        ref:
+          type: string
+          description: KEY-12
+        project:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+      required:
+      - number
+      - project
+      - ref
+      - title
     NotificationKindEnum:
       enum:
       - mention
       - direct
       - channel
+      - assigned
       type: string
       description: |-
         * `mention` - mention
         * `direct` - direct
         * `channel` - channel
+        * `assigned` - assigned
     NotificationPage:
       type: object
       properties:

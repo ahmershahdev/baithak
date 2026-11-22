@@ -54,7 +54,7 @@ issue             workspace_id, project_id, number (unique per project), title, 
 label             workspace_id, project_id, name, color (one of the six brand hues)
 webhook           workspace_id, channel_id, kind (github, incoming), secret, repo
 webhook_delivery  webhook_id, received_at, event, status, error
-notification      user_id, kind, object_id, read_at
+notification      user_id, kind, channel_id and message_id, or issue_id; actor_id, read_at, emailed_at
 ```
 
 `message (channel_id, seq)` is unique: `seq` comes from `channel.last_seq`, taken under
@@ -220,6 +220,13 @@ every device; replies kept in a thread are cleared from the list or by opening t
 change sends `notifications` to the person's sockets, which refetch. The list only shows
 notifications from channels the person can still read. Deleting a message deletes its
 notifications. These rows also drive the email notifications.
+
+Assigning an issue to someone else creates an `assigned` notification about the issue (no
+channel or message), naming who assigned it; assigning yourself or saving without a change tells
+nobody (`assignee_to_tell`). If the issue moves to someone else before the first assignee reads
+theirs, that unread notification is deleted. They show while the person can see projects, so
+someone made a guest stops seeing them; opening one (or Mark all read) clears it. They are not
+emailed.
 
 Celery beat runs `email_unread` every 5 minutes. A mention or direct message (not `@channel`)
 still unread after 10 minutes and not yet emailed is mailed to a confirmed address, one email
