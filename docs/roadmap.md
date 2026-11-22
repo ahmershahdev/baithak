@@ -55,7 +55,7 @@ in CI, and seed data.
 - [x] Issue numbers per project, without gaps
 - [x] Board view with columns by status; drag to change status
 - [x] Create an issue from a message; the issue's discussion is a thread linked both ways
-- [ ] Issue changes posted into the linked channel; issue history in the audit log
+- [x] Issue changes posted into the linked channel; issue history in the audit log
 
 ## M6. Integrations (target 2027-04-04)
 

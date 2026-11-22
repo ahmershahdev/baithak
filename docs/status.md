@@ -173,12 +173,16 @@ M1 in progress. Merged so far:
   messages can't have one; a message in a channel the person can't read is 404, and the
   discussion is hidden from people outside that channel.
 
+- Issue activity: opening an issue from a message and every later change are posted in that
+  message's thread as short activity lines in the actor's name ("BAI-7: moved it to Done");
+  status changes also go to the channel. Activity is never read for mentions, notifies nobody
+  and can't be edited. Each issue page lists its History from the audit log.
+
 ## Next session
 
 M5, in this order:
 
-1. Issue changes posted into the linked channel; issue history in the audit log.
-2. Notify people when an issue is assigned to them (the in-app notifications from M4).
+1. Notify people when an issue is assigned to them (the in-app notifications from M4).
 
 ## Open questions
 

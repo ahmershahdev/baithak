@@ -137,6 +137,12 @@ def test_can_edit_message(is_author: bool, deleted: bool, archived: bool, expect
     assert can_edit_message(is_author=is_author, deleted=deleted, archived=archived) is expected
 
 
+def test_an_activity_line_cannot_be_edited_even_by_its_author() -> None:
+    from apps.core.channels import can_edit_message
+
+    assert not can_edit_message(is_author=True, deleted=False, archived=False, activity=True)
+
+
 @pytest.mark.parametrize(
     ("role", "is_author", "deleted", "expected"),
     [

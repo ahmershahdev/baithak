@@ -3,7 +3,14 @@ import { Link, useOutletContext, useParams } from "react-router";
 
 import { useChannels, useMentionCandidates, type Channel } from "../../api/chat";
 import type { User } from "../../api/client";
-import { useIssue, useLabels, useProject, useUpdateIssue, type Issue } from "../../api/issues";
+import {
+  useIssue,
+  useIssueHistory,
+  useLabels,
+  useProject,
+  useUpdateIssue,
+  type Issue,
+} from "../../api/issues";
 import { useMembers } from "../../api/workspaces";
 import { errorText } from "../../forms";
 import { Select } from "../../components/Select";
@@ -122,6 +129,7 @@ function IssueEditor({
             {when.format(new Date(issue.created_at))}
             {issue.closed_at && `, closed ${when.format(new Date(issue.closed_at))}`}
           </p>
+          <History slug={slug} projectKey={projectKey} number={issue.number} />
           {issue.thread && <Discussion slug={slug} me={me} thread={issue.thread} />}
         </div>
 
@@ -258,5 +266,38 @@ function DiscussionThread({
     <Panel className="mt-2 p-4">
       <ThreadPanel slug={slug} channel={channel} me={me} seq={seq} candidates={candidates} />
     </Panel>
+  );
+}
+
+function History({
+  slug,
+  projectKey,
+  number,
+}: {
+  slug: string;
+  projectKey: string;
+  number: number;
+}) {
+  const history = useIssueHistory(slug, projectKey, number);
+  if (!history.data?.length) return null;
+  return (
+    <section aria-labelledby="issue-history" className="flex flex-col gap-2">
+      <h2 id="issue-history" className="text-sm font-semibold">
+        History
+      </h2>
+      <ol className="flex flex-col gap-1.5 border-l border-border pl-4 text-sm text-text-muted">
+        {history.data.map((row) => (
+          <li key={row.id}>
+            <span className="font-semibold text-text">
+              {row.actor?.display_name || row.actor?.username || "Someone"}
+            </span>{" "}
+            {row.lines.join(", ")}{" "}
+            <time dateTime={row.at} className="text-xs text-text-subtle">
+              {when.format(new Date(row.at))}
+            </time>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

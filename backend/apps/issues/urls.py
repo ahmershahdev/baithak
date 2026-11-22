@@ -11,4 +11,9 @@ urlpatterns = [
     path("<str:key>/labels/<int:label_id>/", views.LabelDetailView.as_view(), name="label"),
     path("<str:key>/issues/", views.IssueListView.as_view(), name="issues"),
     path("<str:key>/issues/<int:number>/", views.IssueDetailView.as_view(), name="issue"),
+    path(
+        "<str:key>/issues/<int:number>/history/",
+        views.IssueHistoryView.as_view(),
+        name="issue-history",
+    ),
 ]

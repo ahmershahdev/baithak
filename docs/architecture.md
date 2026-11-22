@@ -42,7 +42,8 @@ channel           workspace_id, name, kind (public, private, direct, group), top
 channel_member    channel_id, user_id, last_read_seq, muted
 message           channel_id, seq (null for a reply kept in its thread), event, author_id, parent_id,
                   thread_seq, also_in_channel, reply_count, last_reply_at, body, client_id,
-                  mentions (users), mentions_channel, edited_at, deleted_at, created_at
+                  mentions (users), mentions_channel, kind (message, activity), edited_at,
+                  deleted_at, created_at
 reaction          message_id, user_id, emoji (one per person and emoji)
 attachment        workspace_id, channel_id, message_id (null until sent), uploader_id, name,
                   content_type, size, storage_key, preview_key, width, height
@@ -282,6 +283,18 @@ guests in the channel get the ref too, but no title and no way in), and the issu
 `thread` (channel and seq), null for readers who can't read that channel. Opening the issue gives
 the message a new event, so open sockets and catch-up see the link. The issue page embeds the
 thread with its composer.
+
+What happens to such an issue is said in that thread, as replies of kind `activity` written in
+the name of the person who did it: "opened BAI-7: title" when it is opened, then one line per
+change ("BAI-7: moved it to Done, set priority to high", phrased by `describe` in
+`apps/core/issues.py` from the audit diff). Status changes also go to the channel, so they count
+as unread there; everything else stays in the thread. Activity lines are not read for mentions,
+notify nobody and can't be edited (their author or an admin can still delete one). An archived
+channel takes no posts, so there the message only gets a new event. Issues not opened from a
+message post nowhere.
+
+An issue's history is its audit rows (`.../issues/{n}/history/`, oldest first, the latest 200),
+readable by anyone who can see the issue, each turned into the same phrases.
 
 ## Unread counts
 

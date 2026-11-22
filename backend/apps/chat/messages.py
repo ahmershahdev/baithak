@@ -26,6 +26,7 @@ def post(
     parent: Message | None = None,
     also_in_channel: bool = False,
     attachment_ids: Sequence[int] = (),
+    activity: bool = False,
 ) -> tuple[Message, bool]:
     """Save a message, or a reply to `parent`, with the channel's next event. Returns
     (message, created).
@@ -55,7 +56,10 @@ def post(
             # Fresh under the channel lock: reply_count numbers the replies.
             parent = Message.objects.get(pk=parent.pk)
             thread_seq = parent.reply_count + 1
-        named, everyone = mentions.resolve(locked, author.pk, body)
+        named: list[User] = []
+        everyone = False
+        if not activity:
+            named, everyone = mentions.resolve(locked, author.pk, body)
         message = Message.objects.create(
             channel=locked,
             seq=seq,
@@ -67,6 +71,7 @@ def post(
             body=body,
             client_id=client_id,
             mentions_channel=everyone,
+            kind="activity" if activity else "message",
         )
         message.mentions.set(named)
         if attachment_ids:
@@ -78,7 +83,8 @@ def post(
             if taken != len(set(attachment_ids)):
                 raise FilesUnavailable
         events.message_changed(message)
-        notifications.notify(message)
+        if not activity:
+            notifications.notify(message)
         if parent is not None:
             locked.last_event += 1
             parent.reply_count = message.thread_seq or 0

@@ -122,6 +122,18 @@ export function useIssue(slug: string, key: string, number: number) {
   });
 }
 
+export function useIssueHistory(slug: string, key: string, number: number) {
+  return useQuery({
+    queryKey: [...keys.issues(slug, key), "history", number],
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/api/v1/workspaces/{slug}/projects/{key}/issues/{number}/history/", {
+          params: { path: { slug, key, number } },
+        }),
+      ),
+  });
+}
+
 export function useOpenIssue(slug: string) {
   const client = useQueryClient();
   return useMutation({

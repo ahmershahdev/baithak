@@ -33,6 +33,7 @@ function message(body: string, extra: Partial<Message> = {}): Message {
     reactions: [],
     attachments: [],
     issue: null,
+    kind: "message",
     ...extra,
   };
 }

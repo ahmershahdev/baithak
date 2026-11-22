@@ -143,6 +143,11 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
     mentions = AuthorSerializer(many=True, read_only=True)
     reactions = serializers.SerializerMethodField()
     attachments = AttachmentSerializer(many=True, read_only=True)
+    kind = serializers.ChoiceField(
+        choices=["message", "activity"],
+        read_only=True,
+        help_text="activity: a line Baithak wrote for the author, such as an issue change.",
+    )
     parent_seq = serializers.IntegerField(
         source="parent.seq", read_only=True, allow_null=True, help_text="The thread's seq."
     )
@@ -172,6 +177,7 @@ class MessageSerializer(serializers.ModelSerializer[Message]):
             "reactions",
             "attachments",
             "issue",
+            "kind",
         )
         read_only_fields = fields
 

@@ -2,8 +2,9 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.chat.serializers import AuthorSerializer
-from apps.core.issues import LABEL_COLORS, Priority, Status, valid_key
+from apps.core.issues import LABEL_COLORS, Priority, Status, describe, valid_key
 from apps.issues.models import Issue, Label, Project
+from apps.workspaces.models import AuditEvent
 
 STATUS_CHOICES = [s.value for s in Status]
 PRIORITY_CHOICES = [p.value for p in Priority]
@@ -121,6 +122,21 @@ class IssueCreateSerializer(IssueWriteSerializer):
     from_message = FromMessageSerializer(
         required=False, help_text="Open it from this message; its thread becomes the discussion."
     )
+
+
+class IssueHistorySerializer(serializers.ModelSerializer[AuditEvent]):
+    actor = AuthorSerializer(read_only=True, allow_null=True)
+    lines = serializers.SerializerMethodField(help_text='"moved it to Done"')
+
+    class Meta:
+        model = AuditEvent
+        fields = ("id", "at", "actor", "lines")
+        read_only_fields = fields
+
+    def get_lines(self, event: AuditEvent) -> list[str]:
+        if event.action == "issue.create":
+            return ["opened it"]
+        return describe(event.changes)
 
 
 class IssuePageSerializer(serializers.Serializer[None]):

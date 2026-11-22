@@ -237,6 +237,32 @@ export function MessageRow({
     }
   }
 
+  if (message.kind === "activity") {
+    return (
+      <li className="flex gap-3 px-2 py-1 text-sm text-text-muted">
+        <div className="w-9 shrink-0" />
+        <p className="min-w-0 flex-1 break-words">
+          {onOpenThread && message.parent_seq !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                if (message.parent_seq !== null) onOpenThread(message.parent_seq);
+              }}
+              className="mr-2 text-xs text-text-subtle hover:text-accent-text hover:underline"
+            >
+              In a thread
+            </button>
+          )}
+          <span className="font-semibold text-text">{name}</span>{" "}
+          {message.deleted ? <em>removed this update</em> : message.body}{" "}
+          <time dateTime={message.created_at} className="text-xs text-text-subtle tabular-nums">
+            {clock.format(new Date(message.created_at))}
+          </time>
+        </p>
+      </li>
+    );
+  }
+
   return (
     <li
       className={`group relative flex gap-3 rounded-lg px-2 ${

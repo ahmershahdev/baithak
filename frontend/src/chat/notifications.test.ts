@@ -30,6 +30,7 @@ function notification(kind: Notification["kind"]): Notification {
       reactions: [],
       attachments: [],
       issue: null,
+      kind: "message",
     },
   };
 }

@@ -71,7 +71,7 @@ def test_the_message_gets_a_new_event_so_catch_up_brings_the_link(
     from_message(api, general, message.seq)
 
     caught = api.get(f"{CHANNELS}{general.pk}/messages/", {"after_event": before}).json()
-    assert [m["issue"]["ref"] for m in caught["messages"]] == ["BAI-1"]
+    assert [m["issue"]["ref"] for m in caught["messages"] if m["issue"]] == ["BAI-1"]
 
 
 def test_the_audit_log_names_the_message(
@@ -144,3 +144,95 @@ class TestPrivateChannels:
 
         assert one["thread"] is None
         assert [issue["thread"] for issue in listed] == [None]
+
+
+class TestActivity:
+    @pytest.fixture
+    def linked(self, api: APIClient, general: Channel, message: Message) -> Message:
+        from_message(api, general, message.seq)
+        return message
+
+    def thread(self, api: APIClient, channel: Channel, seq: int | None) -> list[dict[str, Any]]:
+        response = api.get(f"{CHANNELS}{channel.pk}/messages/{seq}/replies/")
+        return list(response.json()["replies"])
+
+    def test_opening_is_said_in_the_thread(
+        self, api: APIClient, general: Channel, linked: Message
+    ) -> None:
+        [line] = self.thread(api, general, linked.seq)
+
+        assert (line["kind"], line["body"]) == ("activity", "opened BAI-1: Safari upload")
+        assert line["seq"] is None
+
+    def test_changes_go_to_the_thread_and_status_to_the_channel(
+        self, api: APIClient, general: Channel, linked: Message
+    ) -> None:
+        api.patch(f"{ISSUES}1/", {"priority": "high"}, format="json")
+        api.patch(f"{ISSUES}1/", {"status": "done"}, format="json")
+
+        lines = self.thread(api, general, linked.seq)
+        channel = api.get(f"{CHANNELS}{general.pk}/messages/").json()["messages"]
+
+        assert [line["body"] for line in lines[1:]] == [
+            "BAI-1: set priority to high",
+            "BAI-1: moved it to Done",
+        ]
+        assert [line["seq"] is not None for line in lines[1:]] == [False, True]
+        assert channel[-1]["body"] == "BAI-1: moved it to Done"
+
+    def test_an_unchanged_patch_says_nothing(
+        self, api: APIClient, general: Channel, linked: Message
+    ) -> None:
+        api.patch(f"{ISSUES}1/", {"title": "Safari upload"}, format="json")
+
+        assert len(self.thread(api, general, linked.seq)) == 1
+
+    def test_activity_names_nobody_and_cannot_be_edited(
+        self, api: APIClient, workspace: Workspace, general: Channel, linked: Message
+    ) -> None:
+        bilal = make_user(username="bilal")
+        Member.objects.create(workspace=workspace, user=bilal, role=Role.MEMBER)
+        api.patch(f"{ISSUES}1/", {"title": "@bilal look"}, format="json")
+        line = self.thread(api, general, linked.seq)[-1]
+
+        edited = api.patch(
+            f"{CHANNELS}{general.pk}/messages/{linked.seq}/replies/{line['thread_seq']}/",
+            {"body": "something else"},
+            format="json",
+        )
+
+        assert line["mentions"] == []
+        assert edited.status_code == 403
+
+    def test_an_archived_channel_gets_no_post(
+        self, api: APIClient, general: Channel, owner: User
+    ) -> None:
+        topic, _ = messages.post(general, owner, "Old talk")
+        general.archived_at = topic.created_at
+        general.save(update_fields=["archived_at"])
+
+        assert from_message(api, general, topic.seq).status_code == 201
+        topic.refresh_from_db()
+        assert topic.reply_count == 0
+
+    def test_an_issue_without_a_message_posts_nowhere(
+        self, api: APIClient, workspace: Workspace
+    ) -> None:
+        response = api.post(ISSUES, {"title": "Standalone"}, format="json")
+        api.patch(f"{ISSUES}1/", {"status": "done"}, format="json")
+
+        assert response.status_code == 201
+        assert not Message.objects.filter(kind="activity").exists()
+
+
+def test_history_lists_every_change_oldest_first(api: APIClient, workspace: Workspace) -> None:
+    api.post(ISSUES, {"title": "Standalone"}, format="json")
+    api.patch(f"{ISSUES}1/", {"status": "in_progress", "description": "Steps"}, format="json")
+
+    history = api.get(f"{ISSUES}1/history/").json()
+
+    assert [row["lines"] for row in history] == [
+        ["opened it"],
+        ["edited the description", "moved it to In progress"],
+    ]
+    assert history[0]["actor"]["username"] == "owner"

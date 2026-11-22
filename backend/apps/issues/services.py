@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.chat import messages
-from apps.core.issues import Status, is_closed
+from apps.core.issues import Status, announce_in_channel, describe, is_closed
 from apps.issues.models import Issue, Label, Project
 from apps.workspaces import audit
 
@@ -29,9 +29,28 @@ def _for_log(changes: dict[str, list[Any]]) -> dict[str, list[Any]]:
     return changes
 
 
+def _post_activity(issue: Issue, actor: User, body: str, *, to_channel: bool) -> None:
+    """Say what happened in the thread of the issue's message, if it has one. An archived
+    channel takes no posts, so its message only gets a new event for the link."""
+    message = issue.message
+    if message is None:
+        return
+    if message.channel.archived:
+        messages.touch(message)
+        return
+    messages.post(
+        message.channel,
+        actor,
+        body,
+        parent=message,
+        also_in_channel=to_channel,
+        activity=True,
+    )
+
+
 def create_issue(project: Project, author: User, data: dict[str, Any]) -> Issue:
     """Take the project's next number and save the issue, in one transaction. With `message`,
-    that message gets a new event so its readers see it now has an issue."""
+    the issue's opening is posted in that message's thread."""
     labels: list[Label] = data.pop("labels", [])
     with transaction.atomic():
         locked = Project.objects.select_for_update().get(pk=project.pk)
@@ -52,7 +71,9 @@ def create_issue(project: Project, author: User, data: dict[str, Any]) -> Issue:
         detail = {"issue": f"{project.key}-{number}", "title": issue.title}
         if issue.message is not None:
             detail["from_message"] = f"{issue.message.channel_id}#{issue.message.seq}"
-            messages.touch(issue.message)
+            _post_activity(
+                issue, author, f"opened {detail['issue']}: {issue.title}", to_channel=False
+            )
         audit.record(project.workspace, author, "issue.create", issue, detail)
     return issue
 
@@ -74,11 +95,15 @@ def update_issue(issue: Issue, actor: User, data: dict[str, Any]) -> Issue:
             issue.labels.set(labels)
         changes = audit.diff(before, _state(issue))
         if changes:
+            ref = f"{issue.project.key}-{issue.number}"
+            logged = _for_log(changes)
             audit.record(
-                issue.project.workspace,
-                actor,
-                "issue.update",
+                issue.project.workspace, actor, "issue.update", issue, {"issue": ref, **logged}
+            )
+            _post_activity(
                 issue,
-                {"issue": f"{issue.project.key}-{issue.number}", **_for_log(changes)},
+                actor,
+                f"{ref}: " + ", ".join(describe(logged)),
+                to_channel=announce_in_channel(logged),
             )
     return issue

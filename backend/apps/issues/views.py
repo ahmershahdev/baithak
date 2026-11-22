@@ -24,6 +24,7 @@ from apps.issues.access import project_access, projects_member
 from apps.issues.models import Issue, Label, Project
 from apps.issues.serializers import (
     IssueCreateSerializer,
+    IssueHistorySerializer,
     IssuePageSerializer,
     IssueSerializer,
     IssueWriteSerializer,
@@ -33,9 +34,10 @@ from apps.issues.serializers import (
     ProjectUpdateSerializer,
 )
 from apps.workspaces import audit
-from apps.workspaces.models import Member
+from apps.workspaces.models import AuditEvent, Member
 
 PAGE_SIZE = 50
+HISTORY_SIZE = 200
 BOARD_COLUMN_SIZE = 100
 KEY_TAKEN = "A project with this key already exists."
 LABEL_TAKEN = "This project already has a label with that name."
@@ -413,3 +415,22 @@ class IssueDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         services.update_issue(issue, user, _write_data(member, project, serializer.validated_data))
         return Response(_show(member, [_issues(project).get(pk=issue.pk)])[0])
+
+
+class IssueHistoryView(APIView):
+    @extend_schema(
+        responses={200: IssueHistorySerializer(many=True)},
+        summary="An issue's history from the audit log, oldest first (the latest 200)",
+    )
+    def get(self, request: Request, slug: str, key: str, number: int) -> Response:
+        member, project = project_access(_user(request), slug, key)
+        issue = _issues(project).filter(number=number).first()
+        if issue is None:
+            raise Http404
+        found = (
+            AuditEvent.objects.for_workspace(member.workspace)
+            .filter(model="issue", object_id=str(issue.pk))
+            .select_related("actor")
+            .order_by("-at", "-id")[:HISTORY_SIZE]
+        )
+        return Response(IssueHistorySerializer(list(found)[::-1], many=True).data)
