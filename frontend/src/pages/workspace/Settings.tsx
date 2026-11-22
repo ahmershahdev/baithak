@@ -7,7 +7,7 @@ import { Button, ErrorMessage, Field, Notice } from "../../components/ui";
 import { PageHeader, Panel } from "../../components/workspace";
 import { textField } from "../../forms";
 import { isAdmin } from "../../roles";
-import { GitHubSettings } from "./GitHubSettings";
+import { IntegrationSettings } from "./IntegrationSettings";
 import type { WorkspaceContext } from "./Shell";
 
 export function Settings() {
@@ -64,7 +64,7 @@ export function Settings() {
           </Button>
         </form>
       </Panel>
-      <GitHubSettings slug={workspace.slug} />
+      <IntegrationSettings slug={workspace.slug} />
     </div>
   );
 }

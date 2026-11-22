@@ -52,8 +52,9 @@ project           workspace_id, key (unique per workspace), name, description, n
 issue             workspace_id, project_id, number (unique per project), title, description, status,
                   priority, assignee_id, due, labels, created_by, closed_at, message_id (unique)
 label             workspace_id, project_id, name, color (one of the six brand hues)
-webhook           workspace_id, channel_id, kind (github, incoming), repo, token (in the
-                  delivery URL), secret (HMAC key), created_by
+webhook           workspace_id, channel_id, kind (github, incoming), repo (github), name
+                  (incoming), token (github: as in the URL; incoming: its SHA-256),
+                  secret (github HMAC key), created_by
 webhook_delivery  webhook_id, received_at, event, status, error
 notification      user_id, kind, channel_id and message_id, or issue_id; actor_id, read_at, emailed_at
 ```
@@ -331,6 +332,20 @@ Those messages are kind `integration`: no author, `sender_name` "GitHub", never 
 mentions, notify nobody, and nobody can edit them. They end with the item's link, which
 must start with `https://github.com/`; the web app shows those links as links in app
 messages only, with an App tag next to the name.
+
+## Incoming webhooks
+
+An admin makes one for a channel with a name ("Deploy bot"); the answer carries its URL
+(`/api/v1/hooks/incoming/<token>/`), shown only then. The URL is the only proof, so only
+the token's SHA-256 is stored (`apps/core/webhooks.py`): a database leak gives no working
+URL, and a plain hash is enough because the token is random, not a password. To change
+the URL, remove the webhook and make another.
+
+A call posts `{"text": "..."}` (up to 4000 characters) and becomes a kind `integration`
+message under the webhook's name, like GitHub's (no mentions, no notifications, no links
+but GitHub's). Unknown URL: 404; archived channel: 409. Each webhook allows 30 calls a
+minute counted by webhook, not by address, so a leaked URL called from many machines
+still can't flood its channel (`PerWebhookThrottle`).
 
 ## Unread counts
 

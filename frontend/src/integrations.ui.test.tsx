@@ -34,16 +34,13 @@ beforeEach(() => {
   vi.stubGlobal("WebSocket", FakeSocket);
 });
 
-test("an admin connects a repository and sees the secret once", async () => {
-  const hook = {
-    id: 3,
-    kind: "github",
-    channel: 5,
-    repo: "team/app",
-    url: "https://baithak.test/api/v1/hooks/github/tok/",
-    created_by: null,
-    created_at: "2026-11-22T10:00:00Z",
-  };
+/** The settings page with one kind of webhook: what was sent to create it is returned. */
+async function addWebhook(
+  form: string,
+  label: string,
+  value: string,
+  made: Record<string, unknown>,
+) {
   let hooks: unknown[] = [];
   const sent: unknown[] = [];
   fakeBackend({
@@ -54,23 +51,62 @@ test("an admin connects a repository and sees the secret once", async () => {
     "GET /api/v1/workspaces/team/integrations/webhooks/": () => json(200, hooks),
     "POST /api/v1/workspaces/team/integrations/webhooks/": async (request) => {
       sent.push(await request.json());
-      hooks = [hook];
-      return json(201, { ...hook, secret: "s3cret-value" });
+      hooks = [{ ...made, secret: undefined }];
+      return json(201, made);
     },
   });
   renderAt("/w/team/settings");
 
-  const form = await screen.findByRole("form", { name: "Connect a repository" });
-  await userEvent.type(within(form).getByLabelText("Repository"), "team/app");
+  const box = await screen.findByRole("form", { name: form });
+  await userEvent.type(within(box).getByLabelText(label), value);
   await waitFor(() => {
-    expect(within(form).getByRole("combobox", { name: "Channel" })).toHaveTextContent("#general");
+    expect(within(box).getByRole("combobox", { name: "Channel" })).toHaveTextContent("#general");
   });
-  await userEvent.click(within(form).getByRole("button", { name: "Connect" }));
+  await userEvent.click(within(box).getByRole("button", { name: "Add" }));
+  return sent;
+}
+
+const base = {
+  id: 3,
+  channel: 5,
+  repo: "",
+  name: "",
+  created_by: null,
+  created_at: "2026-11-22T10:00:00Z",
+};
+
+test("an admin connects a repository and sees the secret once", async () => {
+  const url = "https://baithak.test/api/v1/hooks/github/tok/";
+  const sent = await addWebhook("GitHub", "Repository", "team/app", {
+    ...base,
+    kind: "github",
+    repo: "team/app",
+    url,
+    secret: "s3cret-value",
+  });
 
   const shown = await screen.findByRole("status");
   expect(shown).toHaveTextContent("s3cret-value");
-  expect(shown).toHaveTextContent("https://baithak.test/api/v1/hooks/github/tok/");
+  expect(shown).toHaveTextContent(url);
   expect(sent).toEqual([{ kind: "github", channel_id: 5, repo: "team/app" }]);
-  const list = await screen.findByRole("list", { name: "Connected repositories" });
+  const list = await screen.findByRole("list", { name: "GitHub connected" });
   expect(list).toHaveTextContent("team/app to #general");
+});
+
+test("an admin makes an incoming webhook and sees its address once", async () => {
+  const url = "https://baithak.test/api/v1/hooks/incoming/secret-token/";
+  const sent = await addWebhook("Incoming webhooks", "Name", "Deploy bot", {
+    ...base,
+    kind: "incoming",
+    name: "Deploy bot",
+    url,
+    secret: null,
+  });
+
+  const shown = await screen.findByRole("status");
+  expect(shown).toHaveTextContent(url);
+  expect(shown).toHaveTextContent("curl -X POST");
+  expect(sent).toEqual([{ kind: "incoming", channel_id: 5, name: "Deploy bot" }]);
+  const list = await screen.findByRole("list", { name: "Incoming webhooks connected" });
+  expect(list).toHaveTextContent("Deploy bot to #general");
 });

@@ -252,6 +252,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hooks/incoming/{token}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post a message through an incoming webhook (called by other tools)
+         * @description Called by another tool with the secret URL; the URL is the proof (no session, no CSRF).
+         */
+        post: operations["hooks_incoming_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/accept/": {
         parameters: {
             query?: never;
@@ -655,7 +675,7 @@ export interface paths {
         /** Webhooks */
         get: operations["workspaces_integrations_webhooks_list"];
         put?: never;
-        /** Connect a GitHub repository to a channel */
+        /** Connect a GitHub repository, or make an incoming webhook, for a channel */
         post: operations["workspaces_integrations_webhooks_create"];
         delete?: never;
         options?: never;
@@ -1121,6 +1141,9 @@ export interface components {
             channel_id: number;
             seq: number;
         };
+        IncomingRequest: {
+            text: string;
+        };
         /**
          * @description * `admin` - admin
          *     * `member` - member
@@ -1314,18 +1337,19 @@ export interface components {
             results: components["schemas"]["MessageHit"][];
             next: number | null;
         };
+        /** @description Needs `token` in the context: the incoming webhook's token before it was digested. */
         NewWebhook: {
             readonly id: number;
             readonly kind: components["schemas"]["WebhookKindEnum"];
             readonly channel: number;
             readonly repo: string;
-            /** @description Where GitHub sends deliveries. */
+            readonly name: string;
             readonly url: string;
             readonly created_by: components["schemas"]["Author"] | null;
             /** Format: date-time */
             readonly created_at: string;
-            /** @description Shown once, when made: paste it into GitHub. */
-            readonly secret: string;
+            /** @description GitHub only, shown once: paste it into GitHub. */
+            readonly secret: string | null;
         };
         /** @description Either `channel` and `message` are set, or `issue` (kind `assigned`). */
         Notification: {
@@ -1540,8 +1564,9 @@ export interface components {
             readonly kind: components["schemas"]["WebhookKindEnum"];
             readonly channel: number;
             readonly repo: string;
-            /** @description Where GitHub sends deliveries. */
-            readonly url: string;
+            readonly name: string;
+            /** @description Where deliveries go. Null for incoming webhooks: their URL is shown once. */
+            readonly url: string | null;
             readonly created_by: components["schemas"]["Author"] | null;
             /** Format: date-time */
             readonly created_at: string;
@@ -1549,14 +1574,17 @@ export interface components {
         WebhookCreateRequest: {
             kind: components["schemas"]["WebhookKindEnum"];
             channel_id: number;
-            /** @description owner/name */
-            repo: string;
+            /** @description GitHub: owner/name. */
+            repo?: string;
+            /** @description Incoming: the name its messages show. */
+            name?: string;
         };
         /**
          * @description * `github` - github
+         *     * `incoming` - incoming
          * @enum {string}
          */
-        WebhookKindEnum: "github";
+        WebhookKindEnum: "github" | "incoming";
         /** @description A workspace as seen by one member: built from that member's row. */
         Workspace: {
             readonly slug: string;
@@ -1967,6 +1995,47 @@ export interface operations {
                 };
             };
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    hooks_incoming_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncomingRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -8,13 +8,17 @@ from apps.workspaces.models import Workspace, WorkspaceScopedManager
 class Webhook(models.Model):
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="webhooks")
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="webhooks")
-    kind = models.CharField(max_length=10, choices=[("github", "GitHub")])
-    # owner/name; deliveries about any other repository are ignored.
+    kind = models.CharField(max_length=10, choices=[("github", "GitHub"), ("incoming", "Incoming")])
+    # GitHub: owner/name; deliveries about any other repository are ignored.
     repo = models.CharField(max_length=140, blank=True)
-    # In the delivery URL, so it finds the webhook; it proves nothing by itself.
+    # Incoming: the name its messages are shown under.
+    name = models.CharField(max_length=40, blank=True)
+    # Finds the webhook from its URL. GitHub: the token itself, which proves nothing (the
+    # signature does). Incoming: the token is the proof, so only its digest is kept
+    # (apps/core/webhooks.py).
     token = models.CharField(max_length=64, unique=True)
-    # The HMAC key GitHub signs with. Kept as is, since checking a signature needs the key.
-    secret = models.CharField(max_length=64)
+    # GitHub's HMAC key, kept as is since checking a signature needs it. Empty for incoming.
+    secret = models.CharField(max_length=64, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
