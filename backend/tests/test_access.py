@@ -13,6 +13,7 @@ from rest_framework.test import APIClient
 from apps.chat.models import Channel, ChannelMember
 from apps.core.channels import ChannelKind
 from apps.core.roles import Role
+from apps.integrations.models import Webhook
 from apps.issues.models import Label, Project
 from apps.issues.services import create_issue
 from apps.workspaces.models import Member, Workspace
@@ -73,6 +74,19 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("search:messages", "get", "/api/v1/workspaces/{slug}/search/messages/?q=secret", None),
     ("search:files", "get", "/api/v1/workspaces/{slug}/search/files/?q=secret", None),
     ("search:issues", "get", "/api/v1/workspaces/{slug}/search/issues/?q=secret", None),
+    ("integrations:webhooks", "get", "/api/v1/workspaces/{slug}/integrations/webhooks/", None),
+    (
+        "integrations:webhooks",
+        "post",
+        "/api/v1/workspaces/{slug}/integrations/webhooks/",
+        {"kind": "github", "channel_id": 1, "repo": "team/app"},
+    ),
+    (
+        "integrations:webhook",
+        "delete",
+        "/api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/",
+        None,
+    ),
     ("files:download", "get", "/api/v1/workspaces/{slug}/files/not-a-real-token/", None),
     ("channels:members", "get", CHANNEL + "members/", None),
     ("channels:members", "post", CHANNEL + "members/", {"user_id": 1}),
@@ -113,6 +127,7 @@ SCOPED_NAMESPACES = (
     "search:",
     "notifications:",
     "projects:",
+    "integrations:",
 )
 
 
@@ -148,6 +163,9 @@ def workspace() -> Workspace:
     project = Project.objects.create(workspace=workspace, key="SEC", name="Secret")
     Label.objects.create(workspace=workspace, project=project, name="bug", color="danger")
     create_issue(project, owner, {"title": "Only for members"})
+    Webhook.objects.create(
+        workspace=workspace, channel=secret, kind="github", repo="team/app", token="t", secret="s"
+    )
     return workspace
 
 
@@ -160,6 +178,7 @@ def _path(template: str, workspace: Workspace, slug: str | None = None) -> str:
         user_id=owner.user_id,
         channel_id=channel.pk,
         label_id=label.pk,
+        webhook_id=Webhook.objects.for_workspace(workspace).get().pk,
     )
 
 

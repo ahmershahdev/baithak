@@ -239,6 +239,7 @@ describe("an issue opened from a message", () => {
       attachments: [],
       issue: threadSeq === null ? { ref: "BAI-1", project: "BAI", number: 1 } : null,
       kind: "message",
+      sender_name: "",
       author: { id: 2, username: "bilal", display_name: "Bilal" },
       body,
       client_id: "",

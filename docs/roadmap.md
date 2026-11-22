@@ -59,7 +59,7 @@ in CI, and seed data.
 
 ## M6. Integrations (target 2027-04-04)
 
-- [ ] GitHub webhook: signature verified, pull request and issue events posted into the channel
+- [x] GitHub webhook: signature verified, pull request and issue events posted into the channel
       that follows the repository
 - [ ] Incoming webhooks with a secret URL per channel, rate limited
 - [ ] Webhook deliveries logged with their result; failed ones retried by Celery

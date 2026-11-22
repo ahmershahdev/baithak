@@ -45,7 +45,7 @@ def _post_activity(issue: Issue, actor: User, body: str, *, to_channel: bool) ->
         body,
         parent=message,
         also_in_channel=to_channel,
-        activity=True,
+        kind="activity",
     )
 
 

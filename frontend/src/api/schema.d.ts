@@ -232,6 +232,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hooks/github/{token}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive a GitHub delivery (called by GitHub)
+         * @description Called by GitHub, not a person: no session (so no CSRF); the signature is the proof.
+         */
+        post: operations["hooks_github_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/accept/": {
         parameters: {
             query?: never;
@@ -620,6 +640,41 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/integrations/webhooks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Webhooks */
+        get: operations["workspaces_integrations_webhooks_list"];
+        put?: never;
+        /** Connect a GitHub repository to a channel */
+        post: operations["workspaces_integrations_webhooks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a webhook */
+        delete: operations["workspaces_integrations_webhooks_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1221,12 +1276,14 @@ export interface components {
             /** @description The issue opened from it. Sent to every reader, guests too: only the ref. */
             readonly issue: components["schemas"]["MessageIssue"] | null;
             /**
-             * @description activity: a line Baithak wrote for the author, such as an issue change.
+             * @description activity: an issue change written for the author. integration: from an app (no author; see sender_name).
              *
              *     * `message` - message
              *     * `activity` - activity
+             *     * `integration` - integration
              */
             readonly kind: components["schemas"]["MessageKindEnum"];
+            readonly sender_name: string;
         };
         MessageHit: {
             channel: number;
@@ -1241,9 +1298,10 @@ export interface components {
         /**
          * @description * `message` - message
          *     * `activity` - activity
+         *     * `integration` - integration
          * @enum {string}
          */
-        MessageKindEnum: "message" | "activity";
+        MessageKindEnum: "message" | "activity" | "integration";
         MessagePage: {
             messages: components["schemas"]["Message"][];
             has_more: boolean;
@@ -1255,6 +1313,19 @@ export interface components {
             terms: string[];
             results: components["schemas"]["MessageHit"][];
             next: number | null;
+        };
+        NewWebhook: {
+            readonly id: number;
+            readonly kind: components["schemas"]["WebhookKindEnum"];
+            readonly channel: number;
+            readonly repo: string;
+            /** @description Where GitHub sends deliveries. */
+            readonly url: string;
+            readonly created_by: components["schemas"]["Author"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** @description Shown once, when made: paste it into GitHub. */
+            readonly secret: string;
         };
         /** @description Either `channel` and `message` are set, or `issue` (kind `assigned`). */
         Notification: {
@@ -1464,6 +1535,28 @@ export interface components {
             readonly display_name: string;
             readonly email_verified: boolean;
         };
+        Webhook: {
+            readonly id: number;
+            readonly kind: components["schemas"]["WebhookKindEnum"];
+            readonly channel: number;
+            readonly repo: string;
+            /** @description Where GitHub sends deliveries. */
+            readonly url: string;
+            readonly created_by: components["schemas"]["Author"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        WebhookCreateRequest: {
+            kind: components["schemas"]["WebhookKindEnum"];
+            channel_id: number;
+            /** @description owner/name */
+            repo: string;
+        };
+        /**
+         * @description * `github` - github
+         * @enum {string}
+         */
+        WebhookKindEnum: "github";
         /** @description A workspace as seen by one member: built from that member's row. */
         Workspace: {
             readonly slug: string;
@@ -1838,6 +1931,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaptchaError"];
+                };
+            };
+        };
+    };
+    hooks_github_create: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-GitHub-Delivery"?: string;
+                "X-GitHub-Event": string;
+                "X-Hub-Signature-256": string;
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
                 };
             };
         };
@@ -2838,6 +2972,97 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    workspaces_integrations_webhooks_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"][];
+                };
+            };
+        };
+    };
+    workspaces_integrations_webhooks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewWebhook"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_integrations_webhooks_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
                 };
             };
         };

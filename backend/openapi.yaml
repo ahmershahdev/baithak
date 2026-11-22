@@ -306,6 +306,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/CaptchaError'
           description: ''
+  /api/v1/hooks/github/{token}/:
+    post:
+      operationId: hooks_github_create
+      description: 'Called by GitHub, not a person: no session (so no CSRF); the signature
+        is the proof.'
+      summary: Receive a GitHub delivery (called by GitHub)
+      parameters:
+      - in: header
+        name: X-GitHub-Delivery
+        schema:
+          type: string
+      - in: header
+        name: X-GitHub-Event
+        schema:
+          type: string
+        required: true
+      - in: header
+        name: X-Hub-Signature-256
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - hooks
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
   /api/v1/invitations/accept/:
     post:
       operationId: invitations_accept_create
@@ -1402,6 +1451,95 @@ paths:
               schema:
                 type: string
                 format: binary
+          description: ''
+  /api/v1/workspaces/{slug}/integrations/webhooks/:
+    get:
+      operationId: workspaces_integrations_webhooks_list
+      summary: Webhooks
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
+          description: ''
+    post:
+      operationId: workspaces_integrations_webhooks_create
+      summary: Connect a GitHub repository to a channel
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - workspaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewWebhook'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/:
+    delete:
+      operationId: workspaces_integrations_webhooks_destroy
+      summary: Remove a webhook
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: webhook_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - workspaces
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
           description: ''
   /api/v1/workspaces/{slug}/invitations/:
     get:
@@ -3163,10 +3301,14 @@ components:
           - $ref: '#/components/schemas/MessageKindEnum'
           readOnly: true
           description: |-
-            activity: a line Baithak wrote for the author, such as an issue change.
+            activity: an issue change written for the author. integration: from an app (no author; see sender_name).
 
             * `message` - message
             * `activity` - activity
+            * `integration` - integration
+        sender_name:
+          type: string
+          readOnly: true
       required:
       - also_in_channel
       - attachments
@@ -3186,6 +3328,7 @@ components:
       - parent_seq
       - reactions
       - reply_count
+      - sender_name
       - seq
       - thread_seq
     MessageHit:
@@ -3216,10 +3359,12 @@ components:
       enum:
       - message
       - activity
+      - integration
       type: string
       description: |-
         * `message` - message
         * `activity` - activity
+        * `integration` - integration
     MessagePage:
       type: object
       properties:
@@ -3257,6 +3402,48 @@ components:
       - next
       - results
       - terms
+    NewWebhook:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/WebhookKindEnum'
+          readOnly: true
+        channel:
+          type: integer
+          readOnly: true
+        repo:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          readOnly: true
+          description: Where GitHub sends deliveries.
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/Author'
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        secret:
+          type: string
+          readOnly: true
+          description: 'Shown once, when made: paste it into GitHub.'
+      required:
+      - channel
+      - created_at
+      - created_by
+      - id
+      - kind
+      - repo
+      - secret
+      - url
     Notification:
       type: object
       description: Either `channel` and `message` are set, or `issue` (kind `assigned`).
@@ -3797,6 +3984,64 @@ components:
       - email_verified
       - id
       - username
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/WebhookKindEnum'
+          readOnly: true
+        channel:
+          type: integer
+          readOnly: true
+        repo:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          readOnly: true
+          description: Where GitHub sends deliveries.
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/Author'
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - channel
+      - created_at
+      - created_by
+      - id
+      - kind
+      - repo
+      - url
+    WebhookCreateRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/WebhookKindEnum'
+        channel_id:
+          type: integer
+        repo:
+          type: string
+          minLength: 1
+          description: owner/name
+          maxLength: 140
+      required:
+      - channel_id
+      - kind
+      - repo
+    WebhookKindEnum:
+      enum:
+      - github
+      type: string
+      description: '* `github` - github'
     Workspace:
       type: object
       description: 'A workspace as seen by one member: built from that member''s row.'

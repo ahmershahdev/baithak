@@ -52,7 +52,8 @@ project           workspace_id, key (unique per workspace), name, description, n
 issue             workspace_id, project_id, number (unique per project), title, description, status,
                   priority, assignee_id, due, labels, created_by, closed_at, message_id (unique)
 label             workspace_id, project_id, name, color (one of the six brand hues)
-webhook           workspace_id, channel_id, kind (github, incoming), secret, repo
+webhook           workspace_id, channel_id, kind (github, incoming), repo, token (in the
+                  delivery URL), secret (HMAC key), created_by
 webhook_delivery  webhook_id, received_at, event, status, error
 notification      user_id, kind, channel_id and message_id, or issue_id; actor_id, read_at, emailed_at
 ```
@@ -307,6 +308,29 @@ message post nowhere.
 
 An issue's history is its audit rows (`.../issues/{n}/history/`, oldest first, the latest 200),
 readable by anyone who can see the issue, each turned into the same phrases.
+
+## GitHub
+
+An admin connects a repository (`owner/name`) to a channel that isn't archived on the
+workspace Settings page (`.../integrations/webhooks/`, admins only, audited). The answer
+carries the payload URL (`/api/v1/hooks/github/<token>/`) and a generated secret, shown
+only then, to paste into GitHub's webhook settings. Each connection has its own secret, so
+one leak touches one repository. The secret is stored as is, since checking an HMAC needs
+the key.
+
+A delivery is looked up by its token (unknown: 404), then its `X-Hub-Signature-256` is
+checked against the raw body in constant time before anything is parsed (wrong: 401;
+`apps/core/github.py`). The view has no session authentication, so no CSRF, and a
+`hooks` throttle of 300 a minute per address. `ping` answers 200. Pull requests (opened,
+reopened, marked ready, merged, closed) and issues (opened, closed, reopened) from the
+connected repository become one message each; everything else answers 202 and posts
+nothing, as does an archived channel. GitHub's `X-GitHub-Delivery` is the message's
+`client_id`, so a redelivery is stored once.
+
+Those messages are kind `integration`: no author, `sender_name` "GitHub", never read for
+mentions, notify nobody, and nobody can edit them. They end with the item's link, which
+must start with `https://github.com/`; the web app shows those links as links in app
+messages only, with an App tag next to the name.
 
 ## Unread counts
 

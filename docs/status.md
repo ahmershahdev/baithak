@@ -186,13 +186,20 @@ M1 in progress. Merged so far:
   for guests, who get 404), filters by who opened it, day, and the channel it was opened from.
   M5 is complete.
 
+- M5 released as `v0.5.0`, milestone closed.
+- M6 started: the GitHub webhook. Admins connect a repository to a channel on Settings and
+  get a payload URL and a secret (shown once). Deliveries are checked by signature before
+  reading; pull request and issue events from that repository post a message from
+  "GitHub" (kind `integration`, no author, links into GitHub). Redeliveries are stored once.
+
 ## Next session
 
 M5, in this order:
 
-1. Release M5 as `v0.5.0` when asked, and close its milestone.
-2. M6: the GitHub webhook (signature verified, pull request and issue events posted into the
-   channel that follows the repository).
+M6, in this order:
+
+1. Incoming webhooks with a secret URL per channel, rate limited.
+2. Webhook deliveries logged with their result; failed ones retried by Celery.
 
 ## Open questions
 
