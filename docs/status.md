@@ -43,6 +43,10 @@ progress, with its last two items on hold.
   every channel on becoming one (a migration clears existing rows); conversations stay. The
   sidebar and channel browser show guests direct messages only. The demo guests now talk to
   their teams in group conversations.
+- **Message formatting**: Discord-style Markdown (bold, italic, underline, strike, spoilers,
+  inline code and code blocks, quotes, lists, headings, links), parsed on the client into React
+  elements so no user text becomes HTML. Handles inside code no longer notify anyone. The
+  composer's hint shows the syntax on hover.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -67,14 +71,12 @@ branches are deleted on GitHub.
 
 ## Open questions
 
-- Message formatting: decided as Discord-style Markdown rendered on the client; being built
-  next.
 - A theme picker (light, dark, system) stored per person; today the system setting decides.
 - Spacing, radius and type scale tokens (see [design.md](design.md)).
 - Whether HolidayOps working days feed quiet hours and issue due dates.
 
 Decided and no longer open: guests use direct and group messages only and can't be added to
-any channel; an unverified person can sign in but can't
+any channel; messages use Discord-style formatting; an unverified person can sign in but can't
 create or join a workspace; Fraunces and Instrument Sans are the typefaces; `apps/core` has its own 100% branch
 coverage gate in CI.
 

@@ -116,6 +116,26 @@ describe("a channel", () => {
     expect(await screen.findByText("Chai at four?")).toBeInTheDocument();
   });
 
+  test("shows formatting, and a handle in code is not a mention", async () => {
+    const formatted = {
+      ...message(1, 1, "**ship** it, see https://example.com and `@bilal` ||soon||"),
+      mentions: [{ id: 2, username: "bilal", display_name: "" }],
+    };
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([formatted], 1)),
+    });
+    await openChannel();
+
+    expect(await screen.findByText("ship")).toContainHTML("<strong>ship</strong>");
+    expect(screen.getByRole("link", { name: "https://example.com" })).toHaveAttribute(
+      "rel",
+      "noreferrer noopener",
+    );
+    expect(screen.getByText("@bilal").tagName).toBe("CODE");
+    await userEvent.click(screen.getByRole("button", { name: "Spoiler, select to show" }));
+    expect(screen.getByText("soon")).toBeVisible();
+  });
+
   test("after a dropped socket nothing is lost and nothing is shown twice", async () => {
     const asked: string[] = [];
     const backendState = backend({
