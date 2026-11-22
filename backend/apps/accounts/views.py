@@ -14,7 +14,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts import captcha, guards, lockout, reset_codes, tasks
+from apps.accounts import captcha, deletion, guards, lockout, reset_codes, tasks
 from apps.accounts.models import ContactMessage, User, username_validator
 from apps.accounts.serializers import (
     AuthConfigSerializer,
@@ -22,9 +22,11 @@ from apps.accounts.serializers import (
     AvailabilityResultSerializer,
     CaptchaErrorSerializer,
     ContactSerializer,
+    DeleteAccountSerializer,
     DetailSerializer,
     EmailSerializer,
     NotificationSettingsSerializer,
+    OwnsWorkspacesSerializer,
     PasswordResetConfirmSerializer,
     SignInSerializer,
     SignUpSerializer,
@@ -42,6 +44,8 @@ LOCKED = (
     "This account is locked after too many wrong attempts. Try again later, or write to "
     f"{settings.SUPPORT_EMAIL} if you need help."
 )
+CONFIRM_FAILED = "The password is wrong."
+HAND_OVER = "Make someone else an owner of these workspaces first, or remove everyone else."
 BAD_CODE = "The code is wrong or has expired. Ask for a new one if you need to."
 CAPTCHA_DOUBT = "Please confirm you are a person."
 CAPTCHA_FAILED = "The person check failed. Try it again."
@@ -185,6 +189,33 @@ class MeView(APIView):
         if not request.user.is_authenticated:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(UserSerializer(request.user).data)
+
+
+class DeleteAccountView(APIView):
+    permission_classes = (IsAuthenticated,)
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=DeleteAccountSerializer,
+        responses={204: None, 400: DetailSerializer, 409: OwnsWorkspacesSerializer},
+        summary="Delete my account; my posts stay in shared workspaces with no author",
+    )
+    def post(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        serializer = DeleteAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not user.check_password(serializer.validated_data["password"]):
+            return Response({"detail": CONFIRM_FAILED}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            deletion.delete_account(user)
+        except deletion.OwnsWorkspaces as blocked:
+            body = {
+                "detail": HAND_OVER,
+                "workspaces": [{"slug": w.slug, "name": w.name} for w in blocked.workspaces],
+            }
+            return Response(body, status=status.HTTP_409_CONFLICT)
+        logout(request._request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class VerifyEmailView(AnonymousAPIView):

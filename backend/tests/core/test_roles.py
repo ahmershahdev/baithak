@@ -3,6 +3,7 @@ from itertools import pairwise
 import pytest
 
 from apps.core.roles import (
+    OnAccountDeletion,
     Role,
     can_change_role,
     can_edit_workspace,
@@ -10,6 +11,7 @@ from apps.core.roles import (
     can_remove,
     can_see_audit_log,
     is_admin,
+    on_account_deletion,
     outranks_or_equals,
 )
 
@@ -89,3 +91,27 @@ def test_can_change_role(actor: Role, target: Role, new: Role, owners: int, expe
 )
 def test_can_remove(actor: Role, target: Role, is_self: bool, owners: int, expected: bool) -> None:
     assert can_remove(actor, target, is_self=is_self, owners=owners) is expected
+
+
+LEAVE, DELETE, BLOCK = (
+    OnAccountDeletion.LEAVE,
+    OnAccountDeletion.DELETE_WORKSPACE,
+    OnAccountDeletion.BLOCK,
+)
+
+
+@pytest.mark.parametrize(
+    ("role", "owners", "members", "expected"),
+    [
+        (OWNER, 1, 1, DELETE),
+        (OWNER, 1, 2, BLOCK),
+        (OWNER, 2, 3, LEAVE),
+        (ADMIN, 1, 2, LEAVE),
+        (MEMBER, 1, 5, LEAVE),
+        (GUEST, 1, 2, LEAVE),
+    ],
+)
+def test_on_account_deletion(
+    role: Role, owners: int, members: int, expected: OnAccountDeletion
+) -> None:
+    assert on_account_deletion(role, owners=owners, members=members) is expected

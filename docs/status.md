@@ -216,6 +216,11 @@ M1 in progress. Merged so far:
   Sign out now sit on their own row. The workspace nav no longer shrinks in a tall sidebar,
   which had hidden Settings and Audit log for admins. Screenshots retaken.
 
+- Account deletion: Settings has Delete your account (password to confirm). Posts stay in
+  shared workspaces as "Deleted account", workspaces with nobody else are deleted with their
+  files, and the last owner of a shared workspace is sent to hand it over first. Authorless
+  messages are never grouped together, and different apps' messages no longer merge.
+
 ## Next session
 
 M5, in this order:

@@ -68,5 +68,6 @@ in CI, and seed data.
 
 - [x] Seed data: two invented teams with a few months of conversations and issues
 - [x] README setup steps and screenshots
+- [x] Self-serve account deletion, with posts kept anonymised in shared workspaces
 - [ ] End-to-end tests with Playwright for the main flows, including two browsers in one channel
 - [ ] Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`

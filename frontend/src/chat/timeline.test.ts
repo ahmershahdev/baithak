@@ -95,6 +95,15 @@ describe("startsGroup", () => {
 
     expect(startsGroup(update, message(2))).toBe(true);
   });
+
+  test("messages from deleted accounts never run together; one app's messages do", () => {
+    const gone = message(1, 1, { author: null, sender_name: "" });
+    const github = message(3, 3, { author: null, sender_name: "GitHub" });
+
+    expect(startsGroup(gone, message(2, 2, { author: null, sender_name: "" }))).toBe(true);
+    expect(startsGroup(github, message(4, 4, { author: null, sender_name: "GitHub" }))).toBe(false);
+    expect(startsGroup(github, message(5, 5, { author: null, sender_name: "Deploys" }))).toBe(true);
+  });
 });
 
 const reply = (threadSeq: number, event: number, extra: Partial<Message> = {}) =>
