@@ -15,13 +15,14 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
-from apps.chat import messages
 from apps.chat.access import channel_access
 from apps.core import github, webhooks
 from apps.core.channels import CONVERSATIONS, ChannelKind
 from apps.core.roles import Role, is_admin
+from apps.integrations import deliveries, tasks
 from apps.integrations.models import Webhook
 from apps.integrations.serializers import (
+    DeliverySerializer,
     IncomingSerializer,
     NewWebhookSerializer,
     WebhookCreateSerializer,
@@ -31,6 +32,8 @@ from apps.integrations.throttles import PerWebhookThrottle
 from apps.workspaces import audit
 from apps.workspaces.access import membership
 from apps.workspaces.models import Member
+
+DELIVERIES_SHOWN = 50
 
 
 def _admin(request: Request, slug: str) -> tuple[User, Member]:
@@ -115,6 +118,23 @@ class WebhookDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class DeliveryListView(APIView):
+    @extend_schema(
+        responses={200: DeliverySerializer(many=True), 403: DetailSerializer},
+        summary="A webhook's latest deliveries and what became of them",
+    )
+    def get(self, request: Request, slug: str, webhook_id: int) -> Response:
+        _, member = _admin(request, slug)
+        webhook = Webhook.objects.for_workspace(member.workspace).filter(pk=webhook_id).first()
+        if webhook is None:
+            raise Http404
+        found = webhook.deliveries.order_by("-pk")[:DELIVERIES_SHOWN]
+        return Response(DeliverySerializer(found, many=True).data)
+
+
+QUEUED = {"detail": "Queued."}
+
+
 class GitHubDeliveryView(APIView):
     """Called by GitHub, not a person: no session (so no CSRF); the signature is the proof."""
 
@@ -130,7 +150,7 @@ class GitHubDeliveryView(APIView):
             OpenApiParameter("X-Hub-Signature-256", str, OpenApiParameter.HEADER, required=True),
             OpenApiParameter("X-GitHub-Delivery", str, OpenApiParameter.HEADER),
         ],
-        responses={200: DetailSerializer, 201: DetailSerializer, 202: DetailSerializer},
+        responses={200: DetailSerializer, 202: DetailSerializer, 400: DetailSerializer},
         summary="Receive a GitHub delivery (called by GitHub)",
     )
     def post(self, request: Request, token: str) -> Response:
@@ -140,33 +160,34 @@ class GitHubDeliveryView(APIView):
         if webhook is None:
             raise Http404
         body = request.body
-        # Checked on the raw bytes before anything in them is read (AGENTS.md).
+        # Checked on the raw bytes before anything in them is read (AGENTS.md). Unsigned calls
+        # are not logged, so nobody can fill the log without the secret.
         if not github.signature_ok(
             webhook.secret, body, request.headers.get("X-Hub-Signature-256")
         ):
             return Response(
                 {"detail": "Signature does not match."}, status=status.HTTP_401_UNAUTHORIZED
             )
-        event = request.headers.get("X-GitHub-Event", "")
+        event = request.headers.get("X-GitHub-Event", "")[:40]
+        external_id = request.headers.get("X-GitHub-Delivery", "")[:64]
         if event == "ping":
+            deliveries.finished(webhook, event, "ignored", "Connected.", external_id)
             return Response({"detail": "Connected."})
         try:
             payload = json.loads(body)
         except ValueError:
+            deliveries.finished(webhook, event, "failed", "Not JSON.", external_id)
             return Response({"detail": "Not JSON."}, status=status.HTTP_400_BAD_REQUEST)
         text = github.describe(event, payload)
-        if text is None or github.repository(payload) != webhook.repo or webhook.channel.archived:
-            return Response({"detail": "Ignored."}, status=status.HTTP_202_ACCEPTED)
-        messages.post(
-            webhook.channel,
-            None,
-            text,
-            # GitHub's id for the delivery, so a redelivery is stored once.
-            client_id=request.headers.get("X-GitHub-Delivery", "")[:64],
-            kind="integration",
-            sender_name="GitHub",
-        )
-        return Response({"detail": "Posted."}, status=status.HTTP_201_CREATED)
+        if github.repository(payload) != webhook.repo:
+            reason = "Another repository."
+        elif text is None:
+            reason = "Not an event that is posted."
+        else:
+            tasks.queue(webhook, event, text, external_id)
+            return Response(QUEUED, status=status.HTTP_202_ACCEPTED)
+        deliveries.finished(webhook, event, "ignored", reason, external_id)
+        return Response({"detail": f"Ignored: {reason}"}, status=status.HTTP_202_ACCEPTED)
 
 
 class IncomingDeliveryView(APIView):
@@ -178,7 +199,7 @@ class IncomingDeliveryView(APIView):
 
     @extend_schema(
         request=IncomingSerializer,
-        responses={201: DetailSerializer, 400: DetailSerializer, 409: DetailSerializer},
+        responses={202: DetailSerializer, 400: DetailSerializer, 409: DetailSerializer},
         summary="Post a message through an incoming webhook (called by other tools)",
     )
     def post(self, request: Request, token: str) -> Response:
@@ -190,14 +211,11 @@ class IncomingDeliveryView(APIView):
         if webhook is None:
             raise Http404
         serializer = IncomingSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            deliveries.finished(webhook, "message", "failed", "No usable text.")
+            raise ValidationError(serializer.errors)
         if webhook.channel.archived:
+            deliveries.finished(webhook, "message", "ignored", "The channel is archived.")
             return Response({"detail": "The channel is archived."}, status=status.HTTP_409_CONFLICT)
-        messages.post(
-            webhook.channel,
-            None,
-            serializer.validated_data["text"],
-            kind="integration",
-            sender_name=webhook.name,
-        )
-        return Response({"detail": "Posted."}, status=status.HTTP_201_CREATED)
+        tasks.queue(webhook, "message", serializer.validated_data["text"])
+        return Response(QUEUED, status=status.HTTP_202_ACCEPTED)

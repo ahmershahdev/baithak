@@ -6,6 +6,7 @@ import { ApiError } from "./workspaces";
 
 export type Webhook = components["schemas"]["Webhook"];
 export type NewWebhook = components["schemas"]["NewWebhook"];
+export type Delivery = components["schemas"]["Delivery"];
 
 const webhooksKey = (slug: string) => ["workspaces", slug, "webhooks"] as const;
 
@@ -22,6 +23,18 @@ export function useWebhooks(slug: string) {
       unwrap(
         await api.GET("/api/v1/workspaces/{slug}/integrations/webhooks/", {
           params: { path: { slug } },
+        }),
+      ),
+  });
+}
+
+export function useDeliveries(slug: string, id: number) {
+  return useQuery({
+    queryKey: [...webhooksKey(slug), id, "deliveries"],
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/deliveries/", {
+          params: { path: { slug, webhook_id: id } },
         }),
       ),
   });

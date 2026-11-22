@@ -110,3 +110,45 @@ test("an admin makes an incoming webhook and sees its address once", async () =>
   const list = await screen.findByRole("list", { name: "Incoming webhooks connected" });
   expect(list).toHaveTextContent("Deploy bot to #general");
 });
+
+test("each webhook shows its latest deliveries and why", async () => {
+  fakeBackend({
+    "GET /api/v1/auth/me/": () => json(200, amna),
+    "GET /api/v1/workspaces/": () => json(200, [workspace]),
+    "GET /api/v1/workspaces/team/": () => json(200, workspace),
+    "GET /api/v1/workspaces/team/channels/": () => json(200, [general]),
+    "GET /api/v1/workspaces/team/integrations/webhooks/": () =>
+      json(200, [{ ...base, kind: "github", repo: "team/app", url: "https://x.test/" }]),
+    "GET /api/v1/workspaces/team/integrations/webhooks/3/deliveries/": () =>
+      json(200, [
+        {
+          id: 2,
+          event: "pull_request",
+          status: "failed",
+          detail: "OperationalError: gone away",
+          attempts: 6,
+          received_at: "2026-11-22T10:05:00Z",
+          finished_at: "2026-11-22T12:00:00Z",
+        },
+        {
+          id: 1,
+          event: "push",
+          status: "ignored",
+          detail: "Not an event that is posted.",
+          attempts: 0,
+          received_at: "2026-11-22T10:00:00Z",
+          finished_at: "2026-11-22T10:00:00Z",
+        },
+      ]),
+  });
+  renderAt("/w/team/settings");
+
+  const list = await screen.findByRole("list", { name: "GitHub connected" });
+  await userEvent.click(within(list).getByRole("button", { name: "Deliveries" }));
+
+  const rows = within(await screen.findByRole("list", { name: "Deliveries" })).getAllByRole(
+    "listitem",
+  );
+  expect(rows[0]).toHaveTextContent("Failedpull_requestOperationalError: gone away6 tries");
+  expect(rows[1]).toHaveTextContent("IgnoredpushNot an event that is posted.");
+});

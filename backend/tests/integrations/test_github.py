@@ -132,7 +132,7 @@ class TestDeliveries:
         first = self.deliver(api, hook, pull_opened())
         again = self.deliver(api, hook, pull_opened())
 
-        assert (first.status_code, again.status_code) == (201, 201)
+        assert (first.status_code, again.status_code) == (202, 202)
         [posted] = Message.objects.filter(channel=general, kind="integration")
         assert posted.author is None
         assert posted.sender_name == "GitHub"

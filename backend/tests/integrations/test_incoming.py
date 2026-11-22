@@ -59,7 +59,7 @@ class TestPosting:
     ) -> None:
         response = send(hook, {"text": "Deployed v1.2 to production"})
 
-        assert response.status_code == 201
+        assert response.status_code == 202
         posted = Message.objects.get(kind="integration")
         assert (posted.channel_id, posted.author, posted.sender_name, posted.body) == (
             general.pk,
@@ -98,6 +98,6 @@ class TestPosting:
         other = dict(make(api, general, name="Other bot").json())
         answers = [send(hook, {"text": f"n{i}"}).status_code for i in range(31)]
 
-        assert answers[:30] == [201] * 30
+        assert answers[:30] == [202] * 30
         assert answers[30] == 429
-        assert send(other, {"text": "still fine"}).status_code == 201
+        assert send(other, {"text": "still fine"}).status_code == 202

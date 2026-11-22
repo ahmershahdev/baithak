@@ -62,7 +62,7 @@ in CI, and seed data.
 - [x] GitHub webhook: signature verified, pull request and issue events posted into the channel
       that follows the repository
 - [x] Incoming webhooks with a secret URL per channel, rate limited
-- [ ] Webhook deliveries logged with their result; failed ones retried by Celery
+- [x] Webhook deliveries logged with their result; failed ones retried by Celery
 
 ## M7. Docs and launch (target 2027-05-30)
 

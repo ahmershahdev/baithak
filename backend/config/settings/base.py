@@ -123,6 +123,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.email_unread",
         "schedule": 300.0,
     },
+    "prune-webhook-deliveries": {
+        "task": "apps.integrations.tasks.prune_deliveries",
+        "schedule": 86400.0,
+    },
 }
 
 AUTH_USER_MODEL = "accounts.User"
@@ -203,6 +207,8 @@ SPECTACULAR_SETTINGS = {
         "InvitableRoleEnum": "apps.workspaces.serializers.INVITABLE_ROLE_CHOICES",
         "MessageKindEnum": "apps.chat.serializers.MESSAGE_KIND_CHOICES",
         "WebhookKindEnum": "apps.integrations.serializers.WEBHOOK_KIND_CHOICES",
+        "DeliveryStatusEnum": "apps.integrations.serializers.DELIVERY_STATUS_CHOICES",
+        "StatusEnum": "apps.issues.serializers.STATUS_CHOICES",
     },
 }
 

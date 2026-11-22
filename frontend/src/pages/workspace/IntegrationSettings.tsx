@@ -3,8 +3,10 @@ import { useState, type ReactNode, type SubmitEvent } from "react";
 import { useChannels, type Channel } from "../../api/chat";
 import {
   useCreateWebhook,
+  useDeliveries,
   useRemoveWebhook,
   useWebhooks,
+  type Delivery,
   type NewWebhook,
   type Webhook,
 } from "../../api/integrations";
@@ -107,6 +109,7 @@ function Section({
   const [channelId, setChannelId] = useState<string | undefined>(undefined);
   const [value, setValue] = useState("");
   const [fresh, setFresh] = useState<NewWebhook | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
   const chosen = channelId ?? (choices[0] ? String(choices[0].id) : undefined);
   const inputId = `${kind}-${field.key}`;
 
@@ -168,6 +171,16 @@ function Section({
           {connected.map((webhook) => (
             <li key={webhook.id} className="flex flex-wrap items-center gap-3 py-3">
               <span className="min-w-0 flex-1 text-sm">{describe(webhook)}</span>
+              <button
+                type="button"
+                aria-expanded={open === webhook.id}
+                onClick={() => {
+                  setOpen((now) => (now === webhook.id ? null : webhook.id));
+                }}
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-text-muted hover:bg-bg-subtle"
+              >
+                Deliveries
+              </button>
               <ConfirmButton
                 label="Remove"
                 confirmLabel="Yes, remove"
@@ -176,11 +189,54 @@ function Section({
                   remove.mutate(webhook.id);
                 }}
               />
+              {open === webhook.id && <DeliveryLog slug={slug} id={webhook.id} />}
             </li>
           ))}
         </ul>
       )}
       {remove.error && <ErrorMessage>{errorText(remove.error)}</ErrorMessage>}
     </Panel>
+  );
+}
+
+const when = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
+
+const STATUS_LABELS: Record<Delivery["status"], string> = {
+  pending: "Waiting",
+  posted: "Posted",
+  ignored: "Ignored",
+  failed: "Failed",
+};
+
+function DeliveryLog({ slug, id }: { slug: string; id: number }) {
+  const log = useDeliveries(slug, id);
+  if (log.isPending) return <p className="w-full text-sm text-text-muted">Loading</p>;
+  if (log.isError) return <ErrorMessage>Could not load deliveries.</ErrorMessage>;
+  if (log.data.length === 0) {
+    return <p className="w-full text-sm text-text-muted">Nothing has arrived yet.</p>;
+  }
+  return (
+    <ol
+      aria-label="Deliveries"
+      className="w-full divide-y divide-border rounded-lg bg-bg-subtle text-sm"
+    >
+      {log.data.map((delivery) => (
+        <li key={delivery.id} className="flex flex-wrap items-baseline gap-x-3 px-3 py-2">
+          <span
+            className={delivery.status === "failed" ? "font-semibold text-danger" : "font-semibold"}
+          >
+            {STATUS_LABELS[delivery.status]}
+          </span>
+          <span className="font-mono text-xs">{delivery.event}</span>
+          {delivery.detail && <span className="text-text-muted">{delivery.detail}</span>}
+          {delivery.attempts > 1 && (
+            <span className="text-text-subtle">{delivery.attempts} tries</span>
+          )}
+          <time dateTime={delivery.received_at} className="ml-auto text-xs text-text-subtle">
+            {when.format(new Date(delivery.received_at))}
+          </time>
+        </li>
+      ))}
+    </ol>
   );
 }

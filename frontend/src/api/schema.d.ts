@@ -700,6 +700,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/integrations/webhooks/{webhook_id}/deliveries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A webhook's latest deliveries and what became of them */
+        get: operations["workspaces_integrations_webhooks_deliveries_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/invitations/": {
         parameters: {
             query?: never;
@@ -1113,6 +1130,25 @@ export interface components {
             /** @description The other people in it. */
             user_ids: number[];
         };
+        Delivery: {
+            readonly id: number;
+            readonly event: string;
+            readonly status: components["schemas"]["DeliveryStatusEnum"];
+            readonly detail: string;
+            readonly attempts: number;
+            /** Format: date-time */
+            readonly received_at: string;
+            /** Format: date-time */
+            readonly finished_at: string | null;
+        };
+        /**
+         * @description * `pending` - pending
+         *     * `posted` - posted
+         *     * `ignored` - ignored
+         *     * `failed` - failed
+         * @enum {string}
+         */
+        DeliveryStatusEnum: "pending" | "posted" | "ignored" | "failed";
         Detail: {
             detail: string;
         };
@@ -1986,7 +2022,7 @@ export interface operations {
                     "application/json": components["schemas"]["Detail"];
                 };
             };
-            201: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1994,7 +2030,7 @@ export interface operations {
                     "application/json": components["schemas"]["Detail"];
                 };
             };
-            202: {
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2019,7 +2055,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3125,6 +3161,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    workspaces_integrations_webhooks_deliveries_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delivery"][];
+                };
             };
             403: {
                 headers: {
