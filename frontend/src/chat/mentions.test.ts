@@ -32,6 +32,7 @@ function message(body: string, extra: Partial<Message> = {}): Message {
     mentions_channel: false,
     reactions: [],
     attachments: [],
+    issue: null,
     ...extra,
   };
 }

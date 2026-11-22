@@ -49,7 +49,7 @@ attachment        workspace_id, channel_id, message_id (null until sent), upload
 
 project           workspace_id, key (unique per workspace), name, description, next_number, archived_at
 issue             workspace_id, project_id, number (unique per project), title, description, status,
-                  priority, assignee_id, due, labels, created_by, closed_at, thread_message_id (M5)
+                  priority, assignee_id, due, labels, created_by, closed_at, message_id (unique)
 label             workspace_id, project_id, name, color (one of the six brand hues)
 webhook           workspace_id, channel_id, kind (github, incoming), secret, repo
 webhook_delivery  webhook_id, received_at, event, status, error
@@ -272,6 +272,16 @@ to 100, with `total` so a long column says how many more are in the list). Dropp
 another column changes its status: the card moves at once, goes back if the API refuses, and
 the columns are fetched again either way. Dragging uses the browser's own drag and drop, which
 needs a mouse, so every card also has a status menu for the keyboard and phones.
+
+An issue can be opened from a message (`from_message` on create): a channel message, not a reply
+and not deleted, at most one issue each (`issue.message_id` is unique, so a race loses with
+400). Reading the message goes through `channel_access`, so a message the person can't read is
+404. That message's thread is the issue's discussion. Both ends show the link: the message
+carries `issue` (only the ref, project and number; it goes out on the channel's socket group, so
+guests in the channel get the ref too, but no title and no way in), and the issue carries
+`thread` (channel and seq), null for readers who can't read that channel. Opening the issue gives
+the message a new event, so open sockets and catch-up see the link. The issue page embeds the
+thread with its composer.
 
 ## Unread counts
 

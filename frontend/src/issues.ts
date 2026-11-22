@@ -59,3 +59,9 @@ export function dueText(due: string, today: Date): string {
   if (days < 0) return `Overdue by ${String(-days)} day${days === -1 ? "" : "s"}`;
   return `Due ${date.toLocaleDateString("en", { day: "numeric", month: "short" })}`;
 }
+
+/** A title to start from: the message's first line that has text, cut to the 200 allowed. */
+export function titleFrom(body: string): string {
+  const line = body.split("\n").find((text) => text.trim()) ?? "";
+  return line.trim().slice(0, 200);
+}

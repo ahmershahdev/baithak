@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any, cast
 
 from django.db import IntegrityError, transaction
@@ -13,6 +14,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
+from apps.chat.access import channel_access, readable_channels
+from apps.chat.models import Message
 from apps.core import issues as rules
 from apps.core.issues import CLOSED, Priority
 from apps.core.roles import Role
@@ -20,6 +23,7 @@ from apps.issues import services
 from apps.issues.access import project_access, projects_member
 from apps.issues.models import Issue, Label, Project
 from apps.issues.serializers import (
+    IssueCreateSerializer,
     IssuePageSerializer,
     IssueSerializer,
     IssueWriteSerializer,
@@ -35,6 +39,7 @@ PAGE_SIZE = 50
 BOARD_COLUMN_SIZE = 100
 KEY_TAKEN = "A project with this key already exists."
 LABEL_TAKEN = "This project already has a label with that name."
+NOT_FOR_ISSUE = "Only a message in a channel, not deleted, can have an issue."
 
 
 def _user(request: Request) -> User:
@@ -218,9 +223,44 @@ def _issues(project: Project) -> QuerySet[Issue]:
     return (
         Issue.objects.for_workspace(project.workspace)
         .filter(project=project)
-        .select_related("project", "assignee", "created_by")
+        .select_related("project", "assignee", "created_by", "message")
         .prefetch_related("labels")
     )
+
+
+def _show(member: Member, issues: Sequence[Issue]) -> list[dict[str, Any]]:
+    """Serialize issues, showing each one's thread only to people who can read its channel."""
+    linked = {issue.message.channel_id for issue in issues if issue.message is not None}
+    readable = (
+        set(readable_channels(member).filter(pk__in=linked).values_list("pk", flat=True))
+        if linked
+        else set()
+    )
+    return list(IssueSerializer(issues, many=True, context={"readable": readable}).data)
+
+
+def _source_message(user: User, slug: str, data: dict[str, int]) -> Message:
+    """The message to open an issue from: 404 if the person can't read it, like any message."""
+    access = channel_access(user, slug, data["channel_id"])
+    message = (
+        Message.objects.filter(channel=access.channel, seq=data["seq"])
+        .select_related("issue__project")
+        .first()
+    )
+    if message is None:
+        raise Http404
+    if message.parent_id is not None or message.deleted:
+        raise ValidationError({"from_message": [NOT_FOR_ISSUE]})
+    existing = getattr(message, "issue", None)
+    if existing is not None:
+        raise ValidationError(
+            {
+                "from_message": [
+                    f"This message already has {existing.project.key}-{existing.number}."
+                ]
+            }
+        )
+    return message
 
 
 def _write_data(member: Member, project: Project, data: dict[str, Any]) -> dict[str, Any]:
@@ -277,7 +317,7 @@ class IssueListView(APIView):
         operation_id="workspaces_projects_issues_list",
     )
     def get(self, request: Request, slug: str, key: str) -> Response:
-        _, project = project_access(_user(request), slug, key)
+        member, project = project_access(_user(request), slug, key)
         found = _issues(project)
         params = request.query_params
         if params.get("status"):
@@ -305,9 +345,7 @@ class IssueListView(APIView):
                 )
             )
             column = list(ranked.order_by("-rank", "-number")[:BOARD_COLUMN_SIZE])
-            return Response(
-                {"results": IssueSerializer(column, many=True).data, "next": None, "total": total}
-            )
+            return Response({"results": _show(member, column), "next": None, "total": total})
         if params.get("before", "").isdigit():
             found = found.filter(number__lt=int(params["before"]))
         page = list(found.order_by("-number")[: PAGE_SIZE + 1])
@@ -315,28 +353,37 @@ class IssueListView(APIView):
         page = page[:PAGE_SIZE]
         return Response(
             {
-                "results": IssueSerializer(page, many=True).data,
+                "results": _show(member, page),
                 "next": page[-1].number if more else None,
                 "total": total,
             }
         )
 
     @extend_schema(
-        request=IssueWriteSerializer,
+        request=IssueCreateSerializer,
         responses={201: IssueSerializer, 400: DetailSerializer, 403: DetailSerializer},
-        summary="Open an issue",
+        summary="Open an issue, on its own or from a message",
     )
     def post(self, request: Request, slug: str, key: str) -> Response:
         user = _user(request)
         member, project = project_access(user, slug, key)
         _check_work(member, project)
-        serializer = IssueWriteSerializer(data=request.data)
+        serializer = IssueCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        issue = services.create_issue(
-            project, user, _write_data(member, project, serializer.validated_data)
-        )
+        data = dict(serializer.validated_data)
+        source = data.pop("from_message", None)
+        fields = _write_data(member, project, data)
+        if source is not None:
+            fields["message"] = _source_message(user, slug, source)
+        try:
+            issue = services.create_issue(project, user, fields)
+        except IntegrityError as error:
+            # Another issue took the same message first; the one-to-one column refused this.
+            raise ValidationError(
+                {"from_message": ["This message already has an issue."]}
+            ) from error
         return Response(
-            IssueSerializer(_issues(project).get(pk=issue.pk)).data,
+            _show(member, [_issues(project).get(pk=issue.pk)])[0],
             status=status.HTTP_201_CREATED,
         )
 
@@ -344,11 +391,11 @@ class IssueListView(APIView):
 class IssueDetailView(APIView):
     @extend_schema(responses={200: IssueSerializer}, summary="One issue")
     def get(self, request: Request, slug: str, key: str, number: int) -> Response:
-        _, project = project_access(_user(request), slug, key)
+        member, project = project_access(_user(request), slug, key)
         issue = _issues(project).filter(number=number).first()
         if issue is None:
             raise Http404
-        return Response(IssueSerializer(issue).data)
+        return Response(_show(member, [issue])[0])
 
     @extend_schema(
         request=IssueWriteSerializer,
@@ -365,4 +412,4 @@ class IssueDetailView(APIView):
         serializer = IssueWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         services.update_issue(issue, user, _write_data(member, project, serializer.validated_data))
-        return Response(IssueSerializer(_issues(project).get(pk=issue.pk)).data)
+        return Response(_show(member, [_issues(project).get(pk=issue.pk)])[0])

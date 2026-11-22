@@ -2,10 +2,10 @@ import { useState, type SubmitEvent } from "react";
 import { Link, NavLink, useOutletContext, useParams, useSearchParams } from "react-router";
 
 import {
-  useCreateIssue,
   useCreateLabel,
   useIssues,
   useLabels,
+  useOpenIssue,
   useProject,
   type IssueFilters,
   type Project as ProjectData,
@@ -85,7 +85,7 @@ export function Project() {
   const [search, setSearch] = useSearchParams();
   const filters = readFilters(search);
   const issues = useIssues(slug, key, filters);
-  const create = useCreateIssue(slug, key);
+  const create = useOpenIssue(slug);
   const [title, setTitle] = useState("");
   const today = new Date();
 
@@ -102,7 +102,7 @@ export function Project() {
     event.preventDefault();
     if (!title.trim()) return;
     create.mutate(
-      { title: title.trim() },
+      { key, body: { title: title.trim() } },
       {
         onSuccess: () => {
           setTitle("");

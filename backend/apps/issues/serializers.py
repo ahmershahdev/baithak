@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.chat.serializers import AuthorSerializer
@@ -47,8 +48,14 @@ class LabelSerializer(serializers.ModelSerializer[Label]):
         read_only_fields = ("id",)
 
 
+class IssueThreadSerializer(serializers.Serializer[None]):
+    channel = serializers.IntegerField()
+    seq = serializers.IntegerField(help_text="The message whose thread is the discussion.")
+
+
 class IssueSerializer(serializers.ModelSerializer[Issue]):
-    """Needs `project`, `assignee`, `created_by` loaded and `labels` prefetched."""
+    """Needs `project`, `assignee`, `created_by`, `message` loaded and `labels` prefetched, and
+    `readable` in the context: the ids of the reader's channels among the issues' messages."""
 
     ref = serializers.SerializerMethodField(help_text="KEY-12")
     status = serializers.ChoiceField(choices=STATUS_CHOICES, read_only=True)
@@ -56,6 +63,9 @@ class IssueSerializer(serializers.ModelSerializer[Issue]):
     assignee = AuthorSerializer(read_only=True, allow_null=True)
     created_by = AuthorSerializer(read_only=True, allow_null=True)
     labels = LabelSerializer(many=True, read_only=True)
+    thread = serializers.SerializerMethodField(
+        help_text="Where it is discussed; null when it has no message or the reader can't see it."
+    )
 
     class Meta:
         model = Issue
@@ -69,6 +79,7 @@ class IssueSerializer(serializers.ModelSerializer[Issue]):
             "assignee",
             "due",
             "labels",
+            "thread",
             "created_by",
             "created_at",
             "updated_at",
@@ -78,6 +89,15 @@ class IssueSerializer(serializers.ModelSerializer[Issue]):
 
     def get_ref(self, issue: Issue) -> str:
         return f"{issue.project.key}-{issue.number}"
+
+    @extend_schema_field(IssueThreadSerializer(allow_null=True))
+    def get_thread(self, issue: Issue) -> dict[str, int] | None:
+        message = issue.message
+        if message is None or message.seq is None:
+            return None
+        if message.channel_id not in self.context.get("readable", ()):
+            return None
+        return {"channel": message.channel_id, "seq": message.seq}
 
 
 class IssueWriteSerializer(serializers.Serializer[None]):
@@ -89,6 +109,17 @@ class IssueWriteSerializer(serializers.Serializer[None]):
     due = serializers.DateField(required=False, allow_null=True)
     label_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, max_length=20
+    )
+
+
+class FromMessageSerializer(serializers.Serializer[None]):
+    channel_id = serializers.IntegerField()
+    seq = serializers.IntegerField()
+
+
+class IssueCreateSerializer(IssueWriteSerializer):
+    from_message = FromMessageSerializer(
+        required=False, help_text="Open it from this message; its thread becomes the discussion."
     )
 
 

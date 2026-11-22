@@ -1,8 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Link, useOutletContext, useParams } from "react-router";
 
+import { useChannels, useMentionCandidates, type Channel } from "../../api/chat";
+import type { User } from "../../api/client";
 import { useIssue, useLabels, useProject, useUpdateIssue, type Issue } from "../../api/issues";
-import { ApiError, useMembers } from "../../api/workspaces";
+import { useMembers } from "../../api/workspaces";
+import { errorText } from "../../forms";
 import { Select } from "../../components/Select";
 import { ErrorMessage } from "../../components/ui";
 import { Panel } from "../../components/workspace";
@@ -16,11 +19,12 @@ import {
   type Status,
 } from "../../issues";
 import type { WorkspaceContext } from "./Shell";
+import { ThreadPanel } from "./Thread";
 
 const when = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
 
 export function IssuePage() {
-  const { workspace } = useOutletContext<WorkspaceContext>();
+  const { workspace, me } = useOutletContext<WorkspaceContext>();
   const { key = "", number = "" } = useParams();
   const issue = useIssue(workspace.slug, key, Number(number));
   if (issue.isPending) {
@@ -37,6 +41,7 @@ export function IssuePage() {
       slug={workspace.slug}
       projectKey={key}
       issue={issue.data}
+      me={me}
     />
   );
 }
@@ -45,10 +50,12 @@ function IssueEditor({
   slug,
   projectKey,
   issue,
+  me,
 }: {
   slug: string;
   projectKey: string;
   issue: Issue;
+  me: User;
 }) {
   const project = useProject(slug, projectKey);
   const labels = useLabels(slug, projectKey);
@@ -59,13 +66,7 @@ function IssueEditor({
   const readOnly = project.data?.archived ?? false;
   const chosen = new Set(issue.labels.map((label) => label.id));
 
-  const problem =
-    update.error instanceof ApiError
-      ? Object.values(update.error.problems.fields).flat().join(" ") ||
-        (update.error.problems.detail ?? update.error.message)
-      : update.error
-        ? "Could not reach Baithak. Try again."
-        : null;
+  const problem = errorText(update.error);
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,6 +122,7 @@ function IssueEditor({
             {when.format(new Date(issue.created_at))}
             {issue.closed_at && `, closed ${when.format(new Date(issue.closed_at))}`}
           </p>
+          {issue.thread && <Discussion slug={slug} me={me} thread={issue.thread} />}
         </div>
 
         <Panel className="flex flex-col gap-4 p-4">
@@ -221,5 +223,40 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       </span>
       {children}
     </div>
+  );
+}
+
+function Discussion({
+  slug,
+  me,
+  thread,
+}: {
+  slug: string;
+  me: User;
+  thread: NonNullable<Issue["thread"]>;
+}) {
+  const channels = useChannels(slug);
+  const channel = channels.data?.find((c) => c.id === thread.channel);
+  if (!channel) return null;
+  return <DiscussionThread slug={slug} me={me} channel={channel} seq={thread.seq} />;
+}
+
+function DiscussionThread({
+  slug,
+  me,
+  channel,
+  seq,
+}: {
+  slug: string;
+  me: User;
+  channel: Channel;
+  seq: number;
+}) {
+  // Only members reach an issue page: guests can't see projects.
+  const candidates = useMentionCandidates(slug, channel, me, true);
+  return (
+    <Panel className="mt-2 p-4">
+      <ThreadPanel slug={slug} channel={channel} me={me} seq={seq} candidates={candidates} />
+    </Panel>
   );
 }

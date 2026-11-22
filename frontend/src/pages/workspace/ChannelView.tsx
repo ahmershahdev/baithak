@@ -56,6 +56,7 @@ export function ChannelView() {
       channel={channel}
       me={me}
       canMentionChannel={workspace.role !== "guest"}
+      canSeeIssues={workspace.role !== "guest"}
     />
   );
 }
@@ -94,12 +95,14 @@ function Messages({
   me,
   slug,
   onOpenThread,
+  canSeeIssues,
 }: {
   messages: Message[];
   channel: Channel;
   me: User;
   slug: string;
   onOpenThread: (seq: number) => void;
+  canSeeIssues: boolean;
 }) {
   // Fixed when the channel is opened, so the line stays put while the marker moves past it.
   const [newFrom] = useState(() => firstUnread(messages, channel.last_read_seq, me.id));
@@ -124,6 +127,7 @@ function Messages({
             slug={slug}
             channel={channel}
             onOpenThread={onOpenThread}
+            canSeeIssues={canSeeIssues}
           />
         </Fragment>
       ))}
@@ -136,11 +140,13 @@ function Conversation({
   channel,
   me,
   canMentionChannel,
+  canSeeIssues,
 }: {
   slug: string;
   channel: Channel;
   me: User;
   canMentionChannel: boolean;
+  canSeeIssues: boolean;
 }) {
   const client = useQueryClient();
   const timeline = useTimeline(slug, channel.id);
@@ -271,6 +277,7 @@ function Conversation({
               me={me}
               slug={slug}
               onOpenThread={showThread}
+              canSeeIssues={canSeeIssues}
             />
           )}
         </div>
@@ -317,6 +324,7 @@ function Conversation({
           me={me}
           seq={openThread}
           candidates={candidates}
+          canSeeIssues={canSeeIssues}
           onClose={() => {
             showThread(null);
           }}

@@ -74,6 +74,14 @@ class Issue(models.Model):
     )
     due = models.DateField(null=True, blank=True)
     labels = models.ManyToManyField(Label, blank=True, related_name="issues")
+    # Its thread is the issue's discussion. Message rows are never deleted, only their text.
+    message = models.OneToOneField(
+        "chat.Message",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issue",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )

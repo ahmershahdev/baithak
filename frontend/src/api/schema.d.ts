@@ -775,7 +775,7 @@ export interface paths {
         /** A project's issues, newest first */
         get: operations["workspaces_projects_issues_list"];
         put?: never;
-        /** Open an issue */
+        /** Open an issue, on its own or from a message */
         post: operations["workspaces_projects_issues_create"];
         delete?: never;
         options?: never;
@@ -1028,6 +1028,10 @@ export interface components {
             results: components["schemas"]["FileHit"][];
             next: number | null;
         };
+        FromMessageRequest: {
+            channel_id: number;
+            seq: number;
+        };
         /**
          * @description * `admin` - admin
          *     * `member` - member
@@ -1058,7 +1062,10 @@ export interface components {
             email: string;
             role: components["schemas"]["InvitableRoleEnum"];
         };
-        /** @description Needs `project`, `assignee`, `created_by` loaded and `labels` prefetched. */
+        /**
+         * @description Needs `project`, `assignee`, `created_by`, `message` loaded and `labels` prefetched, and
+         *     `readable` in the context: the ids of the reader's channels among the issues' messages.
+         */
         Issue: {
             readonly number: number;
             /** @description KEY-12 */
@@ -1071,6 +1078,8 @@ export interface components {
             /** Format: date */
             readonly due: string | null;
             readonly labels: components["schemas"]["Label"][];
+            /** @description Where it is discussed; null when it has no message or the reader can't see it. */
+            readonly thread: components["schemas"]["IssueThread"] | null;
             readonly created_by: components["schemas"]["Author"] | null;
             /** Format: date-time */
             readonly created_at: string;
@@ -1079,14 +1088,7 @@ export interface components {
             /** Format: date-time */
             readonly closed_at: string | null;
         };
-        IssuePage: {
-            results: components["schemas"]["Issue"][];
-            /** @description `before` for the next page. */
-            next: number | null;
-            /** @description How many match the filters, on every page. */
-            total: number;
-        };
-        IssueWriteRequest: {
+        IssueCreateRequest: {
             title: string;
             description?: string;
             status?: components["schemas"]["StatusEnum"];
@@ -1095,6 +1097,20 @@ export interface components {
             /** Format: date */
             due?: string | null;
             label_ids?: number[];
+            /** @description Open it from this message; its thread becomes the discussion. */
+            from_message?: components["schemas"]["FromMessageRequest"];
+        };
+        IssuePage: {
+            results: components["schemas"]["Issue"][];
+            /** @description `before` for the next page. */
+            next: number | null;
+            /** @description How many match the filters, on every page. */
+            total: number;
+        };
+        IssueThread: {
+            channel: number;
+            /** @description The message whose thread is the discussion. */
+            seq: number;
         };
         Label: {
             readonly id: number;
@@ -1145,10 +1161,18 @@ export interface components {
             readonly mentions_channel: boolean;
             readonly reactions: components["schemas"]["Reaction"][];
             readonly attachments: components["schemas"]["Attachment"][];
+            /** @description The issue opened from it. Sent to every reader, guests too: only the ref. */
+            readonly issue: components["schemas"]["MessageIssue"] | null;
         };
         MessageHit: {
             channel: number;
             message: components["schemas"]["Message"];
+        };
+        MessageIssue: {
+            /** @description KEY-12 */
+            ref: string;
+            project: string;
+            number: number;
         };
         MessagePage: {
             messages: components["schemas"]["Message"][];
@@ -3126,7 +3150,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["IssueWriteRequest"];
+                "application/json": components["schemas"]["IssueCreateRequest"];
             };
         };
         responses: {

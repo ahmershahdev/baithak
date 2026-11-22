@@ -46,6 +46,7 @@ function message(seq: number, event: number, body: string, clientId = ""): Messa
     mentions_channel: false,
     reactions: [],
     attachments: [],
+    issue: null,
     author: { id: seq % 2 ? 1 : 2, username: seq % 2 ? "amna" : "bilal", display_name: "" },
     body,
     client_id: clientId,
@@ -851,5 +852,50 @@ describe("your settings", () => {
         time_zone: "Asia/Karachi",
       },
     ]);
+  });
+});
+
+describe("issues from messages", () => {
+  test("open an issue from a message and see it linked once it arrives", async () => {
+    const bodies: unknown[] = [];
+    const report = message(2, 2, "Upload does nothing on Safari\nTried twice");
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () =>
+        json(200, page([message(1, 1, "Hi"), report], 2)),
+      "GET /api/v1/workspaces/team/projects/": () =>
+        json(200, [
+          {
+            key: "BAI",
+            name: "Baithak",
+            description: "",
+            archived: false,
+            open_issues: 0,
+            created_at: "2026-11-01T10:00:00Z",
+          },
+        ]),
+      "POST /api/v1/workspaces/team/projects/BAI/issues/": async (request) => {
+        bodies.push(await request.json());
+        return json(201, {});
+      },
+    });
+    await openChannel();
+    const row = (await screen.findByText(/Upload does nothing/)).closest("li") as HTMLElement;
+
+    await userEvent.click(within(row).getByRole("button", { name: "Issue" }));
+    const form = await screen.findByRole("form", { name: "Open an issue" });
+    expect(within(form).getByLabelText("Issue title")).toHaveValue("Upload does nothing on Safari");
+    await userEvent.click(within(form).getByRole("button", { name: "Open issue" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("form", { name: "Open an issue" })).not.toBeInTheDocument();
+    });
+    expect(bodies).toEqual([
+      { title: "Upload does nothing on Safari", from_message: { channel_id: 5, seq: 2 } },
+    ]);
+    live(3, { ...report, event: 3, issue: { ref: "BAI-7", project: "BAI", number: 7 } });
+
+    const chip = await screen.findByRole("link", { name: /BAI-7/ });
+    expect(chip).toHaveAttribute("href", "/w/team/projects/BAI/issues/7");
+    expect(within(row).queryByRole("button", { name: "Issue" })).not.toBeInTheDocument();
   });
 });
