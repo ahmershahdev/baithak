@@ -206,16 +206,24 @@ M1 in progress. Merged so far:
   with about 120 days of conversations, threads, reactions and issues, seeded in the local
   database.
 
+- README rewritten for what Baithak does now, with demo data steps and five screenshots
+  (`docs/screenshots/`) taken by `npm run screenshots` (Playwright, signed in with a session
+  made in the backend container). Seed lines now take a topic and a weekday, so they rarely
+  repeat word for word. New dependency: `@playwright/test` 1.65.1, also for the end-to-end
+  tests next.
+
 ## Next session
 
 M5, in this order:
 
 M7, in this order:
 
-1. README setup steps and screenshots (from the seeded teams).
-2. End-to-end tests with Playwright for the main flows, including two browsers in one
+1. End-to-end tests with Playwright for the main flows, including two browsers in one
    channel.
-3. Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`.
+2. Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`.
+
+Small fixes seen in the screenshots: the signed-in name at the bottom of the sidebar is
+cut to one letter at 1440 px.
 
 ## Open questions
 

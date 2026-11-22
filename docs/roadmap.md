@@ -67,6 +67,6 @@ in CI, and seed data.
 ## M7. Docs and launch (target 2027-05-30)
 
 - [x] Seed data: two invented teams with a few months of conversations and issues
-- [ ] README setup steps and screenshots
+- [x] README setup steps and screenshots
 - [ ] End-to-end tests with Playwright for the main flows, including two browsers in one channel
 - [ ] Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`

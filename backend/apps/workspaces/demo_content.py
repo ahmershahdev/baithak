@@ -1,6 +1,7 @@
 """Invented teams for `manage.py seed_demo`. Every person, line and issue here is made up.
 
-{who} in a line becomes an @mention of someone else in the channel.
+In a line, {who} becomes an @mention of someone else in the channel, {thing} one of the
+team's topics and {day} a weekday, so the same sentence rarely comes back word for word.
 """
 
 from dataclasses import dataclass, field
@@ -33,6 +34,7 @@ class Team:
     project_name: str
     labels: list[tuple[str, str]]
     issues: list[str]
+    things: list[str]
 
 
 REPLIES = [
@@ -52,13 +54,13 @@ REPLIES = [
 
 GENERAL = [
     "Good morning everyone.",
-    "Reminder: team lunch is on Thursday, biryani from the usual place.",
+    "Reminder: team lunch is on {day}, biryani from the usual place.",
     "Office internet is down again, working from the cafe for an hour.",
     "Who has the meeting room booked at 3?",
     "Welcome to the team, {who}!",
     "Load shedding schedule changed, 2 to 4 pm in our area this week.",
     "Friday is a half day for Eid prep, plan accordingly.",
-    "Can someone share the notes from yesterday's call?",
+    "Can someone share the notes from {day}'s call about the {thing}?",
     "Chai is ready in the kitchen.",
     "Heads up: the parking gate code changed.",
 ]
@@ -70,6 +72,7 @@ RANDOM = [
     "Recommendations for a mechanical keyboard that isn't too loud?",
     "My cat walked across the keyboard and pushed to a branch. Not even joking.",
     "Weekend plans: sleeping and more sleeping.",
+    "Anyone up for chai at the dhaba on {day}?",
     "Found a great bookshop in Saddar, will share the location.",
     "Who wants to join a cricket game on Sunday morning?",
 ]
@@ -93,31 +96,32 @@ CHAI_CODE = Team(
             "dev",
             "Builds, reviews and broken things",
             [
-                "The staging deploy failed again, looking into it.",
-                "{who} can you review my pull request when you get a chance?",
-                "Upgrading the database driver today, expect a short restart.",
-                "Tests are flaky on CI, the upload test times out sometimes.",
-                "Is anyone else seeing the login page load slowly?",
-                "Merged the search changes, please pull before you start.",
-                "Who owns the payments service now?",
-                "The memory leak was a cache that never expired. Fixed.",
-                "Should we move the cron jobs to the task queue?",
-                "Release notes for 2.4 are in the doc, add anything I missed.",
-                "{who} the API returns 500 when the date is empty, can you check?",
-                "Pair on the migration this afternoon?",
+                "The {thing} deploy to staging failed, looking into it.",
+                "{who} can you review my pull request for the {thing}?",
+                "Upgrading the database driver on {day}, expect a short restart.",
+                "Tests are flaky on CI, the {thing} test times out sometimes.",
+                "Is anyone else seeing the {thing} load slowly?",
+                "Merged the {thing} changes, please pull before you start.",
+                "Who owns the {thing} code now?",
+                "The leak in the {thing} was a cache that never expired. Fixed.",
+                "Should we move the {thing} cron jobs to the task queue?",
+                "Release notes are in the doc, I added the {thing} changes.",
+                "{who} the API returns 500 on the {thing} when the date is empty, can you check?",
+                "Pair on the {thing} migration this afternoon?",
+                "Code freeze for the {thing} starts {day}.",
             ],
         ),
         ChannelPlan(
             "design",
             "Screens, type and colours",
             [
-                "New onboarding screens are up for feedback.",
-                "{who} the button contrast on dark mode is too low.",
-                "Trying a warmer accent colour, thoughts?",
-                "Icons exported, they're in the shared folder.",
-                "The empty states need copy, who writes them?",
-                "Usability test tomorrow with three people from the client side.",
-                "Mobile nav feels crowded, I'll try a bottom bar.",
+                "New {thing} screens are up for feedback.",
+                "{who} the button contrast on the {thing} is too low in dark mode.",
+                "Trying a warmer accent colour on the {thing}, thoughts?",
+                "Icons for the {thing} exported, they're in the shared folder.",
+                "The {thing} empty states need copy, who writes them?",
+                "Usability test of the {thing} on {day} with three people from the client side.",
+                "Mobile layout for the {thing} feels crowded, I'll try a bottom bar.",
             ],
         ),
         ChannelPlan("random", "Anything else", RANDOM),
@@ -125,10 +129,11 @@ CHAI_CODE = Team(
             "client-bazaar",
             "Shared with the Bazaar team",
             [
-                "Hi all, the checkout redesign is ready for review on staging.",
+                "Hi all, the {thing} redesign is ready for review on staging.",
                 "Daniel, can you confirm the delivery fee rules for outside the city?",
-                "We'll ship the order tracking page next Tuesday.",
-                "Thanks, the team loved the new product pages.",
+                "We'll ship the {thing} next {day}.",
+                "Thanks, the team loved the new {thing}.",
+                "Quick question on the {thing}: is the copy final?",
                 "Is the holiday sale banner still going live on the 20th?",
                 "Invoices for last month are in your inbox.",
             ],
@@ -166,6 +171,22 @@ CHAI_CODE = Team(
         "Empty states need copy",
         "Mobile navigation feels crowded",
     ],
+    things=[
+        "checkout",
+        "order tracking",
+        "search",
+        "login page",
+        "product pages",
+        "push notifications",
+        "cart",
+        "payments",
+        "admin dashboard",
+        "image uploads",
+        "delivery fee rules",
+        "onboarding",
+        "sale banner",
+        "wishlists",
+    ],
 )
 
 MONSOON_PRESS = Team(
@@ -186,15 +207,15 @@ MONSOON_PRESS = Team(
             "newsroom",
             "Today's stories",
             [
-                "Budget story needs one more source, {who} can you call the ministry?",
-                "Photos from the flood coverage are in, they're strong.",
-                "Front page meeting at 11.",
-                "The transport strike piece is filed, ready for edits.",
-                "{who} the headline is too long for mobile.",
-                "We have a correction on yesterday's market story.",
-                "Interview with the mayor moved to Thursday.",
+                "The {thing} story needs one more source, {who} can you make some calls?",
+                "Photos from the {thing} coverage are in, they're strong.",
+                "Front page meeting at 11, leading with the {thing}.",
+                "The {thing} piece is filed, ready for edits.",
+                "{who} the {thing} headline is too long for mobile.",
+                "We have a correction on yesterday's {thing} story.",
+                "Interview about the {thing} moved to {day}.",
                 "Breaking: power outage across the east of the city.",
-                "Who's covering the book fair this weekend?",
+                "Who's covering the {thing} this weekend?",
             ],
         ),
         ChannelPlan(
@@ -202,10 +223,10 @@ MONSOON_PRESS = Team(
             "Copy desk",
             [
                 "Style question: do we write per cent or percent?",
-                "Cut 200 words from the education feature.",
-                "{who} please check the spelling of the minister's name.",
-                "The long read is on the copy desk now.",
-                "Numbers in the chart don't match the text.",
+                "Cut 200 words from the {thing} feature.",
+                "{who} please check the spelling of the names in the {thing} piece.",
+                "The {thing} long read is on the copy desk now.",
+                "Numbers in the {thing} chart don't match the text.",
             ],
         ),
         ChannelPlan(
@@ -213,9 +234,9 @@ MONSOON_PRESS = Team(
             "Pictures and permissions",
             [
                 "Leila sent the market series, picking six.",
-                "We need a credit line for the archive photo.",
-                "Drone shots of the coastline are uploading.",
-                "{who} can you caption the protest set?",
+                "We need a credit line for the {thing} archive photo.",
+                "Drone shots for the {thing} are uploading.",
+                "{who} can you caption the {thing} set?",
             ],
             members=["ayesha", "kamran", "mehwish", "ali", "leila"],
         ),
@@ -235,6 +256,20 @@ MONSOON_PRESS = Team(
         "Faster article pages on slow connections",
         "Urdu headlines break the layout",
         "Archive pages before 2015 are missing images",
+    ],
+    things=[
+        "budget",
+        "flood",
+        "transport strike",
+        "book fair",
+        "election",
+        "water shortage",
+        "cricket final",
+        "heatwave",
+        "port expansion",
+        "school fees",
+        "fuel prices",
+        "metro line",
     ],
 )
 

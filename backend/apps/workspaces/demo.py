@@ -25,6 +25,7 @@ from apps.workspaces.demo_content import REACTIONS, REPLIES, TEAMS, ChannelPlan,
 from apps.workspaces.models import AuditEvent, Member, Workspace
 
 # Messages a channel gets on a busy weekday, at most; weekends are quieter.
+DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 BUSY_DAY = 6
 
 
@@ -151,7 +152,11 @@ class Builder:
 
     def _line(self, lines: list[str], author: User, people: list[User]) -> str:
         others = [p for p in people if p != author] or people
-        return self.rng.choice(lines).format(who="@" + self.rng.choice(others).username)
+        return self.rng.choice(lines).format(
+            who="@" + self.rng.choice(others).username,
+            thing=self.rng.choice(self.team.things),
+            day=self.rng.choice(DAYS),
+        )
 
     def _post(
         self, channel: Channel, author: User, body: str, at: datetime, parent: Message | None = None
