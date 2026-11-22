@@ -921,3 +921,36 @@ test("an issue update shows as a short line with no actions", async () => {
   expect(within(row).queryByRole("button")).not.toBeInTheDocument();
   expect(row).toHaveTextContent("bilal BAI-7: moved it to Done");
 });
+
+test("the Issues tab finds issues and opens them", async () => {
+  backend({
+    "GET /api/v1/workspaces/team/members/": () => json(200, []),
+    "GET /api/v1/workspaces/team/search/issues/": (request) => {
+      expect(new URL(request.url).searchParams.get("q")).toBe("upload");
+      return json(200, {
+        terms: ["upload"],
+        results: [
+          {
+            ref: "BAI-7",
+            project: "BAI",
+            number: 7,
+            title: "Upload fails on Safari",
+            description: "Steps:\n1. upload a file",
+            status: "in_progress",
+            assignee: null,
+          },
+        ],
+        next: null,
+      });
+    },
+  });
+  renderAt("/w/team/search?q=upload&kind=issues");
+
+  const results = await screen.findByRole("list", { name: "Results" });
+  const link = within(results).getByRole("link");
+
+  expect(screen.getByRole("tab", { name: "Issues" })).toHaveAttribute("aria-selected", "true");
+  expect(link).toHaveAttribute("href", "/w/team/projects/BAI/issues/7");
+  expect(link).toHaveTextContent("BAI-7Upload fails on SafariIn progress");
+  expect(within(link).getAllByText("upload", { selector: "mark" })).toHaveLength(1);
+});

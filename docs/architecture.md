@@ -208,6 +208,11 @@ stopwords), then requires every word as a prefix (`+deploy* +notes*`, bound as a
 not yet sent are never found. InnoDB adds rows to a FULLTEXT index at commit, so search tests use
 real transactions.
 
+`.../search/issues/` matches one FULLTEXT index over `issues_issue (title, description)` (MATCH
+must name exactly the index's columns). It follows the projects rule, not `readable_channels`:
+guests get 404. The author filter is who opened the issue, and the channel filter means "opened
+from a message in that channel", only for a channel the person can read.
+
 ## Notifications
 
 Sending a message (and editing it, for people newly named) creates one `notification` per
