@@ -68,6 +68,9 @@ in CI, and seed data.
 
 - [x] Seed data: two invented teams with a few months of conversations and issues
 - [x] README setup steps and screenshots
+- [x] Privacy page: what is kept, reCAPTCHA and Resend, retention, deletion
 - [x] Self-serve account deletion, with posts kept anonymised in shared workspaces
+- [x] Contributor docs: README with logo, CONTRIBUTING, code of conduct, security policy
 - [ ] End-to-end tests with Playwright for the main flows, including two browsers in one channel
-- [ ] Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`
+      (on hold)
+- [ ] Deploy at `baithak.ahmershah.dev`; tag `v1.0.0` (on hold, not confirmed yet)
