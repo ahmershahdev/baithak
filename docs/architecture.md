@@ -355,7 +355,7 @@ Every delivery that passes its check (GitHub's signature, an incoming webhook's 
 gets a `webhook_delivery` row; unsigned calls don't, so nobody can fill the log without
 the secret. One with nothing to post is finished at once, with why (`Connected.`,
 `Another repository.`, `Not JSON.`, `No usable text.`). One to post is saved as pending
-with its text, and `deliver` is queued after commit (`apps/integrations/deliveries.py`).
+with its text, and `deliver` is queued after commit (`queue` in `apps/integrations/tasks.py`).
 
 The task posts it and marks it posted, linking the message. Any error is written to
 `detail` and retried after 30 s, 1, 2, 4 and 8 minutes (at most an hour; six tries in

@@ -1,7 +1,7 @@
 """Recording deliveries and acting on them. Every delivery that passed its check gets a row:
-finished at once when there is nothing to post, otherwise pending until a worker posts it."""
+finished at once when there is nothing to post, otherwise pending until a worker posts it
+(queued by apps/integrations/tasks.py)."""
 
-from django.db import transaction
 from django.utils import timezone
 
 from apps.chat import messages
@@ -19,21 +19,6 @@ def finished(webhook: Webhook, event: str, status: str, detail: str, external_id
         detail=detail,
         finished_at=timezone.now(),
     )
-
-
-def accept(webhook: Webhook, event: str, text: str, external_id: str = "") -> WebhookDelivery:
-    """Save it as pending; a worker posts it once the row is committed."""
-    from apps.integrations.tasks import deliver
-
-    delivery = WebhookDelivery.objects.create(
-        workspace_id=webhook.workspace_id,
-        webhook=webhook,
-        event=event,
-        external_id=external_id,
-        text=text,
-    )
-    transaction.on_commit(lambda: deliver.delay(delivery.pk))
-    return delivery
 
 
 def _finish(delivery: WebhookDelivery, status: str, detail: str) -> None:

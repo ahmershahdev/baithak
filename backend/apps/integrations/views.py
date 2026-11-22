@@ -19,7 +19,7 @@ from apps.chat.access import channel_access
 from apps.core import github, webhooks
 from apps.core.channels import CONVERSATIONS, ChannelKind
 from apps.core.roles import Role, is_admin
-from apps.integrations import deliveries
+from apps.integrations import deliveries, tasks
 from apps.integrations.models import Webhook
 from apps.integrations.serializers import (
     DeliverySerializer,
@@ -184,7 +184,7 @@ class GitHubDeliveryView(APIView):
         elif text is None:
             reason = "Not an event that is posted."
         else:
-            deliveries.accept(webhook, event, text, external_id)
+            tasks.queue(webhook, event, text, external_id)
             return Response(QUEUED, status=status.HTTP_202_ACCEPTED)
         deliveries.finished(webhook, event, "ignored", reason, external_id)
         return Response({"detail": f"Ignored: {reason}"}, status=status.HTTP_202_ACCEPTED)
@@ -217,5 +217,5 @@ class IncomingDeliveryView(APIView):
         if webhook.channel.archived:
             deliveries.finished(webhook, "message", "ignored", "The channel is archived.")
             return Response({"detail": "The channel is archived."}, status=status.HTTP_409_CONFLICT)
-        deliveries.accept(webhook, "message", serializer.validated_data["text"])
+        tasks.queue(webhook, "message", serializer.validated_data["text"])
         return Response(QUEUED, status=status.HTTP_202_ACCEPTED)

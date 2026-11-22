@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.chat.models import Channel
-from apps.integrations import deliveries
+from apps.integrations import tasks
 from apps.workspaces.models import Workspace
 from tests.accounts.factories import make_user
 
@@ -21,7 +21,7 @@ def _deliver_now(monkeypatch: pytest.MonkeyPatch) -> None:
     def at_once(work: Callable[[], object]) -> None:
         work()
 
-    monkeypatch.setattr(deliveries, "transaction", SimpleNamespace(on_commit=at_once))
+    monkeypatch.setattr(tasks, "transaction", SimpleNamespace(on_commit=at_once))
 
 
 @pytest.fixture
