@@ -42,8 +42,8 @@ English.
 - **Workspaces and channels.** Public and private channels, members and roles (owner, admin,
   member, and guests who use direct messages only), invitations by email, channel topics and
   an audit log.
-- **Messages.** Live messages over WebSockets, threads, direct and group messages, mentions,
-  reactions, edits and deletes, typing and online status, and unread counts that stay right
+- **Messages.** Live messages over WebSockets with Discord-style formatting, threads, direct and
+  group messages, mentions, reactions, edits and deletes, typing and online status, and unread counts that stay right
   across devices.
 - **Files and search.** File and image uploads with previews, and full-text search over
   messages, files and issues, limited to what the person can see.

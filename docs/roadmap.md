@@ -72,6 +72,7 @@ in CI, and seed data.
 - [x] Self-serve account deletion, with posts kept anonymised in shared workspaces
 - [x] Contributor docs: README with logo, CONTRIBUTING, code of conduct, security policy
 - [x] Guests limited to direct and group messages
+- [x] Discord-style message formatting, rendered without HTML
 - [ ] End-to-end tests with Playwright for the main flows, including two browsers in one channel
       (on hold)
 - [ ] Deploy at `baithak.ahmershah.dev`; tag `v1.0.0` (on hold, not confirmed yet)

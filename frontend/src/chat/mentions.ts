@@ -7,10 +7,15 @@ export type Segment = { text: string } | { text: string; mention: "person" | "me
 
 /** Split a body so the mentions the server confirmed can be shown as such. */
 export function segments(message: Message, meId: number): Segment[] {
+  return mentionSegments(message.body, message, meId);
+}
+
+/** The same for one piece of a formatted body; `message` says who was really mentioned. */
+export function mentionSegments(text: string, message: Message, meId: number): Segment[] {
   const people = new Map(message.mentions.map((m) => [m.username, m.id]));
   const out: Segment[] = [];
   let last = 0;
-  for (const match of message.body.matchAll(MENTION)) {
+  for (const match of text.matchAll(MENTION)) {
     const raw = match[1] ?? "";
     const handle = raw.toLowerCase().replace(/[._-]+$/, "");
     const kind =
@@ -24,11 +29,11 @@ export function segments(message: Message, meId: number): Segment[] {
     if (kind === null) continue;
     const start = match.index;
     const end = start + 1 + handle.length;
-    if (start > last) out.push({ text: message.body.slice(last, start) });
-    out.push({ text: message.body.slice(start, end), mention: kind });
+    if (start > last) out.push({ text: text.slice(last, start) });
+    out.push({ text: text.slice(start, end), mention: kind });
     last = end;
   }
-  if (last < message.body.length) out.push({ text: message.body.slice(last) });
+  if (last < text.length) out.push({ text: text.slice(last) });
   return out;
 }
 

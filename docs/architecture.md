@@ -150,6 +150,20 @@ and `@channel` counts only from someone who isn't a guest. The result is stored 
 app highlights only what the server confirmed, and the composer offers people after `@`: the
 channel's members for a private channel, the workspace's non-guests for a public one.
 
+## Message formatting
+
+Messages use Discord-style Markdown, stored as typed and formatted on the client by
+`frontend/src/chat/format.ts`: `**bold**`, `*italic*` or `_italic_` (only at word edges, so
+snake_case stays), `__underline__`, `~~strike~~`, `||spoiler||`, `` `code` ``, fenced code blocks
+with an optional language, `> ` quotes, `-` or `*` and `1.` lists, `#` to `###` headings, bare
+`http(s)` URLs and `[text](https://...)` links. A backslash keeps a mark as typed. The parser
+builds a tree that `components/Formatted.tsx` renders as React elements, so no user text ever
+becomes HTML, and links only ever point to `http` or `https`. Mentions are highlighted inside
+the formatted text, never inside code. The server reads code the same way when it parses
+mentions (`apps/core/mentions.py`), so a handle shown as code notifies nobody. Messages from
+apps keep their own rule: plain text with links only into GitHub. Search results and
+notifications show the text as typed.
+
 ## Reactions
 
 A reaction is one row per person and emoji. `apps/core/reactions.py` accepts exactly one
@@ -474,5 +488,4 @@ when the channel opens and stays there while the marker moves past it.
 
 ## Open questions
 
-- Message formatting: a small Markdown subset rendered on the client, and which parts are allowed.
 - Whether HolidayOps working days feed quiet hours and issue due dates.

@@ -22,6 +22,9 @@ from apps.core.roles import Role
         ("@channels is a person", {"channels"}, False),
         ("@ alone", set(), False),
         ("@_amna starts badly", set(), False),
+        ("`@amna` is quoted, @bilal is not", {"bilal"}, False),
+        ("```\n@channel in a block\n``` then @amna", {"amna"}, False),
+        ("an open ``` @amna", {"amna"}, False),
     ],
 )
 def test_parse(body: str, handles: set[str], channel: bool) -> None:

@@ -147,6 +147,11 @@ signed-in person with Settings and Sign out under their name), and the page on `
 On narrow screens the sidebar sits on top and the account block moves below the page. A thread
 opens beside the channel on wide screens and full screen on narrow ones.
 
+Formatted messages keep to the tokens: inline code and code blocks on `surface-sunken` in the
+mono font, quotes behind a `border-strong` rule in `text-muted`, links in `info` (neel) with an
+underline so they never look like the brand red, and spoilers as a solid `text` bar until
+pressed. Headings in a message are Fraunces at `xl`, `lg` and `base` for `#`, `##` and `###`.
+
 Messages from the same sender within five minutes are grouped under one name and avatar.
 Messages with no author show as "Deleted account" and are never grouped, since two deleted
 accounts look the same.

@@ -10,14 +10,7 @@ import {
 
 import { deleteMessage, editMessage, react, remember, type Channel } from "../api/chat";
 import { ApiError } from "../api/workspaces";
-import {
-  activeQuery,
-  insertMention,
-  mentionsMe,
-  segments,
-  suggest,
-  type Candidate,
-} from "../chat/mentions";
+import { activeQuery, insertMention, mentionsMe, suggest, type Candidate } from "../chat/mentions";
 import { QUICK_REACTIONS, reactedByMe, whoReacted } from "../chat/reactions";
 import { typingText, type Person } from "../chat/presence";
 import {
@@ -29,6 +22,7 @@ import {
   type Attachment,
 } from "../chat/files";
 import type { Message } from "../chat/timeline";
+import { Formatted } from "./Formatted";
 import { IssueChip, IssueFromMessage } from "./IssueFromMessage";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
@@ -94,12 +88,6 @@ function ReactionPicker({
 
 const actionClass = "rounded-md px-2 py-1 text-xs font-semibold hover:bg-bg-subtle";
 
-const mentionClass = {
-  person: "font-semibold text-accent-text",
-  me: "rounded bg-mention px-0.5 font-semibold ring-1 ring-mention-edge",
-  channel: "rounded bg-mention px-0.5 font-semibold ring-1 ring-mention-edge",
-};
-
 function Attachments({ attachments }: { attachments: Attachment[] }) {
   return (
     <ul aria-label="Files" className="mt-1 flex flex-wrap gap-2">
@@ -152,45 +140,45 @@ function Attachments({ attachments }: { attachments: Attachment[] }) {
   );
 }
 
-// Only an app's own messages get links, and only into GitHub (apps/core/github.py); what
-// people may format is still an open question.
+// An app's message gets links only into GitHub (apps/core/github.py); people's messages are
+// formatted by components/Formatted.tsx.
 const GITHUB_LINK = /^https:\/\/github\.com\/\S+$/;
 
-function Body({ message, meId }: { message: Message; meId: number }) {
-  if (message.kind === "integration") {
-    return (
-      <>
-        {message.body.split(/(\s+)/).map((part, index) =>
-          GITHUB_LINK.test(part) ? (
-            <a
-              key={index}
-              href={part}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-accent-text underline"
-            >
-              {part}
-            </a>
-          ) : (
-            part
-          ),
-        )}
-      </>
-    );
-  }
+function IntegrationBody({ message }: { message: Message }) {
   return (
     <>
-      {segments(message, meId).map((part, index) =>
-        "mention" in part ? (
-          <span key={index} className={mentionClass[part.mention]}>
-            {part.text}
-          </span>
+      {message.body.split(/(\s+)/).map((part, index) =>
+        GITHUB_LINK.test(part) ? (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-accent-text underline"
+          >
+            {part}
+          </a>
         ) : (
-          part.text
+          part
         ),
       )}
     </>
   );
+}
+
+function MessageText({ message, meId }: { message: Message; meId: number }) {
+  const edited = message.edited_at && (
+    <span className="ml-1 text-xs text-text-subtle">(edited)</span>
+  );
+  if (message.kind === "integration") {
+    return (
+      <p className="break-words whitespace-pre-wrap">
+        <IntegrationBody message={message} />
+        {edited}
+      </p>
+    );
+  }
+  return <Formatted message={message} meId={meId} trailing={edited} />;
 }
 
 export function MessageRow({
@@ -360,10 +348,7 @@ export function MessageRow({
             </div>
           </div>
         ) : (
-          <p className="break-words whitespace-pre-wrap">
-            <Body message={message} meId={meId} />
-            {message.edited_at && <span className="ml-1 text-xs text-text-subtle">(edited)</span>}
-          </p>
+          <MessageText message={message} meId={meId} />
         )}
         {onOpenThread && threadSeq !== null && message.reply_count > 0 && (
           <button
@@ -790,7 +775,10 @@ export function Composer({
               </>
             )}
             {footer ?? (
-              <span className="text-xs text-text-subtle">
+              <span
+                className="text-xs text-text-subtle"
+                title="**bold**  *italic*  __underline__  ~~strike~~  `code`  ```code block```  > quote  - list  ||spoiler||"
+              >
                 Enter to send, Shift+Enter for a new line
               </span>
             )}
