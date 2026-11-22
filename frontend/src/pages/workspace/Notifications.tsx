@@ -3,8 +3,7 @@ import { Link, useOutletContext } from "react-router";
 import { useChannels } from "../../api/chat";
 import { useMarkNotificationsRead, useNotifications } from "../../api/notifications";
 import { channelTitle } from "../../chat/conversations";
-import { describe, preview } from "../../chat/notifications";
-import { resultHref } from "../../chat/search";
+import { describe, notificationHref, notificationText, sender } from "../../chat/notifications";
 import { ErrorMessage } from "../../components/ui";
 import { Avatar, PageHeader, Panel } from "../../components/workspace";
 import type { WorkspaceContext } from "./Shell";
@@ -26,7 +25,7 @@ export function Notifications() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notifications"
-        intro="Mentions and messages to you. Reading the conversation clears them."
+        intro="Mentions, messages to you and issues assigned to you. Reading the conversation or opening the notice clears it."
         action={
           unread > 0 ? (
             <button
@@ -49,19 +48,22 @@ export function Notifications() {
       )}
       {notifications.isError && <ErrorMessage>Could not load notifications.</ErrorMessage>}
       {notifications.data && items.length === 0 && (
-        <p className="text-text-muted">Nothing yet. Mentions and direct messages show up here.</p>
+        <p className="text-text-muted">
+          Nothing yet. Mentions, direct messages and issues assigned to you show up here.
+        </p>
       )}
       {items.length > 0 && (
         <Panel className="settle">
           <ul aria-label="Notifications" className="divide-y divide-border">
             {items.map((item) => {
-              const author = item.message.author;
+              const author = sender(item);
               const name = author ? author.display_name || author.username : "Someone";
-              const where = titles.get(item.channel) ?? "a channel";
+              const where =
+                (item.channel === null ? undefined : titles.get(item.channel)) ?? "a channel";
               return (
                 <li key={item.id}>
                   <Link
-                    to={resultHref(slug, item.channel, item.message.parent_seq)}
+                    to={notificationHref(slug, item)}
                     onClick={() => {
                       if (!item.read) markRead.mutate({ ids: [item.id] });
                     }}
@@ -81,7 +83,7 @@ export function Notifications() {
                         </time>
                       </span>
                       <span className="mt-0.5 block text-sm text-text-muted">
-                        {preview(item.message.body) || "Shared a file"}
+                        {notificationText(item)}
                       </span>
                     </span>
                     {!item.read && (

@@ -1224,22 +1224,34 @@ export interface components {
             results: components["schemas"]["MessageHit"][];
             next: number | null;
         };
+        /** @description Either `channel` and `message` are set, or `issue` (kind `assigned`). */
         Notification: {
             readonly id: number;
             readonly kind: components["schemas"]["NotificationKindEnum"];
-            readonly channel: number;
-            readonly message: components["schemas"]["Message"];
+            readonly channel: number | null;
+            readonly message: components["schemas"]["Message"] | null;
+            readonly issue: components["schemas"]["NotificationIssue"] | null;
+            /** @description Who assigned the issue; null for message notifications (see the author). */
+            readonly actor: components["schemas"]["Author"] | null;
             /** Format: date-time */
             readonly created_at: string;
             readonly read: boolean;
+        };
+        NotificationIssue: {
+            /** @description KEY-12 */
+            ref: string;
+            project: string;
+            number: number;
+            title: string;
         };
         /**
          * @description * `mention` - mention
          *     * `direct` - direct
          *     * `channel` - channel
+         *     * `assigned` - assigned
          * @enum {string}
          */
-        NotificationKindEnum: "mention" | "direct" | "channel";
+        NotificationKindEnum: "mention" | "direct" | "channel" | "assigned";
         NotificationPage: {
             unread: number;
             results: components["schemas"]["Notification"][];

@@ -9,6 +9,7 @@ class Kind(StrEnum):
     MENTION = "mention"
     DIRECT = "direct"
     CHANNEL = "channel"
+    ASSIGNED = "assigned"
 
 
 def recipients(
@@ -32,6 +33,14 @@ def recipients(
     if author_id is not None:
         found.pop(author_id, None)
     return found
+
+
+def assignee_to_tell(*, actor_id: int | None, before: int | None, after: int | None) -> int | None:
+    """Who to tell that an issue is now theirs: the new assignee, unless nothing changed or they
+    assigned it to themselves."""
+    if after is None or after in (before, actor_id):
+        return None
+    return after
 
 
 # Emails go out for these only; @channel would mail everyone for every announcement.

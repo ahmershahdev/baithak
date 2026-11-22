@@ -2,7 +2,7 @@ from datetime import time
 
 import pytest
 
-from apps.core.notifications import Kind, in_quiet_hours, recipients
+from apps.core.notifications import Kind, assignee_to_tell, in_quiet_hours, recipients
 
 AUTHOR, BILAL, SARA, ZAIN = 1, 2, 3, 4
 
@@ -72,3 +72,20 @@ def test_a_message_whose_author_is_gone_still_tells_people() -> None:
 )
 def test_in_quiet_hours(now: time, start: time | None, end: time | None, quiet: bool) -> None:
     assert in_quiet_hours(now, start, end) is quiet
+
+
+@pytest.mark.parametrize(
+    ("actor", "before", "after", "expected"),
+    [
+        (1, None, 2, 2),
+        (1, 3, 2, 2),
+        (1, 2, 2, None),
+        (1, 2, None, None),
+        (2, None, 2, None),
+        (None, None, 2, 2),
+    ],
+)
+def test_assignee_to_tell(
+    actor: int | None, before: int | None, after: int | None, expected: int | None
+) -> None:
+    assert assignee_to_tell(actor_id=actor, before=before, after=after) == expected

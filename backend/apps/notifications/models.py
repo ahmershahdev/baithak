@@ -14,8 +14,19 @@ class Notification(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
     )
     kind = models.CharField(max_length=10, choices=[(k.value, k.name.title()) for k in Kind])
-    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="+")
-    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="notifications")
+    # A notification is about a message (channel and message set) or an issue (issue set).
+    channel = models.ForeignKey(
+        Channel, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
+    )
+    issue = models.ForeignKey(
+        "issues.Issue", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
     emailed_at = models.DateTimeField(null=True, blank=True)
@@ -31,4 +42,4 @@ class Notification(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.kind} for {self.user_id} on {self.message_id}"
+        return f"{self.kind} for {self.user_id} on {self.message_id or self.issue_id}"

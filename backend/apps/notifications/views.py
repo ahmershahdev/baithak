@@ -1,7 +1,7 @@
 from typing import cast
 
 from django.db import transaction
-from django.db.models import QuerySet, prefetch_related_objects
+from django.db.models import Q, QuerySet, prefetch_related_objects
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.request import Request
@@ -12,6 +12,8 @@ from apps.accounts.models import User
 from apps.chat import events
 from apps.chat.access import readable_channels
 from apps.chat.serializers import MESSAGE_PREFETCH
+from apps.core import issues as issue_rules
+from apps.core.roles import Role
 from apps.notifications.models import Notification
 from apps.notifications.serializers import (
     MarkReadSerializer,
@@ -26,9 +28,13 @@ PAGE_SIZE = 30
 
 
 def _mine(member: Member) -> QuerySet[Notification]:
-    """The person's notifications in channels they can still read."""
+    """The person's notifications in channels they can still read, and about issues while they
+    can see projects."""
+    visible = Q(channel__in=readable_channels(member).values("pk"))
+    if issue_rules.can_view(Role(member.role)):
+        visible |= Q(issue__isnull=False)
     return Notification.objects.for_workspace(member.workspace).filter(
-        user_id=member.user_id, channel__in=readable_channels(member).values("pk")
+        visible, user_id=member.user_id
     )
 
 
@@ -40,14 +46,16 @@ class NotificationListView(APIView):
     )
     def get(self, request: Request, slug: str) -> Response:
         member = membership(cast(User, request.user), slug)
-        found = _mine(member).select_related("message__author", "message__parent")
+        found = _mine(member).select_related(
+            "message__author", "message__parent", "issue__project", "actor"
+        )
         before = request.query_params.get("before_id")
         if before is not None and before.isdigit():
             found = found.filter(pk__lt=int(before))
         page = list(found.order_by("-pk")[: PAGE_SIZE + 1])
         more = len(page) > PAGE_SIZE
         page = page[:PAGE_SIZE]
-        prefetch_related_objects([n.message for n in page], *MESSAGE_PREFETCH)
+        prefetch_related_objects([n.message for n in page if n.message], *MESSAGE_PREFETCH)
         return Response(
             {
                 "unread": _mine(member).filter(read_at__isnull=True).count(),
