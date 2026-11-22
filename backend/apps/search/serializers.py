@@ -3,9 +3,11 @@ from typing import Any
 from rest_framework import serializers
 
 from apps.chat.models import Message
-from apps.chat.serializers import MessageSerializer
+from apps.chat.serializers import AuthorSerializer, MessageSerializer
 from apps.files.models import Attachment
 from apps.files.serializers import AttachmentSerializer
+from apps.issues.models import Issue
+from apps.issues.serializers import STATUS_CHOICES
 
 
 class SearchParamsSerializer(serializers.Serializer[None]):
@@ -46,6 +48,27 @@ class FileHitSerializer(serializers.Serializer[Attachment]):
     message_seq = serializers.IntegerField(source="message.seq", allow_null=True)
     parent_seq = serializers.IntegerField(source="message.parent.seq", allow_null=True)
     file = AttachmentSerializer(source="*")
+
+
+class IssueHitSerializer(serializers.ModelSerializer[Issue]):
+    ref = serializers.SerializerMethodField(help_text="KEY-12")
+    project = serializers.CharField(source="project.key")
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+    assignee = AuthorSerializer(allow_null=True)
+
+    class Meta:
+        model = Issue
+        fields = ("ref", "project", "number", "title", "description", "status", "assignee")
+        read_only_fields = fields
+
+    def get_ref(self, issue: Issue) -> str:
+        return f"{issue.project.key}-{issue.number}"
+
+
+class IssueResultsSerializer(serializers.Serializer[None]):
+    terms = serializers.ListField(child=serializers.CharField())
+    results = IssueHitSerializer(many=True)
+    next = serializers.IntegerField(allow_null=True)
 
 
 class FileResultsSerializer(serializers.Serializer[None]):

@@ -135,7 +135,7 @@ M1 in progress. Merged so far:
 - Search: messages and file names through MySQL FULLTEXT, always through `readable_channels`,
   every word as a prefix, newest first with a cursor, filters for channel, person and day. A
   search box tops the sidebar; `/w/<slug>/search` has filters, Messages and Files tabs,
-  highlighted words and links into the channel or thread. Issues join search in M5.
+  highlighted words and links into the channel or thread.
 
 - In-app notifications: a row per recipient for mentions, direct and group messages and
   `@channel`, cleared by reading the channel, live through the socket, only from channels the
@@ -182,12 +182,17 @@ M1 in progress. Merged so far:
   ("Amna assigned you BAI-7", linking to the issue), taken back if it is reassigned before they
   read it. Not emailed. Notifications now point at a message or an issue.
 
+- Issues in search: FULLTEXT over title and description, an Issues tab on the search page (not
+  for guests, who get 404), filters by who opened it, day, and the channel it was opened from.
+  M5 is complete.
+
 ## Next session
 
 M5, in this order:
 
-1. Issues in search (promised for M5 in the search item, not yet done).
-2. Then release M5 when asked, and start M6 (GitHub webhooks).
+1. Release M5 as `v0.5.0` when asked, and close its milestone.
+2. M6: the GitHub webhook (signature verified, pull request and issue events posted into the
+   channel that follows the repository).
 
 ## Open questions
 

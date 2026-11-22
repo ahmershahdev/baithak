@@ -72,6 +72,7 @@ ENDPOINTS: list[tuple[str, str, str, dict[str, Any] | None]] = [
     ("notifications:read", "post", "/api/v1/workspaces/{slug}/notifications/read/", {"all": True}),
     ("search:messages", "get", "/api/v1/workspaces/{slug}/search/messages/?q=secret", None),
     ("search:files", "get", "/api/v1/workspaces/{slug}/search/files/?q=secret", None),
+    ("search:issues", "get", "/api/v1/workspaces/{slug}/search/issues/?q=secret", None),
     ("files:download", "get", "/api/v1/workspaces/{slug}/files/not-a-real-token/", None),
     ("channels:members", "get", CHANNEL + "members/", None),
     ("channels:members", "post", CHANNEL + "members/", {"user_id": 1}),

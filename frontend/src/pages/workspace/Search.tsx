@@ -4,8 +4,10 @@ import { Link, useOutletContext, useSearchParams } from "react-router";
 import { useChannels } from "../../api/chat";
 import {
   useFileSearch,
+  useIssueSearch,
   useMessageSearch,
   type FileHit,
+  type IssueHit,
   type MessageHit,
   type SearchKind,
   type SearchParams,
@@ -14,12 +16,20 @@ import { useMembers } from "../../api/workspaces";
 import { channelTitle } from "../../chat/conversations";
 import { formatSize } from "../../chat/files";
 import { highlight, resultHref } from "../../chat/search";
+import { preview } from "../../chat/notifications";
+import { STATUS_LABELS } from "../../issues";
 import { Select } from "../../components/Select";
 import { ErrorMessage } from "../../components/ui";
 import { Avatar, PageHeader, Panel } from "../../components/workspace";
 import type { WorkspaceContext } from "./Shell";
 
 const when = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
+
+const TAB_LABELS: Record<SearchKind, string> = {
+  messages: "Messages",
+  files: "Files",
+  issues: "Issues",
+};
 
 const inputClass =
   "h-10 rounded-lg border border-border-strong bg-bg px-3 text-sm outline-none focus-visible:border-focus-ring focus-visible:ring-4 focus-visible:ring-focus-ring/20";
@@ -56,7 +66,10 @@ export function Search() {
   const slug = workspace.slug;
   const [search, setSearch] = useSearchParams();
   const params = readParams(search);
-  const kind: SearchKind = search.get("kind") === "files" ? "files" : "messages";
+  const canSeeIssues = workspace.role !== "guest";
+  const tabs: SearchKind[] = canSeeIssues ? ["messages", "files", "issues"] : ["messages", "files"];
+  const asked = search.get("kind");
+  const kind: SearchKind = tabs.find((tab) => tab === asked) ?? "messages";
   const [draft, setDraft] = useState(params.q);
   const channels = useChannels(slug);
   const members = useMembers(slug);
@@ -80,7 +93,11 @@ export function Search() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Search"
-        intro="Messages and files in the channels and conversations you can read."
+        intro={
+          canSeeIssues
+            ? "Messages and files in the channels and conversations you can read, and issues."
+            : "Messages and files in the channels and conversations you can read."
+        }
       />
       <form role="search" onSubmit={submit} className="flex flex-col gap-3">
         <div className="flex gap-2">
@@ -159,18 +176,18 @@ export function Search() {
       </form>
 
       <div role="tablist" aria-label="What to find" className="flex gap-1">
-        {(["messages", "files"] as const).map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
             aria-selected={kind === tab}
             onClick={() => {
-              update({ kind: tab === "files" ? "files" : null });
+              update({ kind: tab === "messages" ? null : tab });
             }}
             className="rounded-lg px-3 py-1.5 text-sm font-semibold text-text-muted hover:bg-surface aria-selected:bg-surface aria-selected:text-text aria-selected:shadow-sm"
           >
-            {tab === "messages" ? "Messages" : "Files"}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
@@ -179,8 +196,10 @@ export function Search() {
         <p className="text-text-muted">Type a few words and press Enter.</p>
       ) : kind === "messages" ? (
         <MessageResults slug={slug} params={params} titles={titles} />
-      ) : (
+      ) : kind === "files" ? (
         <FileResults slug={slug} params={params} titles={titles} />
+      ) : (
+        <IssueResults slug={slug} params={params} />
       )}
     </div>
   );
@@ -321,6 +340,44 @@ function FileResults({
               className="rounded-lg px-3 py-1.5 text-sm font-semibold text-accent-text hover:bg-bg-subtle"
             >
               Open conversation
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <MoreButton results={results} />
+    </Panel>
+  );
+}
+
+function IssueResults({ slug, params }: { slug: string; params: SearchParams }) {
+  const results = useIssueSearch(slug, params);
+  const pages = results.data?.pages ?? [];
+  const hits: IssueHit[] = pages.flatMap((page) => page.results);
+  const terms = pages[0]?.terms ?? [];
+
+  const shown = resultState(results.isPending, results.isError, hits.length, terms);
+  if (shown) return shown;
+  return (
+    <Panel className="settle">
+      <ul aria-label="Results" className="divide-y divide-border">
+        {hits.map((hit) => (
+          <li key={hit.ref}>
+            <Link
+              to={`/w/${slug}/projects/${hit.project}/issues/${String(hit.number)}`}
+              className="flex flex-col gap-0.5 px-5 py-4 hover:bg-bg-subtle"
+            >
+              <span className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                <span className="font-mono text-text-subtle">{hit.ref}</span>
+                <span className="font-semibold">
+                  <Highlighted text={hit.title} terms={terms} />
+                </span>
+                <span className="text-xs text-text-subtle">{STATUS_LABELS[hit.status]}</span>
+              </span>
+              {hit.description && (
+                <span className="text-sm text-text-muted">
+                  <Highlighted text={preview(hit.description, 200)} terms={terms} />
+                </span>
+              )}
             </Link>
           </li>
         ))}

@@ -13,6 +13,8 @@ from apps.core.channels import ChannelKind
 from apps.core.roles import Role
 from apps.files import storage
 from apps.files.models import Attachment
+from apps.issues.models import Project
+from apps.issues.services import create_issue
 from apps.search.queries import PAGE_SIZE
 from apps.workspaces.models import Member, Workspace
 from tests.accounts.factories import make_user
@@ -231,3 +233,71 @@ class TestFiles:
         )
 
         assert find(signed_in, "files", q="contract")["results"] == []
+
+
+class TestIssues:
+    @pytest.fixture
+    def project(self, workspace: Workspace) -> Project:
+        return Project.objects.create(workspace=workspace, key="BAI", name="Baithak")
+
+    def refs(self, found: Any) -> list[str]:
+        return [hit["ref"] for hit in found["results"]]
+
+    def test_title_and_description_match_newest_first(
+        self, signed_in: APIClient, owner: User, project: Project
+    ) -> None:
+        create_issue(project, owner, {"title": "Uploads fail on Safari"})
+        create_issue(project, owner, {"title": "Crash", "description": "Only when uploading"})
+        create_issue(project, owner, {"title": "Unrelated"})
+
+        found = find(signed_in, "issues", q="upload")
+
+        assert self.refs(found) == ["BAI-2", "BAI-1"]
+        assert found["results"][1]["status"] == "todo"
+
+    def test_filters_by_who_opened_it_and_the_channel_it_came_from(
+        self,
+        signed_in: APIClient,
+        workspace: Workspace,
+        owner: User,
+        general: Channel,
+        project: Project,
+    ) -> None:
+        bilal = join(workspace, "bilal")
+        source, _ = messages.post(general, owner, "Uploads are broken")
+        create_issue(project, owner, {"title": "Uploads from chat", "message": source})
+        create_issue(project, bilal, {"title": "Uploads by Bilal"})
+
+        assert self.refs(find(signed_in, "issues", q="uploads", author="@bilal")) == ["BAI-2"]
+        assert self.refs(find(signed_in, "issues", q="uploads", channel=general.pk)) == ["BAI-1"]
+
+    def test_a_channel_you_cannot_read_finds_nothing(
+        self, api: APIClient, workspace: Workspace, owner: User, project: Project
+    ) -> None:
+        secret = Channel.objects.create(
+            workspace=workspace, name="secret", kind=ChannelKind.PRIVATE
+        )
+        ChannelMember.objects.create(channel=secret, user=owner)
+        source, _ = messages.post(secret, owner, "Salaries")
+        create_issue(project, owner, {"title": "Salaries sheet", "message": source})
+        api.force_authenticate(join(workspace, "bilal"))
+
+        assert self.refs(find(api, "issues", q="salaries")) == ["BAI-1"]
+        assert self.refs(find(api, "issues", q="salaries", channel=secret.pk)) == []
+
+    def test_guests_cannot_search_issues(
+        self, api: APIClient, workspace: Workspace, owner: User, project: Project
+    ) -> None:
+        create_issue(project, owner, {"title": "Uploads fail"})
+        api.force_authenticate(join(workspace, "guest", Role.GUEST))
+
+        assert api.get(f"{URL}issues/", {"q": "uploads"}).status_code == 404
+
+    def test_another_workspace_s_issues_are_never_found(
+        self, signed_in: APIClient, owner: User, project: Project
+    ) -> None:
+        other = Workspace.objects.create(name="Other", slug="other", created_by=owner)
+        elsewhere = Project.objects.create(workspace=other, key="OTH", name="Other")
+        create_issue(elsewhere, owner, {"title": "Uploads elsewhere"})
+
+        assert self.refs(find(signed_in, "issues", q="uploads")) == []

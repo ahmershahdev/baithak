@@ -8,10 +8,13 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.core.search import terms
+from apps.issues.access import projects_member
 from apps.search import queries
 from apps.search.serializers import (
     FileHitSerializer,
     FileResultsSerializer,
+    IssueHitSerializer,
+    IssueResultsSerializer,
     MessageHitSerializer,
     MessageResultsSerializer,
     SearchParamsSerializer,
@@ -42,8 +45,11 @@ class _SearchView(APIView):
     ) -> tuple[list[dict[str, Any]], int | None]:
         raise NotImplementedError
 
+    def _member(self, user: User, slug: str) -> Member:
+        return membership(user, slug)
+
     def _respond(self, request: Request, slug: str) -> Response:
-        member = membership(cast(User, request.user), slug)
+        member = self._member(cast(User, request.user), slug)
         words, filters, before_id = _params(request)
         if not words:
             return Response({"terms": [], "results": [], "next": None})
@@ -78,6 +84,25 @@ class FileSearchView(_SearchView):
         parameters=[SearchParamsSerializer],
         responses={200: FileResultsSerializer},
         summary="Search files you can read by name, newest first",
+    )
+    def get(self, request: Request, slug: str) -> Response:
+        return self._respond(request, slug)
+
+
+class IssueSearchView(_SearchView):
+    def _member(self, user: User, slug: str) -> Member:
+        return projects_member(user, slug)
+
+    def _search(
+        self, member: Member, words: list[str], filters: queries.Filters, before_id: int | None
+    ) -> tuple[list[dict[str, Any]], int | None]:
+        found, more = queries.issues(member, words, filters, before_id)
+        return [dict(IssueHitSerializer(hit).data) for hit in found], more
+
+    @extend_schema(
+        parameters=[SearchParamsSerializer],
+        responses={200: IssueResultsSerializer},
+        summary="Search issues by title and description, newest first; 404 for guests",
     )
     def get(self, request: Request, slug: str) -> Response:
         return self._respond(request, slug)

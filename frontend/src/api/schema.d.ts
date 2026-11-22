@@ -871,6 +871,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{slug}/search/issues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search issues by title and description, newest first; 404 for guests */
+        get: operations["workspaces_search_issues_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{slug}/search/messages/": {
         parameters: {
             query?: never;
@@ -1125,12 +1142,27 @@ export interface components {
             /** @description "moved it to Done" */
             readonly lines: string[];
         };
+        IssueHit: {
+            /** @description KEY-12 */
+            readonly ref: string;
+            project: string;
+            readonly number: number;
+            readonly title: string;
+            readonly description: string;
+            status: components["schemas"]["StatusEnum"];
+            assignee: components["schemas"]["Author"] | null;
+        };
         IssuePage: {
             results: components["schemas"]["Issue"][];
             /** @description `before` for the next page. */
             next: number | null;
             /** @description How many match the filters, on every page. */
             total: number;
+        };
+        IssueResults: {
+            terms: string[];
+            results: components["schemas"]["IssueHit"][];
+            next: number | null;
         };
         IssueThread: {
             channel: number;
@@ -3485,6 +3517,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileResults"];
+                };
+            };
+        };
+    };
+    workspaces_search_issues_retrieve: {
+        parameters: {
+            query: {
+                /** @description On or after this day. */
+                after?: string;
+                /** @description A @handle. */
+                author?: string;
+                /** @description On or before this day. */
+                before?: string;
+                /** @description The next page: `next` from the last. */
+                before_id?: number;
+                channel?: number;
+                /** @description Words to find, each as a prefix. */
+                q: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueResults"];
                 };
             };
         };
