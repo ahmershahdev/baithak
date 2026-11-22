@@ -94,7 +94,9 @@ class TestConnecting:
     ) -> None:
         hook = connect(api, general).json()
 
-        assert api.delete(f"{WEBHOOKS}{hook['id']}/").status_code == 204
+        removed = api.delete(f"{WEBHOOKS}{hook['id']}/")
+
+        assert removed.status_code == 204
         assert not Webhook.objects.exists()
         assert AuditEvent.objects.for_workspace(workspace).filter(action="webhook.delete").exists()
 

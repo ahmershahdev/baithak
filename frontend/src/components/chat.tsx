@@ -154,14 +154,14 @@ function Attachments({ attachments }: { attachments: Attachment[] }) {
 
 // Only an app's own messages get links, and only into GitHub (apps/core/github.py); what
 // people may format is still an open question.
-const GITHUB_LINK = /(https:\/\/github\.com\/\S+)/;
+const GITHUB_LINK = /^https:\/\/github\.com\/\S+$/;
 
 function Body({ message, meId }: { message: Message; meId: number }) {
   if (message.kind === "integration") {
     return (
       <>
-        {message.body.split(GITHUB_LINK).map((part, index) =>
-          index % 2 === 1 ? (
+        {message.body.split(/(\s+)/).map((part, index) =>
+          GITHUB_LINK.test(part) ? (
             <a
               key={index}
               href={part}
