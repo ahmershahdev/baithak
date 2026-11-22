@@ -17,15 +17,17 @@ from apps.accounts.models import User
 from apps.accounts.serializers import DetailSerializer
 from apps.chat import messages
 from apps.chat.access import channel_access
-from apps.core import github
+from apps.core import github, webhooks
 from apps.core.channels import CONVERSATIONS, ChannelKind
 from apps.core.roles import Role, is_admin
 from apps.integrations.models import Webhook
 from apps.integrations.serializers import (
+    IncomingSerializer,
     NewWebhookSerializer,
     WebhookCreateSerializer,
     WebhookSerializer,
 )
+from apps.integrations.throttles import PerWebhookThrottle
 from apps.workspaces import audit
 from apps.workspaces.access import membership
 from apps.workspaces.models import Member
@@ -53,7 +55,7 @@ class WebhookListView(APIView):
     @extend_schema(
         request=WebhookCreateSerializer,
         responses={201: NewWebhookSerializer, 400: DetailSerializer, 403: DetailSerializer},
-        summary="Connect a GitHub repository to a channel",
+        summary="Connect a GitHub repository, or make an incoming webhook, for a channel",
     )
     def post(self, request: Request, slug: str) -> Response:
         user, member = _admin(request, slug)
@@ -63,14 +65,17 @@ class WebhookListView(APIView):
         channel = channel_access(user, slug, data["channel_id"]).channel
         if ChannelKind(channel.kind) in CONVERSATIONS or channel.archived:
             raise ValidationError({"channel_id": ["Pick a channel that is not archived."]})
+        github_kind = data["kind"] == "github"
+        token = webhooks.new_token()
         with transaction.atomic():
             webhook = Webhook.objects.create(
                 workspace=member.workspace,
                 channel=channel,
                 kind=data["kind"],
-                repo=data["repo"],
-                token=secrets.token_urlsafe(24),
-                secret=secrets.token_urlsafe(32),
+                repo=data.get("repo", "") if github_kind else "",
+                name="" if github_kind else data["name"].strip(),
+                token=token if github_kind else webhooks.digest(token),
+                secret=secrets.token_urlsafe(32) if github_kind else "",
                 created_by=user,
             )
             audit.record(
@@ -78,9 +83,17 @@ class WebhookListView(APIView):
                 user,
                 "webhook.create",
                 webhook,
-                {"kind": webhook.kind, "repo": webhook.repo, "channel": channel.name},
+                {
+                    "kind": webhook.kind,
+                    "repo": webhook.repo,
+                    "name": webhook.name,
+                    "channel": channel.name,
+                },
             )
-        return Response(NewWebhookSerializer(webhook).data, status=status.HTTP_201_CREATED)
+        return Response(
+            NewWebhookSerializer(webhook, context={"token": token}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class WebhookDetailView(APIView):
@@ -96,7 +109,7 @@ class WebhookDetailView(APIView):
                 user,
                 "webhook.delete",
                 webhook,
-                {"kind": webhook.kind, "repo": webhook.repo},
+                {"kind": webhook.kind, "repo": webhook.repo, "name": webhook.name},
             )
             webhook.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -152,5 +165,39 @@ class GitHubDeliveryView(APIView):
             client_id=request.headers.get("X-GitHub-Delivery", "")[:64],
             kind="integration",
             sender_name="GitHub",
+        )
+        return Response({"detail": "Posted."}, status=status.HTTP_201_CREATED)
+
+
+class IncomingDeliveryView(APIView):
+    """Called by another tool with the secret URL; the URL is the proof (no session, no CSRF)."""
+
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    throttle_classes = (PerWebhookThrottle,)
+
+    @extend_schema(
+        request=IncomingSerializer,
+        responses={201: DetailSerializer, 400: DetailSerializer, 409: DetailSerializer},
+        summary="Post a message through an incoming webhook (called by other tools)",
+    )
+    def post(self, request: Request, token: str) -> Response:
+        webhook = (
+            Webhook.objects.filter(token=webhooks.digest(token), kind="incoming")
+            .select_related("channel")
+            .first()
+        )
+        if webhook is None:
+            raise Http404
+        serializer = IncomingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if webhook.channel.archived:
+            return Response({"detail": "The channel is archived."}, status=status.HTTP_409_CONFLICT)
+        messages.post(
+            webhook.channel,
+            None,
+            serializer.validated_data["text"],
+            kind="integration",
+            sender_name=webhook.name,
         )
         return Response({"detail": "Posted."}, status=status.HTTP_201_CREATED)

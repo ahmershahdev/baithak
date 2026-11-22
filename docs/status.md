@@ -192,14 +192,17 @@ M1 in progress. Merged so far:
   reading; pull request and issue events from that repository post a message from
   "GitHub" (kind `integration`, no author, links into GitHub). Redeliveries are stored once.
 
+- Incoming webhooks: admins make one per channel with a name on Settings and get its secret
+  URL once (only its SHA-256 is stored). Posting `{"text": ...}` adds a message under that
+  name. 30 calls a minute per webhook, whatever the caller's address.
+
 ## Next session
 
 M5, in this order:
 
 M6, in this order:
 
-1. Incoming webhooks with a secret URL per channel, rate limited.
-2. Webhook deliveries logged with their result; failed ones retried by Celery.
+1. Webhook deliveries logged with their result; failed ones retried by Celery.
 
 ## Open questions
 

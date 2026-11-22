@@ -27,14 +27,14 @@ export function useWebhooks(slug: string) {
   });
 }
 
-export function useConnectRepo(slug: string) {
+export function useCreateWebhook(slug: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { channel_id: number; repo: string }) =>
+    mutationFn: async (body: components["schemas"]["WebhookCreateRequest"]) =>
       unwrap(
         await api.POST("/api/v1/workspaces/{slug}/integrations/webhooks/", {
           params: { path: { slug } },
-          body: { kind: "github", ...body },
+          body,
         }),
       ),
     onSuccess: () => client.invalidateQueries({ queryKey: webhooksKey(slug) }),
