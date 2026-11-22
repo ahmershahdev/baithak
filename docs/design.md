@@ -82,9 +82,9 @@ would need dark text, which reads as a different brand.
 ## Theme switching
 
 `color-scheme: light dark` on `:root` follows the system. Setting `data-theme="light"` or
-`data-theme="dark"` on `<html>` overrides it; the person's choice is stored in their profile and
-applied before first paint. `light-dark()` needs Chrome 123, Firefox 120, Safari 17.5 (all 2024),
-which is the browser floor for Baithak.
+`data-theme="dark"` on `<html>` overrides it; the tokens support this, but there is no theme
+picker yet, so the system setting always decides. `light-dark()` needs Chrome 123, Firefox 120,
+Safari 17.5 (all 2024), which is the browser floor for Baithak.
 
 ## Tailwind
 
@@ -98,6 +98,11 @@ Inputs sit on `bg` inside `surface` cards: `border-strong` on `surface-raised` i
 under the 3:1 UI minimum, while on `bg` it passes in both themes. Field errors use `danger` text
 and are tied to the input with `aria-describedby` and `aria-invalid`.
 
+Destructive actions take two steps. The first is a quiet outlined button with `danger` text
+("Delete account"); the confirming one is a solid `danger-fill` button with `on-danger` text and
+words that say what is lost ("Delete my account for good"), next to Cancel. The brand red never
+marks a destructive action.
+
 Dropdowns use `components/Select.tsx`, never a native `select`: the open list of a native select
 is drawn by the browser and the OS and ignores the theme. Its list is a `surface-raised` popover
 like the workspace switcher, with the select-only combobox keyboard pattern, and it sends its
@@ -105,10 +110,10 @@ value with the form through a hidden input.
 
 ## Contrast
 
-`node frontend/scripts/check-contrast.mjs` checks every text pair at 4.5:1 and every UI part
-(borders on inputs, focus rings, presence dots) at 3:1, in both themes, and exits non-zero on a
-failure. It goes into the `frontend` CI job in M1. Any new color pair a component uses is added to
-the script's list first.
+`npm run contrast` (`frontend/scripts/check-contrast.mjs`) checks every text pair at 4.5:1 and
+every UI part (borders on inputs, focus rings, presence dots) at 3:1, in both themes, and exits
+non-zero on a failure. It runs in the `frontend` CI job. Any new color pair a component uses is
+added to the script's list first.
 
 ## Selection and scrollbars
 
@@ -133,6 +138,19 @@ and the form only. Headings are Fraunces with the soft and wonky axes (`.wonky`)
 - **Password strength**: four segments under the new-password field, red, mustard, then green,
   with zxcvbn's advice in words. It scores against the email, handle and name typed so far.
 
+## Workspace screens
+
+A two-column grid from medium widths: a 17rem sidebar on `bg-subtle` (wordmark, workspace
+switcher, role, search, notifications, channels, direct messages, workspace pages, then the
+signed-in person with Settings and Sign out under their name), and the page on `bg`, at most
+56rem wide. The sidebar is as tall as the window and scrolls; its parts never shrink to fit.
+On narrow screens the sidebar sits on top and the account block moves below the page. A thread
+opens beside the channel on wide screens and full screen on narrow ones.
+
+Messages from the same sender within five minutes are grouped under one name and avatar.
+Messages with no author show as "Deleted account" and are never grouped, since two deleted
+accounts look the same.
+
 ## Motion
 
 All durations and easing live in `frontend/src/styles/motion.css`: `--ease-out` for things
@@ -142,4 +160,6 @@ shows one message, still.
 
 ## Still to decide
 
-- Spacing, radius and type scale tokens.
+- Spacing, radius and type scale tokens. Components use Tailwind's default spacing and radius
+  steps for now.
+- A theme picker (light, dark, system), stored per person.

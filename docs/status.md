@@ -1,249 +1,147 @@
 # Project status
 
-Last updated: 2026-11-22. Update at the end of every work session.
+Last updated: 2026-11-23. Update at the end of every work session.
 
 ## Where we are
 
-M1 in progress. Merged so far:
+Pre-release **`v0.6.0`**. Milestones M1 to M6 are done and released; M7 (docs and launch) is in
+progress, with its last two items on hold.
 
-- Backend skeleton (#2): Django 5.2 with `dev`, `test` and `prod` settings, ASGI through Channels
-  and Daphne, Celery, a custom `accounts.User` (email unique), `/health/` checking MySQL and
-  Redis. Dependencies pinned in `backend/pyproject.toml` with `uv.lock`.
-- Web app skeleton (#3): Vite 8, React 19, TypeScript 6 (strict), Tailwind 4 with only the
-  semantic color tokens, TanStack Query, Vitest, ESLint. Root `npm run dev` starts the Compose
-  stack (MySQL 8.4, Redis, backend, worker), waits for it to be healthy and runs Vite, which proxies
-  `/api`, `/ws`, `/admin` and `/health` to the backend.
-- CI (#4): `backend` (MySQL and Redis service containers), `frontend` and CodeQL (Python,
-  TypeScript, Actions). All five checks are required in the "Protect main" ruleset, applied to the
-  repository. SonarCloud also runs on PRs.
-- Dependabot for Actions, uv, npm, Docker and Compose, held to Django 5.2, Python 3.12, MySQL 8.4
-  and TypeScript 6.0.
-- Accounts API under `/api/v1/auth/`: CSRF cookie, sign up, sign in (by email), sign out, `me`,
-  email verification with resend, password reset. Session auth; CSRF also on anonymous calls;
-  `auth` throttle 10 per minute; email sent from Celery through Resend SMTP (from
-  `no-reply@ahmershah.dev`, verified in Resend), retried with backoff. `backend/openapi.yaml` and
-  `frontend/src/api/schema.d.ts` are generated and checked in CI.
+| Milestone | State | Release |
+|---|---|---|
+| M1. Platform skeleton | Done | `v0.1.0` |
+| M2. Channels and live messages | Done | `v0.2.0` |
+| M3. Threads, direct messages and presence | Done | `v0.3.0` |
+| M4. Files, search and notifications | Done | `v0.4.0` |
+| M5. Issue tracker | Done | `v0.5.0` |
+| M6. Integrations | Done | `v0.6.0` |
+| M7. Docs and launch | In progress | `v1.0.0` at launch |
 
-- Auth screens: sign in, sign up, check your email, confirm email, forgot and reset password,
-  and a signed-in home with sign out and a "confirm your email" banner. React Router,
-  openapi-fetch typed from the schema, CSRF header added by a client middleware. Dev settings
-  trust the Vite origin for CSRF.
+`main` is green: `backend`, `frontend`, three CodeQL jobs and SonarCloud, all required by the
+"Protect main" ruleset. No open pull requests.
 
-- Workspaces API under `/api/v1/workspaces/`: list and create (needs a confirmed email; the
-  creator is owner), read and rename, members with role changes and removal or leaving, and the
-  audit log (cursor-paginated, admins and owners only). Role rules in `apps/core/roles.py` with a
-  100% branch coverage gate in CI. `tests/test_access.py` checks every workspace endpoint for 404
-  to outsiders.
+## M7 so far
 
-- Auth hardening: Argon2id hashing, reCAPTCHA v3 with a v2 fallback (off until keys are in
-  `.env`), honeypot, per-account sign-in lock, spoof-proof IP throttle, CSP and `no-store` on
-  API responses. The local `.env` exists (git ignores it) with a generated secret key.
+- **Demo data** (#56): `manage.py seed_demo` makes two invented teams, Chai and Code and
+  Monsoon Press, with about 120 days of conversations, threads, reactions and issues.
+- **README** (#57): what Baithak does, demo data steps and five screenshots taken by
+  `npm run screenshots` (Playwright, signed in with a session made in the backend container).
+  New dependency: `@playwright/test` 1.65.1, also meant for the end-to-end tests.
+- **Sidebar fix** (#58): the signed-in name is no longer cut to one letter (Settings and Sign out
+  moved under it), and the workspace nav no longer shrinks and hides Settings and Audit log.
+- **Account deletion** (#60): Settings has Delete your account, confirmed with the password. The
+  user row goes; messages, files and issues stay with no author and show as "Deleted account".
+  Workspaces with nobody else are deleted with their files; the last owner of a shared workspace
+  must hand it over first (`apps/core/roles.on_account_deletion`). Authorless messages are never
+  grouped, and two different apps' messages no longer merge.
+- **Privacy page** (#59): `/privacy`, open to everyone and linked from the sign-in screens and
+  the sidebar. Covers what is kept, cookies, reCAPTCHA (Google) and Resend, retention, account
+  deletion, and an answer to requests within two weeks.
+- **Dependencies** (#45 to #48): Vitest 5.1.1, user-event 14.6.13, TanStack Query 5.108.0,
+  React Router 8.5.2, jest-dom 8.0.0 and mysqlclient 2.3.2.
+- **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
+  with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
+  response times and scope; stale lines fixed in design, architecture, roadmap and this file.
 
-- Brand (#16): logo, favicons, Fraunces and Instrument Sans, turmeric selection, custom
-  scrollbars. Auth screens redesigned: split layout with the animated arch scene, parda password
-  toggle, lamplight button, strength meter, placeholders, honeypot and reCAPTCHA wiring, web app
-  CSP in the build.
+## Next
 
-- Invitations API: invite by email with a role (admin and up, never owner), pending list,
-  revoke, preview and accept by link (`/invite?token=...`, the signed-in email must match, 7
-  days, single use). Audited and in the access test. The reCAPTCHA keys and the Resend key are
-  set in the local `.env` and checked working.
+On hold until the maintainer says go:
 
-- Workspace screens: home opens the last workspace used (or offers to create one), `/w/new`,
-  and a workspace shell with switcher, overview, members (role changes, remove, leave),
-  invitations (send, revoke), settings (rename) and the audit log (cursor paging). `/invite`
-  previews the invitation, sends signed-out people through sign-in or sign-up and back, and
-  accepts. M1 is complete.
+1. End-to-end tests with Playwright for the main flows, including two browsers in one channel.
+2. Deploy at `baithak.ahmershah.dev` and tag `v1.0.0`. Hosting is not confirmed yet.
 
-- M1 released as `v0.1.0` (pre-release) and its milestone closed. Comments trimmed and the rule
-  tightened in AGENTS.md.
-- M2 started: channels API (public and private, topic, archive, join, leave, add members) under
-  `/api/v1/workspaces/{slug}/channels/`, rules in `apps/core/channels.py`, `#general` with every
-  workspace. Private channels are 404 to workspace members outside them, in the access test.
+Small things that can go first:
 
-- Messages API under `.../channels/{id}/messages/`: send (with `client_id` against duplicates),
-  edit, delete (row kept, text removed), history pages by `before`, catch-up by `after_event`.
-  `seq` and `event` move under the channel row lock; a 4-thread race test checks they stay
-  distinct and gap-free.
+- Delete the stale `docs/session-2026-11-22` branch, and the merged feature branches still on
+  GitHub.
+- Answer the open questions below before launch.
 
-- WebSockets: `ws/workspaces/<slug>/` with session auth and Origin check; one group per
-  channel; messages and channel changes broadcast after commit; subscriptions follow access
-  (join, leave, add, role change, removal) without reconnecting.
+## Held back on purpose
 
-- Chat screens: channels in the sidebar, a channel browser with create and join, and the
-  channel view with history paging, grouped messages, edit and delete, and a composer whose
-  sends show at once and are never doubled. The socket reconnects with backoff and every open
-  channel catches up; a test drops the socket and checks nothing is lost or shown twice. Tried
-  with two real tabs: a message from one appeared live in the other. M2 is complete.
-
-- M2 released as `v0.2.0`. Account protection: lockout ladder (1 h, 4 h, a week, ban with admin
-  unlock) for sign-in and reset codes with owner emails, 6-digit reset codes (10 minutes, one
-  use), stronger password rules with a checklist, handle and display-name blocklist with
-  look-alike folding, live email and handle availability, `/me` 204 when signed out, the
-  reCAPTCHA checkbox shown up front, themed selects, and a contact page that mails
-  support@ahmershah.dev.
-
-- M3 started: unread counts and read markers. Channels carry `last_read_seq` and `unread`;
-  `POST .../channels/{id}/read/` moves the marker forward only; posting, joining and being added
-  move it too; each move reaches all the person's sockets as a `read` event. Rules in
-  `apps/core/unread.py`. The sidebar shows a count per channel, an open channel is marked read
-  at the bottom of a visible tab, and a "New" line marks where unread messages began.
-
-- Threads: replies under `.../messages/{seq}/replies/`, one level deep, with reply counts and
-  "also send to channel". A reply kept in its thread has no channel seq; each reply and the
-  parent's new count are channel events, so catch-up covers threads. The web app opens a thread
-  beside the channel (`?thread=<seq>`, full screen on small widths), with "N replies" and a
-  Reply action on messages and a composer with "Also send to #channel".
-
-- Mentions: `@handle` and `@channel` parsed in `apps/core/mentions.py`, kept only for people
-  who can read the channel, stored on each message and recomputed on edit. Guests can't use
-  `@channel`. The web app highlights confirmed mentions, marks messages that mention you, and
-  the composer suggests people after `@` (arrow keys, Enter or Tab, Escape). The unread badge
-  now uses the `unread` token.
-
-- Fixed: the "Reconnecting" banner every few seconds. redis-py 8 reads time out at 5 s, the
-  same as channels_redis's blocking wait, so idle sockets crashed; the channel layer's Redis
-  socket timeout is now 30 s (#30).
-- Dropdowns (role on members and invitations, channel visibility) are a themed listbox
-  (`components/Select.tsx`) instead of native selects, whose open list ignored the theme.
-
-- Reactions on messages and replies: one emoji each (checked in `apps/core/reactions.py`), up
-  to 20 different per message, live through the message's event. Chips show counts and who
-  reacted, pressed when one is yours; a React action opens a picker of 16. Vitest's per-test
-  timeout is now 15 s: typing tests passed the 5 s default when every core was busy.
-
-- Direct and group messages: conversations are channels of kind `direct` or `group`, opened
-  (found or started) through `.../channels/conversations/`, readable only by their people. The
-  sidebar has a Direct messages section titled by the other people's names, and `/w/<slug>/dm`
-  picks one person or up to eight.
-- Fixed: signing in from an invitation link sometimes landed on home. The signed-out guard sent
-  people to `/` while the page sent them to `next`; both now go to `next`.
-
-- Typing indicator and online status: a Redis sorted set per workspace with a 60 s lapse,
-  kept alive by pings; first socket in and last out are announced to the workspace. Typing
-  notices go over the socket, at most every 3 s per person and place, shown for 5 s. Presence
-  dots on members, direct messages and the conversation header; "Bilal is typing" under the
-  channel and thread. M3 is complete.
-
-- M3 released as `v0.3.0`, milestone closed.
-- M4 started: file and image uploads. Files are sniffed by content (images, PDF, zip/Office,
-  text; 25 MB), kept under `FILES_ROOT` outside anything served, sent with messages and replies
-  by id, and downloaded through 12-hour signed links that also check the channel. Celery makes
-  WebP previews. The composer attaches by button, paste or drop; messages show images and file
-  cards. New dependency: Pillow 13.0.0.
-
-- Search: messages and file names through MySQL FULLTEXT, always through `readable_channels`,
-  every word as a prefix, newest first with a cursor, filters for channel, person and day. A
-  search box tops the sidebar; `/w/<slug>/search` has filters, Messages and Files tabs,
-  highlighted words and links into the channel or thread.
-
-- In-app notifications: a row per recipient for mentions, direct and group messages and
-  `@channel`, cleared by reading the channel, live through the socket, only from channels the
-  person can still read. A Notifications link with an unread count in the sidebar, and a page
-  with Mark all read. Assigned issues join in M5.
-
-- Email notifications: Celery beat mails mentions and direct messages left unread for 10
-  minutes, one digest per person, skipping quiet hours (in their time zone), people online in
-  that workspace and channels they can no longer read. `/w/<slug>/me` has the settings (email
-  on or off, quiet hours, time zone), linked as Settings next to Sign out.
-
-- Load check: `python manage.py load_check` opens N real sockets in an invented workspace and
-  times delivery from send to arrival. Numbers in `docs/architecture.md`. Found and fixed: redis-py
-  8 caps a pool at 100 connections and raised when 500 sockets closed at once (channel layer pool
-  now 2000).
-
-- Online status fixed for crowds: join and leave announcements are batched per workspace,
-  about one message a second (`presence_changes`), instead of one per person to everyone. The
-  load check now also checks every client's online list: 500 of 500 right with 500 online.
-
-- M5 started: projects and issues. Projects (key like `BAI`, admins manage), labels in the six
-  brand hues, issues numbered `BAI-1` without gaps (project row lock, never deleted), status,
-  priority, assignee, due date, labels; all audited. Screens: Projects in the workspace nav, a
-  project's issues with Open and Closed, filters and quick add, label editing for admins, and an
-  issue page with editable fields. Guests don't see projects.
-
-- Board: a column per status, most pressing first, drag a card to change its status (moves at
-  once, goes back if refused), and a status menu on every card for the keyboard and phones.
-  List and Board switch at the top of a project.
-
-- Issues from messages: an Issue action on a channel message picks a project and a title (the
-  message's first line) and opens the issue with `from_message`. The message then shows a
-  `BAI-7` chip linking to it, and the issue page shows the message's thread as its Discussion,
-  with a composer and a link back into the channel. One issue per message; replies and deleted
-  messages can't have one; a message in a channel the person can't read is 404, and the
-  discussion is hidden from people outside that channel.
-
-- Issue activity: opening an issue from a message and every later change are posted in that
-  message's thread as short activity lines in the actor's name ("BAI-7: moved it to Done");
-  status changes also go to the channel. Activity is never read for mentions, notifies nobody
-  and can't be edited. Each issue page lists its History from the audit log.
-
-- Assigned issues notify: assigning an issue to someone else gives them an in-app notification
-  ("Amna assigned you BAI-7", linking to the issue), taken back if it is reassigned before they
-  read it. Not emailed. Notifications now point at a message or an issue.
-
-- Issues in search: FULLTEXT over title and description, an Issues tab on the search page (not
-  for guests, who get 404), filters by who opened it, day, and the channel it was opened from.
-  M5 is complete.
-
-- M5 released as `v0.5.0`, milestone closed.
-- M6 started: the GitHub webhook. Admins connect a repository to a channel on Settings and
-  get a payload URL and a secret (shown once). Deliveries are checked by signature before
-  reading; pull request and issue events from that repository post a message from
-  "GitHub" (kind `integration`, no author, links into GitHub). Redeliveries are stored once.
-
-- Incoming webhooks: admins make one per channel with a name on Settings and get its secret
-  URL once (only its SHA-256 is stored). Posting `{"text": ...}` adds a message under that
-  name. 30 calls a minute per webhook, whatever the caller's address.
-
-- Webhook deliveries: every checked delivery is logged (posted, ignored, failed, with why
-  and the number of tries); posting happens in Celery and is retried with back-off up to
-  six tries. Admins see the latest 50 per webhook on Settings; beat prunes after 30 days.
-  Hooks now answer 202. M6 is complete.
-
-- M6 released as `v0.6.0`, milestone closed.
-- M7 started: `manage.py seed_demo` makes two invented teams (Chai and Code, Monsoon Press)
-  with about 120 days of conversations, threads, reactions and issues, seeded in the local
-  database.
-
-- README rewritten for what Baithak does now, with demo data steps and five screenshots
-  (`docs/screenshots/`) taken by `npm run screenshots` (Playwright, signed in with a session
-  made in the backend container). Seed lines now take a topic and a weekday, so they rarely
-  repeat word for word. New dependency: `@playwright/test` 1.65.1, also for the end-to-end
-  tests next.
-
-- Fixed: the signed-in name at the bottom of the sidebar was cut to one letter; Settings and
-  Sign out now sit on their own row. The workspace nav no longer shrinks in a tall sidebar,
-  which had hidden Settings and Audit log for admins. Screenshots retaken.
-
-- Account deletion: Settings has Delete your account (password to confirm). Posts stay in
-  shared workspaces as "Deleted account", workspaces with nobody else are deleted with their
-  files, and the last owner of a shared workspace is sent to hand it over first. Authorless
-  messages are never grouped together, and different apps' messages no longer merge.
-
-- Privacy page at `/privacy`, open to everyone and linked from the sign-in screens' footer and
-  the sidebar: what is kept, cookies, reCAPTCHA (Google) and Resend, retention, deleting your
-  account from Settings, and a reply to requests within two weeks.
-
-## Next session
-
-M7, in this order:
-
-1. End-to-end tests with Playwright for the main flows, including two browsers in one
-   channel.
-2. Deploy at `baithak.ahmershah.dev`; tag `v1.0.0`.
-
+- Dependabot holds Django at 5.2, Python at 3.12, MySQL at 8.4 and TypeScript at 6.0.
+- jsdom is held at 29.x so tests run on Node 22.12; 30 and later need Node 22.22 or 24.15. Lift
+  it once the local Node (22.19 now) is upgraded.
+- openapi-typescript declares TypeScript 5 as its peer; `frontend/package.json` overrides it to
+  6.0. Drop the override when it supports 6.
 
 ## Open questions
 
-- Decided: an unverified person can sign in but can't create or join a workspace (enforce in the
-  workspaces API).
-- openapi-typescript declares TypeScript 5 as its peer; `frontend/package.json` overrides it to
-  the project's 6.0. Drop the override when it supports 6.
+- Which channels guests can be added to. (They can start direct messages, decided with #33.)
+- Message formatting: a small Markdown subset rendered on the client, and which parts are
+  allowed.
+- A theme picker (light, dark, system) stored per person; today the system setting decides.
+- Spacing, radius and type scale tokens (see [design.md](design.md)).
+- Whether HolidayOps working days feed quiet hours and issue due dates.
 
-- jsdom is held at 29.x so tests run on Node 22.12; 30 and later need Node 22.22 or 24.15. Lift
-  it once the local Node is upgraded.
+Decided and no longer open: an unverified person can sign in but can't create or join a
+workspace; Fraunces and Instrument Sans are the typefaces; `apps/core` has its own 100% branch
+coverage gate in CI.
 
-- Guest permissions and the allowed message formatting.
-- Typefaces, spacing and type scale (see [design.md](design.md)).
-- `apps/core` 100% branch coverage gate: add a separate coverage run for it once it has code.
+## History
+
+What each milestone delivered. Details and the reasons behind them are in
+[architecture.md](architecture.md); the pull requests are on GitHub.
+
+### M1. Platform skeleton (`v0.1.0`)
+
+- Django 5.2 with `dev`, `test` and `prod` settings, ASGI through Channels and Daphne, Celery,
+  `/health/` checking MySQL and Redis; Vite, React 19, TypeScript 6 (strict), Tailwind 4 with
+  only the semantic tokens; `npm run dev` starts the Compose stack and Vite.
+- CI (`backend` with MySQL and Redis services, `frontend`, CodeQL) required on `main`;
+  SonarCloud on pull requests; Dependabot for Actions, uv, npm, Docker and Compose.
+- Accounts: sign up, sign in by email, verification, password reset; session auth with CSRF on
+  anonymous calls too; email from Celery through Resend. Argon2id, reCAPTCHA v3 with a v2
+  checkbox, honeypot, CSP and `no-store` on API responses.
+- Workspaces, members and roles (rules in `apps/core/roles.py`), invitations by email (7 days,
+  single use), the audit log, and the access test that calls every workspace endpoint as an
+  outsider. Brand: logo, favicons, Fraunces and Instrument Sans, the sign-in scene.
+
+### M2. Channels and live messages (`v0.2.0`)
+
+- Public and private channels with topics, archive, join, leave and add; `#general` in every
+  workspace; private channels are `404` to outsiders.
+- Messages with `client_id` against duplicates, edit, delete (row kept, text removed), history
+  by `before`, catch-up by `after_event`; `seq` and `event` move under the channel row lock.
+- WebSockets with session auth and an Origin check, one group per channel, broadcast after
+  commit, subscriptions that follow access without reconnecting. The web app reconnects with
+  backoff and every open channel catches up.
+
+### M3. Threads, direct messages and presence (`v0.3.0`)
+
+- Account protection (#26, right after `v0.2.0`): a lockout ladder (1 hour, 4 hours, a week,
+  then a ban), 6-digit reset codes, stronger password rules, a handle blocklist with look-alike
+  folding, live availability checks, and the contact page.
+- Unread counts and read markers that only move forward (`apps/core/unread.py`), the same on
+  every device, with a "New" line.
+- Threads one level deep with reply counts and "also send to channel"; mentions
+  (`apps/core/mentions.py`) with autocomplete; reactions (`apps/core/reactions.py`).
+- Direct and group messages as channels of kind `direct` and `group`.
+- Typing and online status in Redis with a 60-second lapse; join and leave announcements batched
+  per workspace. Fixed: idle sockets dropping every few seconds (Redis socket timeout, #30).
+
+### M4. Files, search and notifications (`v0.4.0`)
+
+- Uploads sniffed by content (25 MB), stored under `FILES_ROOT`, downloaded through 12-hour
+  signed links; WebP previews in Celery. New dependency: Pillow 13.0.0.
+- Search over messages and file names with MySQL FULLTEXT, always through
+  `readable_channels`, with channel, person and day filters.
+- In-app notifications, and email digests for unread mentions and direct messages after 10
+  minutes, skipping quiet hours and people online.
+- Load check (`manage.py load_check`): 500 real sockets in one channel; numbers in
+  [architecture.md](architecture.md).
+
+### M5. Issue tracker (`v0.5.0`)
+
+- Projects with keys, labels in the six brand hues, issues numbered without gaps, status,
+  priority, assignee and due date, all audited; a board with drag to change status.
+- Issues from messages: the message shows the issue's key and the issue page shows its thread
+  as the discussion; issue changes are posted as activity lines in that thread.
+- Assigned issues notify the assignee; issues are searchable (not for guests).
+
+### M6. Integrations (`v0.6.0`)
+
+- GitHub webhook per repository and channel, verified by signature before reading, posting
+  pull request and issue events as "GitHub".
+- Incoming webhooks with a secret URL (only its SHA-256 stored), 30 calls a minute each.
+- Every delivery logged; posting happens in Celery with up to six tries; logs pruned after 30
+  days.

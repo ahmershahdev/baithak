@@ -1,6 +1,6 @@
-# Architecture (planned)
+# Architecture
 
-This is the design before any code. Change it in the same pull request that changes the code.
+How Baithak is built and why. Change it in the same pull request that changes the code.
 
 ## Parts
 
@@ -15,7 +15,8 @@ React web app  ──REST──>  Django + DRF (ASGI)  ──>  MySQL 8.4 (all w
 
 The web app reads and writes through the REST API. The WebSocket carries live events (new,
 edited and deleted messages, reactions, typing, presence, read markers) and the client sends only
-pings and typing notices over it; read markers go through the REST API. Long work runs in Celery, never inside a request or a consumer.
+pings and typing notices over it; read markers go through the REST API. Long work runs in
+Celery, never inside a request or a consumer.
 
 ## Apps
 
@@ -31,15 +32,18 @@ pings and typing notices over it; read markers go through the REST API. Long wor
 | `notifications` | in-app and email notifications, quiet hours |
 | `core` | pure logic: permission checks, mention parsing, unread counting, ordering |
 
-## Data model (first draft)
+## Data model
 
 ```
+user              email (unique), username (handle), display_name, email_verified_at,
+                  lockout (failed_attempts, lock_level, locked_until, banned_at),
+                  notify_by_email, quiet_start, quiet_end, time_zone
 workspace         id, name, slug, created_by
 member            workspace_id, user_id, role (owner, admin, member, guest), joined_at
-audit_event       workspace_id, user_id, action, model, object_id, changes (JSON), at
+audit_event       workspace_id, actor_id, action, model, object_id, changes (JSON), at
 
 channel           workspace_id, name, kind (public, private, direct, group), topic, archived_at, last_seq, last_event
-channel_member    channel_id, user_id, last_read_seq, muted
+channel_member    channel_id, user_id, last_read_seq
 message           channel_id, seq (null for a reply kept in its thread), event, author_id, parent_id,
                   thread_seq, also_in_channel, reply_count, last_reply_at, body, client_id,
                   mentions (users), mentions_channel, kind (message, activity), edited_at,
