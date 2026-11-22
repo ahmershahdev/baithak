@@ -88,11 +88,23 @@ export function Privacy() {
           </p>
         </Section>
 
+        <Section title="Deleting your account">
+          <p>
+            You can delete your account yourself, under Settings in any workspace, by confirming
+            your password. Your account, sign-in, settings, reactions and notifications are removed
+            for good, and you leave every workspace. Messages, files and issues you posted in
+            workspaces shared with others stay there, shown as from a deleted account, so the
+            conversations around them still make sense. Workspaces where you are the only member are
+            deleted with everything in them. If you are the last owner of a workspace that has other
+            people, make someone else an owner first.
+          </p>
+        </Section>
+
         <Section title="Your choices">
           <p>
             Email notifications can be turned off, or held during quiet hours, in your settings. For
-            a copy of your data, a correction, or to have your account deleted, email {support}. We
-            usually reply within two working days.
+            a copy of your data, a correction, or to have something you posted removed, email{" "}
+            {support}. We reply within two weeks.
           </p>
         </Section>
 
