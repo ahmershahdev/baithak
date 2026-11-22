@@ -7,6 +7,7 @@ import { useMe } from "./auth";
 import { lastWorkspace } from "./lastWorkspace";
 import { ErrorMessage } from "./components/ui";
 import { Contact } from "./pages/Contact";
+import { Privacy } from "./pages/Privacy";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { Home } from "./pages/Home";
 import { Invite } from "./pages/Invite";
@@ -104,6 +105,7 @@ export function App() {
       </Route>
       <Route path="/invite" element={<Invite />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route
         path="/signin"
         element={

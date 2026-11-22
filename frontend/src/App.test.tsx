@@ -341,3 +341,25 @@ describe("bot checks", () => {
     expect(grecaptcha.reset).toHaveBeenCalledWith(0);
   });
 });
+
+describe("privacy", () => {
+  test("is open to signed-out visitors and covers reCAPTCHA, Resend and deletion", async () => {
+    fakeBackend(signedOut);
+    renderAt("/privacy");
+
+    expect(await screen.findByRole("heading", { name: "Privacy" })).toBeInTheDocument();
+    expect(screen.getByText(/Google receives details/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Resend" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deleting your account" })).toBeInTheDocument();
+  });
+
+  test("is linked from the sign-in page", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signin");
+
+    expect(await screen.findByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+  });
+});

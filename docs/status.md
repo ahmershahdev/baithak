@@ -221,9 +221,11 @@ M1 in progress. Merged so far:
   files, and the last owner of a shared workspace is sent to hand it over first. Authorless
   messages are never grouped together, and different apps' messages no longer merge.
 
-## Next session
+- Privacy page at `/privacy`, open to everyone and linked from the sign-in screens' footer and
+  the sidebar: what is kept, cookies, reCAPTCHA (Google) and Resend, retention, deleting your
+  account from Settings, and a reply to requests within two weeks.
 
-M5, in this order:
+## Next session
 
 M7, in this order:
 
@@ -233,8 +235,6 @@ M7, in this order:
 
 
 ## Open questions
-
-- reCAPTCHA sends visitor data to Google; mention it in the privacy notes before launch.
 
 - Decided: an unverified person can sign in but can't create or join a workspace (enforce in the
   workspaces API).
