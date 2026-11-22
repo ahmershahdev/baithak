@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "contrast": "node scripts/check-contrast.mjs",
-    "api:types": "openapi-typescript ../backend/openapi.yaml -o src/api/schema.d.ts"
+    "api:types": "openapi-typescript ../backend/openapi.yaml -o src/api/schema.d.ts",
+    "screenshots": "docker compose exec -T backend python manage.py shell < scripts/screenshot-session.py | node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "5.3.0",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
     "@tailwindcss/vite": "4.3.5",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
