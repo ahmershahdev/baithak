@@ -50,11 +50,8 @@ On hold until the maintainer says go:
 1. End-to-end tests with Playwright for the main flows, including two browsers in one channel.
 2. Deploy at `baithak.ahmershah.dev` and tag `v1.0.0`. Hosting is not confirmed yet.
 
-Small things that can go first:
-
-- Delete the stale `docs/session-2026-11-22` branch, and the merged feature branches still on
-  GitHub.
-- Answer the open questions below before launch.
+Before launch, answer the open questions below. The repository has only `main`; merged
+branches are deleted on GitHub.
 
 ## Held back on purpose
 
