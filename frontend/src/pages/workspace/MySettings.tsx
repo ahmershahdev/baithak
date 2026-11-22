@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type SubmitEvent } from "react";
+import { Link, useNavigate } from "react-router";
 
 import { api, readErrors } from "../../api/client";
 import type { components } from "../../api/schema";
 import { ApiError } from "../../api/workspaces";
+import { ME } from "../../auth";
+import { PasswordField } from "../../components/PasswordField";
 import { Select } from "../../components/Select";
-import { Button, ErrorMessage, Notice } from "../../components/ui";
+import { Button, ErrorMessage, Notice, QuietButton } from "../../components/ui";
 import { PageHeader, Panel } from "../../components/workspace";
 
 type Settings = components["schemas"]["NotificationSettings"];
+type Blocking = components["schemas"]["BlockingWorkspace"];
 
 const KEY = ["me", "notification-settings"] as const;
 const ZONES = Intl.supportedValuesOf("timeZone");
@@ -39,6 +43,7 @@ export function MySettings() {
       )}
       {settings.isError && <ErrorMessage>Could not load your settings.</ErrorMessage>}
       {settings.data && <EmailForm saved={settings.data} />}
+      <DeleteAccount />
     </div>
   );
 }
@@ -173,6 +178,106 @@ function EmailForm({ saved }: { saved: Settings }) {
           Save
         </Button>
       </form>
+    </Panel>
+  );
+}
+
+function DeleteAccount() {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState<Blocking[]>([]);
+  const remove = useMutation({
+    mutationFn: async (password: string) =>
+      api.POST("/api/v1/auth/delete-account/", { body: { password } }),
+    onSuccess: ({ response, error }) => {
+      if (response.status === 204) {
+        client.clear();
+        client.setQueryData(ME, null);
+        void navigate("/signin", { replace: true });
+        return;
+      }
+      const body = error as { detail?: string; workspaces?: Blocking[] } | undefined;
+      setBlocking(body?.workspaces ?? []);
+      setProblem(body?.detail ?? readErrors(error).detail ?? "Could not delete your account.");
+    },
+    onError: () => {
+      setProblem("Could not reach Baithak. Try again.");
+    },
+  });
+
+  function submit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProblem(null);
+    setBlocking([]);
+    const password = new FormData(event.currentTarget).get("password");
+    remove.mutate(typeof password === "string" ? password : "");
+  }
+
+  return (
+    <Panel className="settle flex flex-col gap-4 p-6">
+      <h2 className="font-display text-lg font-semibold">Delete your account</h2>
+      <p className="text-text-muted">
+        Your account, sign-in and settings are removed for good, and you leave every workspace. What
+        you posted stays in shared workspaces, shown as from a deleted account. Workspaces where you
+        are the only member are deleted with everything in them.
+      </p>
+      {!open ? (
+        <QuietButton
+          type="button"
+          className="self-start text-danger"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Delete account
+        </QuietButton>
+      ) : (
+        <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+          <PasswordField
+            label="Your password, to confirm"
+            name="password"
+            autoComplete="current-password"
+            required
+          />
+          {problem && <ErrorMessage>{problem}</ErrorMessage>}
+          {blocking.length > 0 && (
+            <ul className="flex flex-col gap-1 text-sm">
+              {blocking.map((workspace) => (
+                <li key={workspace.slug}>
+                  <Link
+                    to={`/w/${workspace.slug}/members`}
+                    className="font-semibold text-accent-text underline"
+                  >
+                    {workspace.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={remove.isPending}
+              aria-busy={remove.isPending || undefined}
+              className="h-12 rounded-xl bg-danger-fill px-5 font-semibold text-on-danger hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none disabled:opacity-70"
+            >
+              {remove.isPending ? "Deleting" : "Delete my account for good"}
+            </button>
+            <QuietButton
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setProblem(null);
+                setBlocking([]);
+              }}
+            >
+              Cancel
+            </QuietButton>
+          </div>
+        </form>
+      )}
     </Panel>
   );
 }

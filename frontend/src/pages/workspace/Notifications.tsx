@@ -57,7 +57,7 @@ export function Notifications() {
           <ul aria-label="Notifications" className="divide-y divide-border">
             {items.map((item) => {
               const author = sender(item);
-              const name = author ? author.display_name || author.username : "Someone";
+              const name = author ? author.display_name || author.username : "Deleted account";
               const where =
                 (item.channel === null ? undefined : titles.get(item.channel)) ?? "a channel";
               return (

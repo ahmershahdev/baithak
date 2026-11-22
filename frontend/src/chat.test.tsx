@@ -857,6 +857,56 @@ describe("your settings", () => {
   });
 });
 
+describe("deleting your account", () => {
+  const settings = () =>
+    json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" });
+
+  test("lists the workspaces to hand over when you are their last owner", async () => {
+    backend({
+      "GET /api/v1/auth/notifications/": settings,
+      "POST /api/v1/auth/delete-account/": () =>
+        json(409, {
+          detail: "Make someone else an owner of these workspaces first, or remove everyone else.",
+          workspaces: [{ slug: "team", name: "Chai and Code" }],
+        }),
+    });
+    renderAt("/w/team/me");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Delete account" }));
+    await userEvent.type(screen.getByLabelText("Your password, to confirm"), "Chai-At-Four-42");
+    await userEvent.click(screen.getByRole("button", { name: "Delete my account for good" }));
+
+    expect(await screen.findByText(/Make someone else an owner/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Chai and Code" })).toHaveAttribute(
+      "href",
+      "/w/team/members",
+    );
+  });
+
+  test("sends the password and lands on sign in once deleted", async () => {
+    const sent: unknown[] = [];
+    let deleted = false;
+    backend({
+      "GET /api/v1/auth/notifications/": settings,
+      "POST /api/v1/auth/delete-account/": async (request) => {
+        sent.push(await request.json());
+        deleted = true;
+        return new Response(null, { status: 204 });
+      },
+      "GET /api/v1/auth/me/": () =>
+        deleted ? new Response(null, { status: 204 }) : json(200, amna),
+    });
+    renderAt("/w/team/me");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Delete account" }));
+    await userEvent.type(screen.getByLabelText("Your password, to confirm"), "Chai-At-Four-42");
+    await userEvent.click(screen.getByRole("button", { name: "Delete my account for good" }));
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(sent).toEqual([{ password: "Chai-At-Four-42" }]);
+  });
+});
+
 describe("issues from messages", () => {
   test("open an issue from a message and see it linked once it arrives", async () => {
     const bodies: unknown[] = [];

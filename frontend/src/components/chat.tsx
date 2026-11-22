@@ -218,7 +218,7 @@ export function MessageRow({
   const [busy, setBusy] = useState(false);
   const name = message.author
     ? message.author.display_name || message.author.username
-    : message.sender_name || "Someone";
+    : message.sender_name || "Deleted account";
   const mine = message.author?.id === meId;
   const forMe = !mine && !message.deleted && mentionsMe(message, meId);
   const threadSeq = message.parent_seq === null ? message.seq : null;
@@ -297,9 +297,7 @@ export function MessageRow({
       } ${grouped ? "py-0.5" : "mt-3 py-1"}`}
     >
       <div className="w-9 shrink-0">
-        {!grouped && (message.author || message.sender_name) && (
-          <Avatar name={name} colorKey={message.author?.username ?? name} />
-        )}
+        {!grouped && <Avatar name={name} colorKey={message.author?.username ?? name} />}
       </div>
       <div className="min-w-0 flex-1">
         {onOpenThread && message.parent_seq !== null && (

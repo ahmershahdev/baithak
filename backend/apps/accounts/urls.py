@@ -11,6 +11,7 @@ urlpatterns = [
     path("signin/", views.SignInView.as_view(), name="signin"),
     path("signout/", views.SignOutView.as_view(), name="signout"),
     path("me/", views.MeView.as_view(), name="me"),
+    path("delete-account/", views.DeleteAccountView.as_view(), name="delete-account"),
     path("notifications/", views.NotificationSettingsView.as_view(), name="notifications"),
     path("availability/", views.AvailabilityView.as_view(), name="availability"),
     path("verify-email/", views.VerifyEmailView.as_view(), name="verify-email"),

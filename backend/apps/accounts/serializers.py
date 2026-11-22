@@ -161,6 +161,20 @@ class DetailSerializer(serializers.Serializer[None]):
     detail = serializers.CharField()
 
 
+class DeleteAccountSerializer(serializers.Serializer[None]):
+    password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
+class BlockingWorkspaceSerializer(serializers.Serializer[None]):
+    slug = serializers.CharField()
+    name = serializers.CharField()
+
+
+class OwnsWorkspacesSerializer(serializers.Serializer[None]):
+    detail = serializers.CharField()
+    workspaces = BlockingWorkspaceSerializer(many=True)
+
+
 class AuthConfigSerializer(serializers.Serializer[None]):
     recaptcha_v3_site_key = serializers.CharField(allow_blank=True)
     recaptcha_v2_site_key = serializers.CharField(allow_blank=True)

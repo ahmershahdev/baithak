@@ -57,6 +57,35 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/auth/delete-account/:
+    post:
+      operationId: auth_delete_account_create
+      summary: Delete my account; my posts stay in shared workspaces with no author
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnsWorkspaces'
+          description: ''
   /api/v1/auth/me/:
     get:
       operationId: auth_me_retrieve
@@ -2662,6 +2691,16 @@ components:
           $ref: '#/components/schemas/Availability'
         username:
           $ref: '#/components/schemas/Availability'
+    BlockingWorkspace:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+      required:
+      - name
+      - slug
     CaptchaEnum:
       enum:
       - v2
@@ -2849,6 +2888,15 @@ components:
           minItems: 1
       required:
       - user_ids
+    DeleteAccountRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - password
     Delivery:
       type: object
       properties:
@@ -3694,6 +3742,18 @@ components:
           maxLength: 64
       required:
       - time_zone
+    OwnsWorkspaces:
+      type: object
+      properties:
+        detail:
+          type: string
+        workspaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlockingWorkspace'
+      required:
+      - detail
+      - workspaces
     PasswordResetConfirmRequest:
       type: object
       description: 'The code from the email, and who it is for: `uid` from the emailed

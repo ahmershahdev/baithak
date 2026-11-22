@@ -464,6 +464,7 @@ when the channel opens and stays there while the marker moves past it.
 | `GET /auth/me/` answers 204 when signed out | Being signed out is an answer, not an error, and browsers stop logging a failed request on every page |
 | reCAPTCHA v2 checkbox shown on anonymous forms from the start, v3 scoring alongside | People expected to see the check; a ticked box passes, otherwise v3 decides |
 | Contact form stored, then emailed to support@ahmershah.dev with Reply-To | The message survives a mail outage and can be read in the admin |
+| Account deletion keeps the person's posts, anonymised | `POST /auth/delete-account/` with the password. The user row is deleted, so memberships, reactions and notifications cascade and messages, files and issues keep their rows with no author (shown as "Deleted account"); threads and issues still read. Workspaces where they are the only member go with them, files and all. The last owner of a workspace with other people is refused (409, with the list) until they hand it over: `apps/core/roles.on_account_deletion`. Each workspace left gets a `member.remove` audit row with `reason: account deleted` |
 | English only, no i18n library | One language keeps M1 smaller; strings stay in components until a second language is planned |
 
 ## Open questions

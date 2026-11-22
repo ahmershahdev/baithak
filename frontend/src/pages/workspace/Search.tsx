@@ -269,7 +269,9 @@ function MessageResults({
       <ul aria-label="Results" className="divide-y divide-border">
         {hits.map((hit) => {
           const author = hit.message.author;
-          const name = author ? author.display_name || author.username : "Someone";
+          const name = author
+            ? author.display_name || author.username
+            : hit.message.sender_name || "Deleted account";
           return (
             <li key={hit.message.id}>
               <Link

@@ -56,3 +56,20 @@ def can_remove(actor: Role, target: Role, *, is_self: bool, owners: int) -> bool
     if is_self:
         return True
     return is_admin(actor) and outranks_or_equals(actor, target)
+
+
+class OnAccountDeletion(StrEnum):
+    LEAVE = "leave"
+    DELETE_WORKSPACE = "delete_workspace"
+    BLOCK = "block"
+
+
+def on_account_deletion(role: Role, *, owners: int, members: int) -> OnAccountDeletion:
+    """What deleting someone's account does to one workspace they are in. `owners` and
+    `members` are the workspace's counts now, the person included."""
+    if members <= 1:
+        return OnAccountDeletion.DELETE_WORKSPACE
+    # The last owner hands the workspace over first; nobody else could ever manage it.
+    if role == Role.OWNER and owners <= 1:
+        return OnAccountDeletion.BLOCK
+    return OnAccountDeletion.LEAVE

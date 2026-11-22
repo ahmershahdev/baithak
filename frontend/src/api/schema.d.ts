@@ -61,6 +61,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/delete-account/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete my account; my posts stay in shared workspaces with no author */
+        post: operations["auth_delete_account_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me/": {
         parameters: {
             query?: never;
@@ -1055,6 +1072,10 @@ export interface components {
             email?: components["schemas"]["Availability"];
             username?: components["schemas"]["Availability"];
         };
+        BlockingWorkspace: {
+            slug: string;
+            name: string;
+        };
         /**
          * @description * `v2` - v2
          * @enum {string}
@@ -1129,6 +1150,9 @@ export interface components {
         ConversationRequest: {
             /** @description The other people in it. */
             user_ids: number[];
+        };
+        DeleteAccountRequest: {
+            password: string;
         };
         Delivery: {
             readonly id: number;
@@ -1429,6 +1453,10 @@ export interface components {
             /** @description An IANA name, like Asia/Karachi. */
             time_zone: string;
         };
+        OwnsWorkspaces: {
+            detail: string;
+            workspaces: components["schemas"]["BlockingWorkspace"][];
+        };
         /** @description The code from the email, and who it is for: `uid` from the emailed link, or `email`. */
         PasswordResetConfirmRequest: {
             uid?: string;
@@ -1698,6 +1726,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    auth_delete_account_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnsWorkspaces"];
+                };
             };
         };
     };
