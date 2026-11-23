@@ -86,6 +86,61 @@ paths:
               schema:
                 $ref: '#/components/schemas/OwnsWorkspaces'
           description: ''
+  /api/v1/auth/devices/:
+    get:
+      operationId: auth_devices_list
+      summary: Where I am signed in, most recently used first
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+          description: ''
+  /api/v1/auth/devices/{device_id}/:
+    delete:
+      operationId: auth_devices_destroy
+      summary: Sign one of my devices out; its open tabs close their live connection
+      parameters:
+      - in: path
+        name: device_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/devices/sign-out-others/:
+    post:
+      operationId: auth_devices_sign_out_others_create
+      summary: Sign out every device but this one
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignedOut'
+          description: ''
   /api/v1/auth/me/:
     get:
       operationId: auth_me_retrieve
@@ -3135,6 +3190,31 @@ components:
           type: string
       required:
       - detail
+    Device:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Browser and system, such as "Firefox on Windows".
+        created_at:
+          type: string
+          format: date-time
+          description: When this device signed in.
+        last_seen_at:
+          type: string
+          format: date-time
+          description: Updated at most every 5 minutes.
+        current:
+          type: boolean
+          description: The device making this request.
+      required:
+      - created_at
+      - current
+      - id
+      - last_seen_at
+      - name
     EmailRequest:
       type: object
       properties:
@@ -4310,6 +4390,13 @@ components:
       - email
       - password
       - username
+    SignedOut:
+      type: object
+      properties:
+        signed_out:
+          type: integer
+      required:
+      - signed_out
     StatusEnum:
       enum:
       - backlog

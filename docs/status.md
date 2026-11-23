@@ -70,6 +70,10 @@ progress, with its last two items on hold.
   password; Settings sets it up with a QR code, the key to type in, or an `otpauth://` link.
   New dependency: `uqr` 0.1.3 (no dependencies of its own) for the QR code. The setting
   `FILES_ENCRYPTION_KEYS` is now `ENCRYPTION_KEYS`, as it covers secrets too.
+- **Signed-in devices**: Settings lists each device (browser and system, last active, "This
+  device") with Sign out, and "Sign out everywhere else". A signed-out device's open tabs lose
+  their socket at once. Deactivating an account, a password reset and deleting the account end
+  every session and socket.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -82,8 +86,8 @@ Before the tests and the deploy, one pull request each, in this order (decided 2
 2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages (done above).
 3. File safety (done above). Message text at rest is still to come: InnoDB tablespace
    encryption, set up with the database (see architecture.md, Encryption at rest).
-4. Sign-in, in four pull requests: two-step sign-in (done above); sign out other devices and
-   end every session when an account is deactivated; OIDC; SAML.
+4. Sign-in, in four pull requests: two-step sign-in and signed-in devices (both done above);
+   then OIDC; then SAML.
 5. Abuse hardening: limits on socket connection floods, contact spam per email address, a
    replay window on webhooks, a review of race conditions.
 6. A security review against current OWASP guidance, written up in `docs/`.

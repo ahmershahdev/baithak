@@ -17,13 +17,14 @@ from rest_framework.views import APIView
 from apps.accounts import (
     captcha,
     deletion,
+    devices,
     guards,
     lockout,
     reset_codes,
     tasks,
     two_step,
 )
-from apps.accounts.models import ContactMessage, User, username_validator
+from apps.accounts.models import ContactMessage, Device, User, username_validator
 from apps.accounts.serializers import (
     AuthConfigSerializer,
     AvailabilityRequestSerializer,
@@ -33,12 +34,14 @@ from apps.accounts.serializers import (
     ContactSerializer,
     DeleteAccountSerializer,
     DetailSerializer,
+    DeviceSerializer,
     EmailSerializer,
     NotificationSettingsSerializer,
     OwnsWorkspacesSerializer,
     PasswordAndCodeSerializer,
     PasswordResetConfirmSerializer,
     RecoveryCodesSerializer,
+    SignedOutSerializer,
     SignInSerializer,
     SignUpSerializer,
     TwoStepNeededSerializer,
@@ -50,6 +53,7 @@ from apps.accounts.serializers import (
     check_password_rules,
 )
 from apps.accounts.tokens import email_verification_token, user_from_uid
+from apps.core import devices as device_rules
 
 CHECK_EMAIL = "If the address can be used, an email is on its way."
 BAD_LINK = "This link is not valid or has expired."
@@ -373,7 +377,9 @@ class DeleteAccountView(APIView):
         if not user.check_password(serializer.validated_data["password"]):
             return Response({"detail": CONFIRM_FAILED}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            deletion.delete_account(user)
+            with transaction.atomic():
+                devices.end_all(user)
+                deletion.delete_account(user)
         except deletion.OwnsWorkspaces as blocked:
             body = {
                 "detail": HAND_OVER,
@@ -466,6 +472,7 @@ class PasswordResetConfirmView(AnonymousAPIView):
             return Response({"detail": BAD_CODE}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(data["password"])
         user.save(update_fields=["password"])
+        devices.end_all(user)
         lockout.record_success(user)
         tasks.send_password_changed_email.delay(user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -552,3 +559,54 @@ class NotificationSettingsView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class DevicesView(APIView):
+    @extend_schema(
+        responses={200: DeviceSerializer(many=True)},
+        summary="Where I am signed in, most recently used first",
+    )
+    def get(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        current = request.session.get(devices.SESSION_KEY)
+        rows = Device.objects.filter(user=user).order_by("-last_seen_at", "-pk")
+        return Response(
+            [
+                {
+                    "id": row.pk,
+                    "name": device_rules.label(row.user_agent),
+                    "created_at": row.created_at,
+                    "last_seen_at": row.last_seen_at,
+                    "current": row.pk == current,
+                }
+                for row in rows
+            ]
+        )
+
+
+class DeviceView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=None,
+        responses={204: None, 404: DetailSerializer},
+        summary="Sign one of my devices out; its open tabs close their live connection",
+    )
+    def delete(self, request: Request, device_id: int) -> Response:
+        if not devices.end(cast(User, request.user), device_id):
+            return Response({"detail": "No such device."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SignOutOthersView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=None,
+        responses={200: SignedOutSerializer},
+        summary="Sign out every device but this one",
+    )
+    def post(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        count = devices.end_others(user, keep=request.session.get(devices.SESSION_KEY))
+        return Response({"signed_out": count})

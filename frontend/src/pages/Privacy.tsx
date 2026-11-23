@@ -117,6 +117,10 @@ const SECTIONS: DocSection[] = [
               "Files are kept encrypted, as you uploaded them, once a virus scan passes them. For images we also make a smaller preview with the photo's hidden details (such as camera and location data) removed. A file that fails the scan is deleted; its name and the reason stay so the conversation shows what happened.",
             ],
             [
+              "Signed-in devices",
+              "For each place you are signed in: the browser and system (such as Chrome on Windows) and when it was last used, so you can sign it out from Settings. Not your IP address.",
+            ],
+            [
               "Notifications",
               "Which mentions, direct messages and assigned issues you have been told about, and whether they were emailed.",
             ],
@@ -252,7 +256,10 @@ const SECTIONS: DocSection[] = [
           ["Invitations", "7 days."],
           ["Password reset codes", "10 minutes."],
           ["Email confirmation links", "1 day."],
-          ["Sign-in sessions", "2 weeks, or until you sign out."],
+          [
+            "Sign-in sessions and devices",
+            "2 weeks, or until you or a device you trust signs them out.",
+          ],
           ["Webhook delivery logs", "30 days."],
           ["Contact form messages", "Until the conversation is over; ask and we delete them."],
         ]}

@@ -10,6 +10,7 @@ import { PasswordField } from "../../components/PasswordField";
 import { Select } from "../../components/Select";
 import { Button, ErrorMessage, Notice, QuietButton } from "../../components/ui";
 import { PageHeader, Panel } from "../../components/workspace";
+import { DeviceSettings } from "./DeviceSettings";
 import { TwoStepSettings } from "./TwoStepSettings";
 
 type Settings = components["schemas"]["NotificationSettings"];
@@ -45,6 +46,7 @@ export function MySettings() {
       {settings.isError && <ErrorMessage>Could not load your settings.</ErrorMessage>}
       {settings.data && <EmailForm saved={settings.data} />}
       <TwoStepSettings />
+      <DeviceSettings />
       <DeleteAccount />
     </div>
   );
