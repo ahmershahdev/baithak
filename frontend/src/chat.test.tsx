@@ -689,6 +689,8 @@ describe("files", () => {
       size: 2048,
       width: null,
       height: null,
+      scan: "clean" as const,
+      scan_note: "",
       url: "/api/v1/workspaces/team/files/signed-notes/",
       preview_url: null,
     };
@@ -723,6 +725,31 @@ describe("files", () => {
     expect(uploaded).toBe(true);
     expect(sent).toMatchObject([{ body: "", attachments: [31] }]);
     expect(screen.queryByRole("list", { name: "Files to send" })).not.toBeInTheDocument();
+  });
+
+  test("a file being checked has no link, and a refused one says why", async () => {
+    const base = { content_type: "text/plain", size: 10, width: null, height: null };
+    const held = {
+      ...message(1, 1, ""),
+      attachments: [
+        { ...base, id: 1, name: "draft.txt", scan: "pending" as const, scan_note: "" },
+        {
+          ...base,
+          id: 2,
+          name: "eicar.txt",
+          scan: "infected" as const,
+          scan_note: "Removed: a virus scan flagged it.",
+        },
+      ].map((file) => ({ ...file, url: null, preview_url: null })),
+    };
+    backend({
+      "GET /api/v1/workspaces/team/channels/5/messages/": () => json(200, page([held], 1)),
+    });
+    await openChannel();
+
+    expect(await screen.findByText("Checking for viruses")).toBeInTheDocument();
+    expect(screen.getByText("Removed: a virus scan flagged it.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /draft\.txt|eicar\.txt/ })).not.toBeInTheDocument();
   });
 
   test("a file over the limit is refused before uploading", async () => {

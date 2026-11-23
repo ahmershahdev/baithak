@@ -111,6 +111,14 @@ CHANNEL_LAYERS = {
 FILES_ROOT = Path(env("FILES_ROOT", str(BASE_DIR / "var" / "files")))
 # Seconds a signed download link works.
 FILE_LINK_MAX_AGE = 12 * 60 * 60
+# Base64 AES-256 keys, comma-separated. The first encrypts new files; the rest still decrypt
+# older ones, so a key can be rotated (docs/architecture.md, Files).
+FILES_ENCRYPTION_KEYS = env_list("FILES_ENCRYPTION_KEYS")
+# Uploads are scanned by clamd before anyone can download them; "clamd" or, in tests, "fake".
+FILE_SCANNER = "clamd"
+CLAMAV_HOST = env("CLAMAV_HOST", "127.0.0.1")
+CLAMAV_PORT = int(env("CLAMAV_PORT", "3310"))
+CLAMAV_TIMEOUT = 60
 
 # Online status lives in REDIS_URL under this prefix (apps/chat/presence.py).
 PRESENCE_KEY_PREFIX = "presence"
@@ -127,7 +135,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.tasks.prune_deliveries",
         "schedule": 86400.0,
     },
+    "rescan-stuck-files": {
+        "task": "apps.files.tasks.rescan_stuck",
+        "schedule": 600.0,
+    },
 }
+# Scans get their own queue so a burst of uploads never holds up email or previews.
+CELERY_TASK_ROUTES = {"apps.files.tasks.scan_file": {"queue": "scan"}}
 
 AUTH_USER_MODEL = "accounts.User"
 # Sign-in throttling counts attempts here, so it has to be shared by every process.

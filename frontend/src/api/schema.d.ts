@@ -1029,8 +1029,11 @@ export interface components {
             readonly size: number;
             readonly width: number | null;
             readonly height: number | null;
-            /** @description Signed; stops working after a while. */
-            readonly url: string;
+            readonly scan: components["schemas"]["ScanEnum"];
+            /** @description Why a refused file was removed; empty otherwise. */
+            readonly scan_note: string;
+            /** @description Signed; stops working after a while. Null until the file is scanned clean. */
+            readonly url: string | null;
             /** @description A smaller image, once made; null before that and for other files. */
             readonly preview_url: string | null;
         };
@@ -1562,6 +1565,14 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "member" | "guest";
+        /**
+         * @description * `pending` - Pending
+         *     * `clean` - Clean
+         *     * `infected` - Infected
+         *     * `damaged` - Damaged
+         * @enum {string}
+         */
+        ScanEnum: "pending" | "clean" | "infected" | "damaged";
         SendRequest: {
             /** @default  */
             body: string;

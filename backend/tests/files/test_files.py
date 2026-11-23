@@ -16,7 +16,7 @@ from apps.chat.models import Channel, ChannelMember, Message
 from apps.core.channels import ChannelKind
 from apps.core.roles import Role
 from apps.files import links
-from apps.files.models import Attachment
+from apps.files.models import Attachment, Scan
 from apps.files.tasks import MAX_PIXELS, PREVIEW_SIDE, make_preview
 from apps.workspaces.models import Member, Workspace
 from tests.accounts.factories import make_user
@@ -67,6 +67,10 @@ def send(api: APIClient, channel: Channel, body: str, attachments: list[int]) ->
     return api.post(f"{BASE}{channel.pk}/messages/", payload, format="json")
 
 
+def link(attachment_id: int) -> str:
+    return links.url("karachi-team", attachment_id, links.ORIGINAL)
+
+
 def download(api: APIClient, url: str) -> Any:
     response: Any = api.get(url)
     if response.status_code == 200:
@@ -83,10 +87,12 @@ class TestUploading:
         assert response.status_code == 201
         body = response.json()
         assert (body["name"], body["content_type"]) == ("beach.png", "image/png")
+        # The upload answers before its scan; no link until the file is clean.
+        assert (body["scan"], body["url"]) == ("pending", None)
         attachment = Attachment.objects.get(pk=body["id"])
+        assert attachment.scan == Scan.CLEAN
         assert attachment.preview_key
         assert (attachment.width, attachment.height) == (1600, 900)
-        assert str(settings.FILES_ROOT) not in body["url"]
 
     def test_text_claiming_to_be_an_image_is_kept_as_text(
         self, api: APIClient, general: Channel
@@ -171,7 +177,7 @@ class TestSending:
     def test_a_preview_made_after_sending_reaches_the_message(
         self, api: APIClient, owner: User, general: Channel, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("apps.files.views.make_preview.delay", lambda _id: None)
+        monkeypatch.setattr("apps.files.tasks.make_preview.delay", lambda _id: None)
         file_id = upload(api, general, "beach.png", png()).json()["id"]
         sent = send(api, general, "", [file_id]).json()
         assert sent["attachments"][0]["preview_url"] is None
@@ -203,7 +209,7 @@ class TestDownloading:
         body = upload(api, general, "notes.txt", b"chai at four").json()
         send(api, general, "", [body["id"]])
 
-        response = download(api, body["url"])
+        response = download(api, link(body["id"]))
 
         assert response.status_code == 200
         assert response.body == b"chai at four"
@@ -217,8 +223,7 @@ class TestDownloading:
     ) -> None:
         body = upload(api, general, "beach.png", png()).json()
 
-        original = download(api, body["url"])
-        # The upload answers before its preview exists; the message carries it later.
+        original = download(api, link(body["id"]))
         preview = download(api, links.url("karachi-team", body["id"], links.PREVIEW))
 
         assert original["Content-Disposition"].startswith("inline")
@@ -229,16 +234,16 @@ class TestDownloading:
     def test_a_forged_or_expired_link_is_404(
         self, api: APIClient, general: Channel, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        body = upload(api, general, "notes.txt", b"chai").json()
+        url = link(upload(api, general, "notes.txt", b"chai").json()["id"])
 
-        assert download(api, body["url"][:-3] + "abc/").status_code == 404
+        assert download(api, url[:-3] + "abc/").status_code == 404
         monkeypatch.setattr(settings, "FILE_LINK_MAX_AGE", -1)
-        assert download(api, body["url"]).status_code == 404
+        assert download(api, url).status_code == 404
 
     def test_a_file_not_yet_sent_is_only_its_uploaders(
         self, api: APIClient, workspace: Workspace, general: Channel
     ) -> None:
-        url = upload(api, general, "draft.txt", b"not sent").json()["url"]
+        url = link(upload(api, general, "draft.txt", b"not sent").json()["id"])
         bilal = make_user(username="bilal")
         Member.objects.create(workspace=workspace, user=bilal, role=Role.MEMBER)
         api.force_authenticate(bilal)
@@ -257,7 +262,7 @@ class TestDownloading:
         ChannelMember.objects.create(channel=secret, user=bilal)
         file_id = upload(api, secret, "plan.txt", b"secret plan").json()["id"]
         send(api, secret, "", [file_id])
-        url = links.url("karachi-team", file_id, links.ORIGINAL)
+        url = link(file_id)
         ChannelMember.objects.filter(channel=secret, user=bilal).delete()
         api.force_authenticate(bilal)
 

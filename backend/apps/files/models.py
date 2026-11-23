@@ -5,6 +5,13 @@ from apps.chat.models import Channel, Message
 from apps.workspaces.models import Workspace, WorkspaceScopedManager
 
 
+class Scan(models.TextChoices):
+    PENDING = "pending"
+    CLEAN = "clean"
+    INFECTED = "infected"
+    DAMAGED = "damaged"
+
+
 class Attachment(models.Model):
     """An uploaded file. It belongs to its uploader until a message they send takes it."""
 
@@ -23,6 +30,12 @@ class Attachment(models.Model):
     # Where it lives under FILES_ROOT, which the web server never serves.
     storage_key = models.CharField(max_length=100, unique=True)
     preview_key = models.CharField(max_length=100, blank=True)
+    # False only for files stored before encryption (apps/files/storage.py).
+    encrypted = models.BooleanField(default=True)
+    # Nobody can download a file until it is clean; a refused file's bytes are deleted.
+    scan = models.CharField(max_length=10, choices=Scan.choices, default=Scan.PENDING)
+    scan_detail = models.CharField(max_length=200, blank=True)
+    scanned_at = models.DateTimeField(null=True, blank=True)
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

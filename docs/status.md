@@ -55,6 +55,15 @@ progress, with its last two items on hold.
   sees data; how it is protected (planned protections named as planned, not live); rights,
   children and changes. Contact form messages, which are stored, are now listed. The contact
   page has a breadcrumb too.
+- **File safety**: every upload is scanned before anyone can open it, on its own Celery queue:
+  full-file checks (images decode, PDFs without scripts or launch actions, zips without
+  passwords, macros or bomb ratios, UTF-8 text), then ClamAV (new `clamav` container,
+  `clamav/clamav:1.5.5`). Refused files lose their bytes and say why in the message; scanning
+  fails closed and retries, with a sweeper for stuck files. Files and previews are AES-256-GCM
+  at rest in 64 KiB chunks with key rotation (`FILES_ENCRYPTION_KEYS`, required in
+  production); `manage.py encrypt_files` converts older files. File search shows clean files
+  only. New direct dependency: `cryptography` 50.0.2 (already installed through another
+  package).
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -65,8 +74,8 @@ Before the tests and the deploy, one pull request each, in this order (decided 2
 
 1. Channel redesign (done above).
 2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages (done above).
-3. File safety: ClamAV in its own container scans uploads in Celery before anyone can download
-   them, quarantine, decode checks for corrupt files, files encrypted at rest with AES-256-GCM.
+3. File safety (done above). Message text at rest is still to come: InnoDB tablespace
+   encryption, set up with the database (see architecture.md, Encryption at rest).
 4. Sign-in: MFA (authenticator codes and recovery codes), SSO with OIDC and SAML, sign out
    other devices, sessions ended when an account is deactivated.
 5. Abuse hardening: limits on socket connection floods, contact spam per email address, a

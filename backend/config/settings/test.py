@@ -4,6 +4,8 @@ from pathlib import Path
 
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-not-a-secret")
 os.environ.setdefault("MYSQL_PASSWORD", "baithak")
+# A fixed key for tests only; real keys come from the environment.
+os.environ.setdefault("FILES_ENCRYPTION_KEYS", "dGVzdC1vbmx5LWtleS1ub3QtYS1zZWNyZXQtMzJieXQ=")
 
 from config.settings.base import *  # noqa: F403
 
@@ -21,3 +23,5 @@ CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 # Real Redis, kept apart from development's keys; tests/chat/test_websockets.py clears it.
 PRESENCE_KEY_PREFIX = "test-presence"
 FILES_ROOT = Path(tempfile.gettempdir()) / "baithak-test-files"
+# Clean unless the file holds the EICAR test string (apps/files/scanning.py).
+FILE_SCANNER = "fake"
