@@ -2,15 +2,18 @@ import { useId, type ComponentProps, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { SITE_URL, SUPPORT_EMAIL } from "../contact";
+import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 import { Jaali, Scene, Wordmark } from "./brand";
 
 export function AuthLayout({
   title,
   intro,
+  trail,
   children,
 }: {
   title: string;
   intro?: ReactNode;
+  trail?: Crumb[];
   children: ReactNode;
 }) {
   return (
@@ -42,6 +45,11 @@ export function AuthLayout({
           <span className="sr-only">Baithak home</span>
         </Link>
         <div className="settle mx-auto w-full max-w-[25rem]">
+          {trail && (
+            <div className="mb-6">
+              <Breadcrumbs trail={trail} />
+            </div>
+          )}
           <h1 className="wonky font-display text-4xl font-semibold tracking-tight">{title}</h1>
           {intro && <p className="mt-2 text-text-muted">{intro}</p>}
           <div className="mt-8">{children}</div>

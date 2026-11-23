@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -351,6 +351,29 @@ describe("privacy", () => {
     expect(screen.getByText(/Google receives details/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Resend" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deleting your account" })).toBeInTheDocument();
+  });
+
+  test("has a breadcrumb, a table of contents and the contact form's retention", async () => {
+    fakeBackend(signedOut);
+    renderAt("/privacy");
+
+    const trail = await screen.findByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "Baithak" })).toHaveAttribute("href", "/");
+    expect(within(trail).getByText("Privacy")).toHaveAttribute("aria-current", "page");
+    const contents = screen.getByRole("navigation", { name: "On this page" });
+    expect(
+      within(contents).getByRole("link", { name: "Cookies and browser storage" }),
+    ).toHaveAttribute("href", "#cookies");
+    expect(screen.getByRole("rowheader", { name: "Contact form messages" })).toBeInTheDocument();
+  });
+
+  test("the contact page has a breadcrumb back home", async () => {
+    fakeBackend(signedOut);
+    renderAt("/contact");
+
+    const trail = await screen.findByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "Baithak" })).toHaveAttribute("href", "/");
+    expect(within(trail).getByText("Contact")).toHaveAttribute("aria-current", "page");
   });
 
   test("is linked from the sign-in page", async () => {

@@ -50,6 +50,11 @@ progress, with its last two items on hold.
 - **Channel redesign**: the channel fills the page; a header with members and channel search;
   day dividers; icon message actions; hover times on grouped messages; a formatting bar and
   growing text box in the composer; a "jump to latest" pill with a count of new messages.
+- **Privacy page rewrite**: a reading layout with a breadcrumb and a table of contents; a short
+  summary; tables for what is kept, cookies and storage, and how long things are kept; who else
+  sees data; how it is protected (planned protections named as planned, not live); rights,
+  children and changes. Contact form messages, which are stored, are now listed. The contact
+  page has a breadcrumb too.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -59,7 +64,7 @@ progress, with its last two items on hold.
 Before the tests and the deploy, one pull request each, in this order (decided 2026-11-23):
 
 1. Channel redesign (done above).
-2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages.
+2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages (done above).
 3. File safety: ClamAV in its own container scans uploads in Celery before anyone can download
    them, quarantine, decode checks for corrupt files, files encrypted at rest with AES-256-GCM.
 4. Sign-in: MFA (authenticator codes and recovery codes), SSO with OIDC and SAML, sign out
