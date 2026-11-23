@@ -2,6 +2,7 @@ import os
 
 os.environ.setdefault("DJANGO_SECRET_KEY", "dev-only-not-a-secret")
 os.environ.setdefault("MYSQL_PASSWORD", "baithak")
+os.environ.setdefault("FILES_ENCRYPTION_KEYS", "ZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldC0zMmJ5dGU=")
 
 from config.settings.base import *  # noqa: F403
 

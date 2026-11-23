@@ -212,10 +212,56 @@ production), which nothing serves. They are read back only through
 and version and works for 12 hours, and the view also requires workspace membership and
 `can_read` on the file's channel, so leaving a private channel takes its files away too.
 Responses carry `nosniff` and a sandboxing CSP; only images are shown inline, everything else
-downloads. Celery makes a WebP preview (720 px, upright, metadata dropped) of each image, skipping
-anything over 40 million pixels, then gives the message a new event so open tabs get the
-preview. Deleting a message deletes its files after the commit. Uploads are not audited, like
+downloads. Deleting a message deletes its files after the commit. Uploads are not audited, like
 messages; deleting someone else's message still is.
+
+### Scanning
+
+Every upload starts `pending` and nobody, the uploader included, can download it until it is
+`clean`: the download view answers 404 and the API gives no `url` before then. The upload itself
+answers at once; the file can be sent while it is checked, and the message shows "Checking for
+viruses" until it is done. A file the scan refused can't be sent.
+
+`apps.files.tasks.scan_file` runs on its own Celery queue, `scan`, so a burst of uploads never
+holds up email, previews or webhooks. It first checks the whole file (`apps/files/inspect.py`):
+images must decode, PDFs must end properly and carry no `/JavaScript`, `/JS` or `/Launch`
+action (names are compared after undoing `#xx` escapes), zips must open and stay under 10,000
+entries, 250 MB unpacked and a 100:1 ratio per entry, with no password and no Office macros
+(`vbaProject.bin`), and text must be UTF-8 all through. Then it streams the file to clamd with
+`INSTREAM` (`apps/files/scanning.py`). A signature means `infected`, a failed check `damaged`;
+either way the stored bytes are deleted, the row stays so the message can say "Removed" and
+why, and the message gets a new event. Only a clean image gets a preview (WebP, 720 px, upright,
+metadata dropped, nothing over 40 million pixels).
+
+ClamAV runs as its own container (`clamav/clamav`, about 1 GB of memory for its signatures,
+updated by freshclam inside it). Compose sets `AlertExceedsMax` and `AlertEncrypted`, so an
+archive too large or too deep to scan, or an encrypted one, is flagged instead of passed. If
+clamd can't be reached or answers with an error, the scan retries with backoff (15 s doubling
+to 10 minutes, 12 tries) and the file stays pending: scanning fails closed. Every 10 minutes
+`rescan_stuck` queues again anything pending for over 5 minutes. A verdict is written only while
+the row is still `pending`, under a row lock, so a retry and the sweeper can't both decide.
+
+Measured on the development machine against the real clamd: one 2 MB file 0.4 s, thirty 2 MB
+files at once 0.46 s (clamd scans in parallel), one 25 MB file of random bytes, the worst case,
+4.7 s. The limit is how many workers take from `scan`; development runs one worker with two
+processes, production should give `scan` workers of its own.
+
+### Encryption at rest
+
+Stored files and previews are AES-256-GCM (`apps/files/crypto.py`, from `cryptography`) in
+64 KiB chunks, so a download streams without holding the file in memory. Each file has a
+random 8-byte nonce prefix and a chunk counter, and the last chunk is sealed differently, so a
+file that is changed, cut short, reordered or spliced fails to open. The header names the key
+by the first 4 bytes of its SHA-256. `FILES_ENCRYPTION_KEYS` lists base64 keys: the first
+encrypts, the others still decrypt, so a key is rotated by putting a new one first. Production
+won't start without it. Files stored before encryption have `encrypted = False` and are read as
+they are until `manage.py encrypt_files` rewrites them. Encrypting and decrypting 25 MB takes
+0.05 s and 0.1 s.
+
+Message text is not encrypted by the app: FULLTEXT search, mention parsing and email digests
+need the database to read it. It is to be covered by InnoDB tablespace encryption (MySQL's
+keyring component), which encrypts the table files on disk while queries work unchanged; that
+is set up with the database, not here.
 
 ## Search
 
@@ -446,6 +492,8 @@ when the channel opens and stays there while the marker moves past it.
 | Membership changes lock the workspace row | Two owners demoting each other at once can't leave a workspace without an owner |
 | Default Redis channel layer kept after the load check | Both layers deliver everything once join announcements are batched, and pub/sub showed no steady gain on the development machine; measure again on the production setup |
 | Pillow for image previews | Decoding and resizing images safely needs a real image library; it is the standard one, with decompression-bomb limits |
+| ClamAV (clamd in its own container) for uploads | Open source, signatures updated daily, scans archives and documents inside; talked to over its plain TCP protocol, so no client library |
+| `cryptography` for files at rest | AES-GCM from a maintained, audited library instead of anything hand-rolled; it was already installed through another package and is now pinned directly |
 | Read markers are not in the audit log | They are one person's place in a channel, not workspace data, and they change on every read |
 | `WorkspaceScopedManager.for_workspace()` on every workspace-owned model | One way to read workspace rows, so a query can't forget its workspace |
 | `tests/test_access.py` lists every workspace endpoint and fails on an unlisted one | Each new endpoint is checked for 404 to outsiders and to unknown slugs without anyone remembering to add it |

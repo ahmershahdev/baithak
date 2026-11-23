@@ -8,7 +8,7 @@ from apps.chat import events, mentions
 from apps.chat.models import Channel, ChannelMember, Message, Reaction
 from apps.core.reactions import can_add
 from apps.files import storage
-from apps.files.models import Attachment
+from apps.files.models import Attachment, Scan
 from apps.notifications import services as notifications
 from apps.notifications.models import Notification
 
@@ -82,9 +82,14 @@ def post(
         if attachment_ids:
             # Only the author's own files, not yet sent, still in this channel; a second send
             # racing for the same file finds it taken and rolls back.
-            taken = Attachment.objects.filter(
-                pk__in=attachment_ids, channel=locked, uploader=author, message__isnull=True
-            ).update(message=message)
+            # A file the scan already refused can't be sent; one still being checked can.
+            taken = (
+                Attachment.objects.filter(
+                    pk__in=attachment_ids, channel=locked, uploader=author, message__isnull=True
+                )
+                .exclude(scan__in=[Scan.INFECTED, Scan.DAMAGED])
+                .update(message=message)
+            )
             if taken != len(set(attachment_ids)):
                 raise FilesUnavailable
         events.message_changed(message)

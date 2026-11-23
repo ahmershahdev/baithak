@@ -20,9 +20,9 @@ from apps.core import files as file_rules
 from apps.core.channels import ChannelKind
 from apps.core.roles import Role
 from apps.files import links, storage
-from apps.files.models import Attachment
+from apps.files.models import Attachment, Scan
 from apps.files.serializers import AttachmentSerializer, UploadSerializer
-from apps.files.tasks import make_preview
+from apps.files.tasks import scan_file
 from apps.workspaces.access import membership
 
 # A downloaded file must never run anything on this origin, even if a browser guesses its type.
@@ -72,8 +72,7 @@ class UploadView(APIView):
                 size=upload.size,
                 storage_key=key,
             )
-            if content_type in file_rules.IMAGE_TYPES:
-                transaction.on_commit(lambda: make_preview.delay(attachment.pk))
+            transaction.on_commit(lambda: scan_file.delay(attachment.pk))
         attachment.workspace = access.member.workspace
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -105,19 +104,24 @@ class DownloadView(APIView):
         )
         if not readable or (attachment.message_id is None and attachment.uploader_id != user.pk):
             raise Http404
+        # Not scanned yet, or refused: there is nothing anyone may download.
+        if attachment.scan != Scan.CLEAN:
+            raise Http404
         if variant == links.PREVIEW:
             if not attachment.preview_key:
                 raise Http404
             response = FileResponse(
-                storage.open_file(attachment.preview_key), content_type="image/webp"
+                storage.open_file(attachment.preview_key, encrypted=attachment.encrypted),
+                content_type="image/webp",
             )
         else:
             response = FileResponse(
-                storage.open_file(attachment.storage_key),
+                storage.open_file(attachment.storage_key, encrypted=attachment.encrypted),
                 content_type=attachment.content_type,
                 as_attachment=not file_rules.shown_inline(attachment.content_type),
                 filename=attachment.name,
             )
+            response.headers["Content-Length"] = str(attachment.size)
         response.headers["Content-Security-Policy"] = FILE_CSP
         response.headers["X-Content-Type-Options"] = "nosniff"
         # The link itself expires; the browser may keep what it fetched for an hour.

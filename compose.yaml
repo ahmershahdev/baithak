@@ -24,6 +24,7 @@ x-backend: &backend
     RECAPTCHA_V2_SITE_KEY: ${RECAPTCHA_V2_SITE_KEY:-}
     RECAPTCHA_V2_SECRET_KEY: ${RECAPTCHA_V2_SECRET_KEY:-}
     CELERY_BROKER_URL: redis://redis:6379/1
+    CLAMAV_HOST: clamav
   volumes:
     - ./backend:/app
   depends_on:
@@ -76,7 +77,30 @@ services:
     <<: *backend
     # --beat runs the schedule (CELERY_BEAT_SCHEDULE) in this one worker; production runs a
     # separate beat so a second worker can't start a second schedule.
-    command: ["celery", "-A", "config", "worker", "--beat", "--loglevel=info", "--concurrency=2"]
+    # "scan" is the virus scanning queue (CELERY_TASK_ROUTES); production can give it its own
+    # workers.
+    command: ["celery", "-A", "config", "worker", "--beat", "--loglevel=info", "--concurrency=2", "-Q", "celery,scan"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Started, not healthy: its first signature download takes minutes, and scans retry
+      # until it answers.
+      clamav:
+        condition: service_started
+
+  clamav:
+    image: clamav/clamav:1.5.5
+    environment:
+      # Refuse what can't be fully checked: archives over the scan limits, and encrypted
+      # archives or documents (docs/architecture.md, Files).
+      CLAMD_CONF_AlertExceedsMax: "yes"
+      CLAMD_CONF_AlertEncrypted: "yes"
+      CLAMD_CONF_StreamMaxLength: 30M
+    volumes:
+      - clamav-db:/var/lib/clamav
 
 volumes:
   mysql-data:
+  clamav-db:

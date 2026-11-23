@@ -12,7 +12,7 @@ from apps.chat.services import create_default_channel
 from apps.core.channels import ChannelKind
 from apps.core.roles import Role
 from apps.files import storage
-from apps.files.models import Attachment
+from apps.files.models import Attachment, Scan
 from apps.issues.models import Project
 from apps.issues.services import create_issue
 from apps.search.queries import PAGE_SIZE
@@ -195,7 +195,9 @@ class TestPrivacy:
 
 
 class TestFiles:
-    def _attach(self, channel: Channel, author: User, name: str) -> Attachment:
+    def _attach(
+        self, channel: Channel, author: User, name: str, scan: Scan = Scan.CLEAN
+    ) -> Attachment:
         attachment = Attachment.objects.create(
             workspace=channel.workspace,
             channel=channel,
@@ -204,6 +206,7 @@ class TestFiles:
             content_type="application/pdf",
             size=10,
             storage_key=storage.new_key(),
+            scan=scan,
         )
         messages.post(channel, author, "", attachment_ids=[attachment.pk])
         return attachment
@@ -218,6 +221,19 @@ class TestFiles:
 
         assert [hit["file"]["name"] for hit in found["results"]] == ["quarterly-report-2026.pdf"]
         assert found["results"][0]["message_seq"] == 1
+
+    def test_files_being_checked_or_refused_are_not_found(
+        self, signed_in: APIClient, owner: User, general: Channel
+    ) -> None:
+        self._attach(general, owner, "contract-pending.pdf", Scan.PENDING)
+        # Sent while still being checked, then refused by the scan.
+        infected = self._attach(general, owner, "contract-infected.pdf", Scan.PENDING)
+        Attachment.objects.filter(pk=infected.pk).update(scan=Scan.INFECTED)
+        self._attach(general, owner, "contract-signed.pdf")
+
+        found = find(signed_in, "files", q="contract")
+
+        assert [hit["file"]["name"] for hit in found["results"]] == ["contract-signed.pdf"]
 
     def test_unsent_files_are_not_found(
         self, signed_in: APIClient, owner: User, general: Channel

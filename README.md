@@ -45,8 +45,9 @@ English.
 - **Messages.** Live messages over WebSockets with Discord-style formatting, threads, direct and
   group messages, mentions, reactions, edits and deletes, typing and online status, and unread counts that stay right
   across devices.
-- **Files and search.** File and image uploads with previews, and full-text search over
-  messages, files and issues, limited to what the person can see.
+- **Files and search.** File and image uploads with previews, scanned for viruses (ClamAV)
+  before anyone can open them and encrypted at rest, and full-text search over messages, files
+  and issues, limited to what the person can see.
 - **Issues.** Projects with labels, assignees, priorities and due dates, a board per project,
   and an issue created from any message with its discussion kept in a thread.
 - **Integrations.** GitHub webhooks posting pull request and issue events into a channel, and
@@ -76,7 +77,8 @@ those rules, with tests for each.
 | Part | Tools |
 |---|---|
 | API and real time | Python 3.12, Django 5.2, Django REST Framework, drf-spectacular, Django Channels |
-| Jobs | Celery and Celery beat (email, previews, webhook deliveries, digests) |
+| Jobs | Celery and Celery beat (email, virus scans, previews, webhook deliveries, digests) |
+| Uploads | ClamAV (clamd) for virus scanning, AES-256-GCM (`cryptography`) at rest |
 | Data | MySQL 8.4 (InnoDB, FULLTEXT search), Redis (channel layer, presence, queue, cache) |
 | Web | React 19, TypeScript 6 (strict), Vite, Tailwind CSS 4, TanStack Query, React Router |
 | Quality | pytest, pytest-asyncio, factory_boy, Vitest, Playwright, Ruff, mypy, ESLint, Prettier |
@@ -93,8 +95,8 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts MySQL, Redis, the backend (migrations run on start) and a Celery worker in
-Docker, waits until they are healthy, then starts the web app at <http://localhost:5173>. Vite
+`npm run dev` starts MySQL, Redis, ClamAV, the backend (migrations run on start) and a Celery
+worker in Docker, waits until they are healthy, then starts the web app at <http://localhost:5173>. Vite
 proxies `/api`, `/ws`, `/admin` and `/health` to the backend at <http://localhost:8000>.
 
 | Command | What it does |

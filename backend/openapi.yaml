@@ -2568,10 +2568,20 @@ components:
           type: integer
           readOnly: true
           nullable: true
-        url:
+        scan:
+          allOf:
+          - $ref: '#/components/schemas/ScanEnum'
+          readOnly: true
+        scan_note:
           type: string
           readOnly: true
-          description: Signed; stops working after a while.
+          description: Why a refused file was removed; empty otherwise.
+        url:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Signed; stops working after a while. Null until the file is
+            scanned clean.
         preview_url:
           type: string
           nullable: true
@@ -2584,6 +2594,8 @@ components:
       - id
       - name
       - preview_url
+      - scan
+      - scan_note
       - size
       - url
       - width
@@ -4011,6 +4023,18 @@ components:
         * `admin` - admin
         * `member` - member
         * `guest` - guest
+    ScanEnum:
+      enum:
+      - pending
+      - clean
+      - infected
+      - damaged
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `clean` - Clean
+        * `infected` - Infected
+        * `damaged` - Damaged
     SendRequest:
       type: object
       properties:

@@ -113,17 +113,53 @@ function ToolButton({
   );
 }
 
+/** A file nobody can open yet (being checked) or ever (refused by the scan). */
+function FileHeld({ attachment }: { attachment: Attachment }) {
+  const checking = attachment.scan === "pending";
+  return (
+    <div
+      role="status"
+      className={`flex max-w-xs items-center gap-3 rounded-xl border px-3 py-2 ${
+        checking ? "border-border bg-bg" : "border-danger/40 bg-danger-soft text-danger-soft-text"
+      }`}
+    >
+      {checking ? (
+        <span
+          aria-hidden="true"
+          className="size-4 shrink-0 animate-spin rounded-full border-2 border-border-strong border-t-transparent"
+        />
+      ) : (
+        <Icon name="issue" className="size-5" />
+      )}
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold">{attachment.name}</span>
+        <span className={`block text-xs ${checking ? "text-text-subtle" : ""}`}>
+          {checking ? "Checking for viruses" : attachment.scan_note}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function Attachments({ attachments }: { attachments: Attachment[] }) {
   return (
     <ul aria-label="Files" className="mt-1 flex flex-wrap gap-2">
       {attachments.map((attachment) => {
         const box = fitWithin(attachment.width, attachment.height, 320);
+        const url = attachment.url;
+        if (url === null) {
+          return (
+            <li key={attachment.id} className="max-w-full">
+              <FileHeld attachment={attachment} />
+            </li>
+          );
+        }
         return (
           <li key={attachment.id} className="max-w-full">
             {isImage(attachment) ? (
-              <a href={attachment.url} target="_blank" rel="noopener noreferrer">
+              <a href={url} target="_blank" rel="noopener noreferrer">
                 <img
-                  src={attachment.preview_url ?? attachment.url}
+                  src={attachment.preview_url ?? url}
                   alt={attachment.name}
                   loading="lazy"
                   width={box?.width}
@@ -133,7 +169,7 @@ function Attachments({ attachments }: { attachments: Attachment[] }) {
               </a>
             ) : (
               <a
-                href={attachment.url}
+                href={url}
                 download={attachment.name}
                 className="flex max-w-xs items-center gap-3 rounded-xl border border-border bg-bg px-3 py-2 hover:border-border-strong"
               >

@@ -327,7 +327,7 @@ function FileResults({
           <li key={hit.file.id} className="flex flex-wrap items-center gap-3 px-5 py-4">
             <span className="min-w-0 flex-1">
               <a
-                href={hit.file.url}
+                href={hit.file.url ?? undefined}
                 download={hit.file.name}
                 className="block truncate font-semibold hover:underline"
               >

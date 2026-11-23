@@ -5,6 +5,7 @@ SVG and HTML are not served as such: SVG is not accepted, and HTML is plain text
 uploaded can run script on this origin.
 """
 
+import re
 import unicodedata
 
 MAX_SIZE = 25 * 1024 * 1024
@@ -79,3 +80,64 @@ def safe_name(name: str) -> str:
 def shown_inline(content_type: str) -> bool:
     """Only images open in the browser; everything else downloads."""
     return content_type in IMAGE_TYPES
+
+
+def clamd_verdict(reply: bytes) -> tuple[str, str]:
+    """("clean", ""), ("found", signature) or ("error", reason) from a clamd INSTREAM reply,
+    which reads "stream: OK", "stream: <signature> FOUND" or "<reason> ERROR"."""
+    text = reply.rstrip(b"\0\r\n").decode("utf-8", "replace").strip()
+    result = text.split(": ", 1)[-1]
+    if result == "OK":
+        return "clean", ""
+    if result.endswith(" FOUND"):
+        return "found", result.removesuffix(" FOUND")
+    return "error", result.removesuffix(" ERROR") or "No answer"
+
+
+# Archives are opened by the scanner; these limits refuse ones built to exhaust it first.
+MAX_ENTRIES = 10_000
+MAX_UNPACKED = 250 * 1024 * 1024
+MAX_RATIO = 100
+ENCRYPTED_FLAG = 0x1
+MACRO_PART = "vbaproject.bin"
+
+
+def archive_problem(entries: list[tuple[str, int, int, int]]) -> str | None:
+    """Why a zip is refused, from its entries as (name, unpacked size, packed size, flags)."""
+    if len(entries) > MAX_ENTRIES:
+        return "The archive holds too many files to check."
+    if sum(size for _, size, _, _ in entries) > MAX_UNPACKED:
+        return "The archive unpacks to more than we can check."
+    for name, size, packed, flags in entries:
+        if flags & ENCRYPTED_FLAG:
+            return "Password-protected archives can't be checked."
+        if size > MAX_RATIO * max(packed, 1):
+            return "The archive is packed too tightly to check safely."
+        if name.replace("\\", "/").rsplit("/", 1)[-1].lower() == MACRO_PART:
+            return "Office files with macros are not accepted."
+    return None
+
+
+_PDF_NAME = re.compile(rb"/((?:[A-Za-z0-9]|#[0-9A-Fa-f]{2})+)")
+# Actions that run code or open other programs when the PDF is opened.
+RISKY_PDF_NAMES = frozenset({"JavaScript", "JS", "Launch"})
+
+
+def pdf_problem(data: bytes) -> str | None:
+    """Why a PDF is refused. Names may hide behind #xx escapes (/J#61vaScript), so they are
+    decoded before comparing."""
+    if b"%%EOF" not in data[-2048:]:
+        return "The PDF is incomplete or damaged."
+    for match in _PDF_NAME.finditer(data):
+        name = re.sub(rb"#([0-9A-Fa-f]{2})", lambda m: bytes([int(m.group(1), 16)]), match.group(1))
+        if name.decode("latin-1") in RISKY_PDF_NAMES:
+            return "PDFs that run scripts or open programs are not accepted."
+    return None
+
+
+def text_problem(data: bytes) -> str | None:
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return "The text file isn't valid UTF-8."
+    return None

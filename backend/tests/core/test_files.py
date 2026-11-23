@@ -1,5 +1,6 @@
 import pytest
 
+from apps.core import files
 from apps.core.files import MAX_NAME, MAX_SIZE, problem, safe_name, shown_inline, sniff
 
 
@@ -83,3 +84,62 @@ def test_only_images_are_shown_inline() -> None:
     assert shown_inline("image/webp")
     assert not shown_inline("application/pdf")
     assert not shown_inline("text/plain")
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        (b"stream: OK\0", ("clean", "")),
+        (b"stream: Win.Test.EICAR_HDB-1 FOUND\0", ("found", "Win.Test.EICAR_HDB-1")),
+        (b"INSTREAM size limit exceeded. ERROR\0", ("error", "INSTREAM size limit exceeded.")),
+        (b"stream: Can't allocate memory ERROR\n", ("error", "Can't allocate memory")),
+        (b"", ("error", "No answer")),
+    ],
+)
+def test_clamd_verdict(reply: bytes, expected: tuple[str, str]) -> None:
+    assert files.clamd_verdict(reply) == expected
+
+
+def entry(
+    name: str = "a.txt", size: int = 10, packed: int = 5, flags: int = 0
+) -> tuple[str, int, int, int]:
+    return (name, size, packed, flags)
+
+
+@pytest.mark.parametrize(
+    ("entries", "refused"),
+    [
+        ([entry(), entry("word/document.xml", 3000, 900)], None),
+        ([entry()] * (files.MAX_ENTRIES + 1), "too many files"),
+        ([entry(size=files.MAX_UNPACKED + 1, packed=files.MAX_UNPACKED)], "unpacks to more"),
+        ([entry(flags=files.ENCRYPTED_FLAG)], "Password-protected"),
+        ([entry(size=1_000_000, packed=100)], "packed too tightly"),
+        ([entry(size=50, packed=0)], None),
+        ([entry("word/vbaProject.bin")], "macros"),
+        ([entry("xl\\VBAPROJECT.BIN")], "macros"),
+    ],
+)
+def test_archive_problem(entries: list[tuple[str, int, int, int]], refused: str | None) -> None:
+    problem = files.archive_problem(entries)
+    assert problem is None if refused is None else refused in (problem or "")
+
+
+@pytest.mark.parametrize(
+    ("data", "refused"),
+    [
+        (b"%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\n%%EOF\n", None),
+        (b"%PDF-1.7\n1 0 obj << /Type /Catalog >>", "incomplete"),
+        (b"%PDF-1.7\n<< /S /JavaScript /JS (app.alert(1)) >>\n%%EOF", "run scripts"),
+        (b"%PDF-1.7\n<< /S /J#61vaScript >>\n%%EOF", "run scripts"),
+        (b"%PDF-1.7\n<< /S /Launch /F (cmd.exe) >>\n%%EOF", "run scripts"),
+        (b"%PDF-1.7\n<< /JSON /Launcher >>\n%%EOF", None),
+    ],
+)
+def test_pdf_problem(data: bytes, refused: str | None) -> None:
+    problem = files.pdf_problem(data)
+    assert problem is None if refused is None else refused in (problem or "")
+
+
+def test_text_problem() -> None:
+    assert files.text_problem(b"chai at four") is None
+    assert files.text_problem(b"chai \xff at four") == "The text file isn't valid UTF-8."

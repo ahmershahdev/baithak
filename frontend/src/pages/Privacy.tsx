@@ -114,7 +114,7 @@ const SECTIONS: DocSection[] = [
             ],
             [
               "Files",
-              "Files are kept as you uploaded them. For images we also make a smaller preview with the photo's hidden details (such as camera and location data) removed.",
+              "Files are kept encrypted, as you uploaded them, once a virus scan passes them. For images we also make a smaller preview with the photo's hidden details (such as camera and location data) removed. A file that fails the scan is deleted; its name and the reason stay so the conversation shows what happened.",
             ],
             [
               "Notifications",
@@ -224,13 +224,14 @@ const SECTIONS: DocSection[] = [
             "Passwords are hashed with Argon2id. Repeated wrong passwords lock the account for longer each time.",
             "Forms are protected against cross-site requests and automated sign-ups. Signing in, signing up, posting, uploading, searching and the contact form are rate limited.",
             "Every request checks that you may see what you ask for. Something you can't see answers as if it does not exist.",
-            "Files are checked by their content, not their name, kept away from the public web folder, and opened only through links that expire after 12 hours and check your access again.",
+            "Files are checked by their content, not their name, and scanned for viruses before anyone can open them. A file that fails is deleted.",
+            "Stored files are encrypted with AES-256, kept away from the public web folder, and opened only through links that expire after 12 hours and check your access again.",
             "Changes to workspaces, members and roles are written to an audit log.",
           ]}
         />
         <p>
-          Before Baithak launches we are adding virus scanning for uploads, encryption of stored
-          messages and files, and two-step sign-in. This page will say so once each is live.
+          Before Baithak launches we are adding encryption of the stored database, including
+          messages, and two-step sign-in. This page will say so once each is live.
         </p>
       </>
     ),

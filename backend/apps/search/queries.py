@@ -14,7 +14,7 @@ from apps.chat.access import readable_channels
 from apps.chat.models import Message
 from apps.chat.serializers import MESSAGE_PREFETCH
 from apps.core.search import boolean_query
-from apps.files.models import Attachment
+from apps.files.models import Attachment, Scan
 from apps.issues.models import Issue
 from apps.workspaces.models import Member
 
@@ -84,13 +84,15 @@ def messages(
 def files(
     member: Member, words: list[str], filters: Filters, before_id: int | None
 ) -> tuple[list[Attachment], int | None]:
-    """Only files that were sent: a file not yet sent is its uploader's alone."""
+    """Only files that were sent and scanned clean: a file not yet sent is its uploader's
+    alone, and one being checked or refused can't be opened."""
     found = (
         Attachment.objects.for_workspace(member.workspace)
         .filter(
             channel__in=readable_channels(member).values("pk"),
             message__isnull=False,
             message__deleted_at__isnull=True,
+            scan=Scan.CLEAN,
         )
         .annotate(score=Match(["name"], words))
         .filter(score__gt=0)

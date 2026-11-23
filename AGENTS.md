@@ -51,8 +51,9 @@ docs/                  roadmap, architecture, status
   the Channels Redis layer, one group per channel.
 - Edits and deletes keep the message row (`edited_at`, `deleted_at`); the text of a deleted
   message is removed, the row stays so threads and counts don't break.
-- Uploaded files are checked by content type and size, stored outside the web root, and served
-  through signed, expiring links. Image previews are made in Celery.
+- Uploaded files are checked by content type and size, scanned (ClamAV and full-file checks)
+  before anyone can download them, encrypted at rest, stored outside the web root, and served
+  through signed, expiring links. Image previews are made in Celery, only for clean files.
 - Webhook payloads are verified (GitHub signature) before anything is read from them.
 - Every create, update and delete on workspace data, members and roles writes an audit log row.
 - Secrets only from environment variables. Never commit `.env`, dumps, keys, tokens or real
