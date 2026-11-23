@@ -252,7 +252,7 @@ Stored files and previews are AES-256-GCM (`apps/files/crypto.py`, from `cryptog
 64 KiB chunks, so a download streams without holding the file in memory. Each file has a
 random 8-byte nonce prefix and a chunk counter, and the last chunk is sealed differently, so a
 file that is changed, cut short, reordered or spliced fails to open. The header names the key
-by the first 4 bytes of its SHA-256. `FILES_ENCRYPTION_KEYS` lists base64 keys: the first
+by the first 4 bytes of its SHA-256. `ENCRYPTION_KEYS` lists base64 keys: the first
 encrypts, the others still decrypt, so a key is rotated by putting a new one first. Production
 won't start without it. Files stored before encryption have `encrypted = False` and are read as
 they are until `manage.py encrypt_files` rewrites them. Encrypting and decrypting 25 MB takes
@@ -461,6 +461,31 @@ one takes it off, and the list fetched after a reconnect replaces the count. An 
 reported read while the tab is visible and scrolled to the bottom. The "New" line is placed
 when the channel opens and stays there while the marker moves past it.
 
+## Two-step sign-in
+
+Codes are TOTP (RFC 6238; `apps/core/totp.py`, checked against the RFC's test vectors): SHA-1,
+6 digits, 30-second steps, the defaults of every authenticator app. A code is accepted for the
+step before and after the current one, and only for a step newer than the last one used
+(`two_step.last_step`, updated under a row lock), so a code can't be replayed, not even by two
+sign-ins at the same moment.
+
+Setting it up is two calls. `two-step/setup/` makes a key and stores it sealed (AES-256-GCM with
+`ENCRYPTION_KEYS`, `crypto.seal`) on a row with no `enabled_at`, which does nothing at sign-in.
+`two-step/enable/` with a first code from the app turns it on and returns ten recovery codes
+once (50 bits each, no look-alike characters, kept as HMAC-SHA256 with the secret key like reset
+codes). Only a verified email may set it up: the verification link signs an unverified person
+in, and its token covers `email_verified_at`, so once the address is verified no link works and
+none can skip the second step. Password reset never signs in.
+
+With it on, a right password answers 202 and only remembers in the session who passed, for 5
+minutes (`two_step_user`, `two_step_until`); nobody is signed in. `signin/two-step/` takes a code
+from the app or a recovery code (case, spaces and the dash ignored), signs in, and rotates the
+session key. Wrong codes climb the same lockout ladder as wrong passwords, and the lockout ends
+the pending step. Turning it off or making new recovery codes needs the password and a code.
+Turning it on or off, new recovery codes and a recovery code used to sign in each send an email.
+Someone who lost both their phone and their codes writes to support; once they are confirmed,
+deleting their row in the Django admin turns it off.
+
 ## Decisions
 
 | Decision | Why |
@@ -523,7 +548,9 @@ when the channel opens and stays there while the marker moves past it.
 | `client_id` on sends, unique per channel and author | A send retried after a dropped connection returns the stored message instead of a second copy |
 | Messages are not audited, except an admin deleting someone else's | Content keeps its own trail (`edited_at`, `deleted_at`); moderation is a change to the workspace and is audited |
 | `post` throttle, 120 sends per minute per person | Stops a stuck client or a script flooding a channel; reading history is never limited |
-| Lockout ladder on the account, shared by sign-in and reset codes | 3 wrong attempts lock for 1 hour, 3 more for 4 hours, then a week of suspension, then a ban only an admin lifts (Django admin, "Unlock"). Stored on the user so it survives restarts; the owner is emailed at each step. Unknown emails get the same answers from a cache so locks don't reveal who has an account |
+| TOTP written out in `apps/core`, not a library | About 40 lines over `hmac` and `base64`, tested against the RFC's vectors, and the maintainer can explain every line |
+| `uqr` to draw the setup QR code | No dependencies; returns the cells, which React draws as one SVG path, so no generated HTML enters the page. Always black on white with a 4-cell quiet zone, since scanners need it, even in dark mode |
+| Lockout ladder on the account, shared by sign-in, reset codes and two-step codes | 3 wrong attempts lock for 1 hour, 3 more for 4 hours, then a week of suspension, then a ban only an admin lifts (Django admin, "Unlock"). Stored on the user so it survives restarts; the owner is emailed at each step. Unknown emails get the same answers from a cache so locks don't reveal who has an account |
 | Password reset by a 6-digit code, 10 minutes, one use, three tries | Stored as an HMAC with the secret key, not a plain hash, since a million codes are easy to brute-force; a new code cancels the old one; wrong codes climb the same ladder |
 | Password rules in `apps/core/passwords.py`: 12 to 128 characters, 2 lower, 2 upper, 2 digits, 1 symbol | Enforced by the API; the web app shows the same rules as a checklist |
 | Handles checked against `apps/core/handles.py` | Reserved names, and hate or abuse found after folding look-alikes (4 as a or e, 1 as i or l), separators and doubled letters. Words that hide inside ordinary names (grape, crisis, islamabad) are left out on purpose |

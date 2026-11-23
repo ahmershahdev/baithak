@@ -106,7 +106,7 @@ const SECTIONS: DocSection[] = [
           rows={[
             [
               "Your account",
-              "Email address, handle, display name, time zone, notification settings and quiet hours. Your password is stored only as an Argon2id hash, never as you typed it.",
+              "Email address, handle, display name, time zone, notification settings and quiet hours. Your password is stored only as an Argon2id hash, never as you typed it. If you turn on two-step sign-in, its key is stored encrypted and your recovery codes only as hashes.",
             ],
             [
               "What you post",
@@ -221,7 +221,8 @@ const SECTIONS: DocSection[] = [
         <Points
           items={[
             "The live site is served only over HTTPS, and browsers are told never to use plain HTTP.",
-            "Passwords are hashed with Argon2id. Repeated wrong passwords lock the account for longer each time.",
+            "Passwords are hashed with Argon2id. Repeated wrong passwords or codes lock the account for longer each time.",
+            "You can turn on two-step sign-in, so a code from an app on your phone is needed as well as your password.",
             "Forms are protected against cross-site requests and automated sign-ups. Signing in, signing up, posting, uploading, searching and the contact form are rate limited.",
             "Every request checks that you may see what you ask for. Something you can't see answers as if it does not exist.",
             "Files are checked by their content, not their name, and scanned for viruses before anyone can open them. A file that fails is deleted.",
@@ -231,7 +232,7 @@ const SECTIONS: DocSection[] = [
         />
         <p>
           Before Baithak launches we are adding encryption of the stored database, including
-          messages, and two-step sign-in. This page will say so once each is live.
+          messages. This page will say so once it is live.
         </p>
       </>
     ),

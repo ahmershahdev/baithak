@@ -193,7 +193,7 @@ paths:
   /api/v1/auth/signin/:
     post:
       operationId: auth_signin_create
-      summary: Sign in
+      summary: Sign in; 202 when a two-step code is needed next
       tags:
       - auth
       requestBody:
@@ -212,11 +212,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoStepNeeded'
+          description: ''
         '400':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CaptchaError'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/signin/two-step/:
+    post:
+      operationId: auth_signin_two_step_create
+      summary: Finish signing in with a code from the authenticator app or a recovery
+        code
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
           description: ''
         '429':
           content:
@@ -263,6 +304,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CaptchaError'
+          description: ''
+  /api/v1/auth/two-step/:
+    get:
+      operationId: auth_two_step_retrieve
+      summary: My two-step sign-in
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoStepStatus'
+          description: ''
+  /api/v1/auth/two-step/disable/:
+    post:
+      operationId: auth_two_step_disable_create
+      summary: Turn two-step sign-in off
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordAndCodeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/two-step/enable/:
+    post:
+      operationId: auth_two_step_enable_create
+      summary: Turn two-step sign-in on with a first code from the app
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryCodes'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/two-step/recovery-codes/:
+    post:
+      operationId: auth_two_step_recovery_codes_create
+      summary: Replace my recovery codes; the old ones stop working
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordAndCodeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryCodes'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/two-step/setup/:
+    post:
+      operationId: auth_two_step_setup_create
+      summary: 'Start setting up two-step sign-in: a new key for the authenticator
+        app'
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoStepSetup'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
           description: ''
   /api/v1/auth/verify-email/:
     post:
@@ -2844,6 +3005,16 @@ components:
       - joined_at
       - user_id
       - username
+    CodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: 6 digits from the app, or a recovery code.
+          maxLength: 32
+      required:
+      - code
     ColorEnum:
       enum:
       - accent
@@ -3766,6 +3937,21 @@ components:
       required:
       - detail
       - workspaces
+    PasswordAndCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: 6 digits from the app, or a recovery code.
+          maxLength: 32
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - code
+      - password
     PasswordResetConfirmRequest:
       type: object
       description: 'The code from the email, and who it is for: `uid` from the emailed
@@ -3988,6 +4174,16 @@ components:
           minimum: 0
       required:
       - seq
+    RecoveryCodes:
+      type: object
+      properties:
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: Shown once; only their hashes are kept.
+      required:
+      - recovery_codes
     ReplyRequest:
       type: object
       properties:
@@ -4152,6 +4348,39 @@ components:
           maxLength: 128
       required:
       - token
+    TwoStepNeeded:
+      type: object
+      properties:
+        detail:
+          type: string
+        two_step:
+          type: boolean
+          description: 'Always true: send a code to signin/two-step/.'
+      required:
+      - detail
+      - two_step
+    TwoStepSetup:
+      type: object
+      properties:
+        secret:
+          type: string
+          description: Base32, for typing into an app by hand.
+        uri:
+          type: string
+          description: otpauth:// address for the QR code.
+      required:
+      - secret
+      - uri
+    TwoStepStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        recovery_codes_left:
+          type: integer
+      required:
+      - enabled
+      - recovery_codes_left
     UidTokenRequest:
       type: object
       properties:

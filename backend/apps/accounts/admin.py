@@ -4,7 +4,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 
 from apps.accounts import lockout
-from apps.accounts.models import ContactMessage, User
+from apps.accounts.models import ContactMessage, TwoStep, User
 
 
 @admin.register(User)
@@ -29,3 +29,14 @@ class BaithakUserAdmin(UserAdmin):  # type: ignore[type-arg]
 class ContactMessageAdmin(admin.ModelAdmin[ContactMessage]):
     list_display = ("created_at", "name", "email", "sent_at")
     readonly_fields = ("name", "email", "message", "created_at", "sent_at")
+
+
+@admin.register(TwoStep)
+class TwoStepAdmin(admin.ModelAdmin[TwoStep]):
+    """For someone who lost both their phone and their recovery codes: once support has
+    confirmed who they are, deleting the row turns two-step sign-in off."""
+
+    list_display = ("user", "enabled_at", "created_at")
+    fields = ("user", "enabled_at", "created_at")
+    readonly_fields = fields
+    search_fields = ("user__email",)

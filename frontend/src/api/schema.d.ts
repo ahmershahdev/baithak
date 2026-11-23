@@ -156,8 +156,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in */
+        /** Sign in; 202 when a two-step code is needed next */
         post: operations["auth_signin_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/signin/two-step/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish signing in with a code from the authenticator app or a recovery code */
+        post: operations["auth_signin_two_step_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -192,6 +209,91 @@ export interface paths {
         put?: never;
         /** Sign up */
         post: operations["auth_signup_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/two-step/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My two-step sign-in */
+        get: operations["auth_two_step_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/two-step/disable/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-step sign-in off */
+        post: operations["auth_two_step_disable_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/two-step/enable/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-step sign-in on with a first code from the app */
+        post: operations["auth_two_step_enable_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/two-step/recovery-codes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace my recovery codes; the old ones stop working */
+        post: operations["auth_two_step_recovery_codes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/two-step/setup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start setting up two-step sign-in: a new key for the authenticator app */
+        post: operations["auth_two_step_setup_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1131,6 +1233,10 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
+        CodeRequest: {
+            /** @description 6 digits from the app, or a recovery code. */
+            code: string;
+        };
         /**
          * @description * `accent` - accent
          *     * `ember` - ember
@@ -1460,6 +1566,11 @@ export interface components {
             detail: string;
             workspaces: components["schemas"]["BlockingWorkspace"][];
         };
+        PasswordAndCodeRequest: {
+            /** @description 6 digits from the app, or a recovery code. */
+            code: string;
+            password: string;
+        };
         /** @description The code from the email, and who it is for: `uid` from the emailed link, or `email`. */
         PasswordResetConfirmRequest: {
             uid?: string;
@@ -1548,6 +1659,10 @@ export interface components {
         ReadRequest: {
             seq: number;
         };
+        RecoveryCodes: {
+            /** @description Shown once; only their hashes are kept. */
+            recovery_codes: string[];
+        };
         ReplyRequest: {
             /** @default  */
             body: string;
@@ -1614,6 +1729,21 @@ export interface components {
         };
         TokenRequest: {
             token: string;
+        };
+        TwoStepNeeded: {
+            detail: string;
+            /** @description Always true: send a code to signin/two-step/. */
+            two_step: boolean;
+        };
+        TwoStepSetup: {
+            /** @description Base32, for typing into an app by hand. */
+            secret: string;
+            /** @description otpauth:// address for the QR code. */
+            uri: string;
+        };
+        TwoStepStatus: {
+            enabled: boolean;
+            recovery_codes_left: number;
         };
         UidTokenRequest: {
             uid: string;
@@ -1928,12 +2058,59 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoStepNeeded"];
+                };
+            };
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["CaptchaError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    auth_signin_two_step_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
                 };
             };
             429: {
@@ -1991,6 +2168,152 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaptchaError"];
+                };
+            };
+        };
+    };
+    auth_two_step_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoStepStatus"];
+                };
+            };
+        };
+    };
+    auth_two_step_disable_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordAndCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    auth_two_step_enable_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    auth_two_step_recovery_codes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordAndCodeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    auth_two_step_setup_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoStepSetup"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
                 };
             };
         };

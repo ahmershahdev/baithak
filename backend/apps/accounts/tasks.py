@@ -8,6 +8,7 @@ from django.utils import timezone
 from apps.accounts import reset_codes
 from apps.accounts.models import ContactMessage, User
 from apps.accounts.tokens import email_verification_token, encode_uid
+from apps.accounts.two_step import codes_left
 
 # Tasks take a user id and make the token themselves, so no token passes through the broker.
 email_task = shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=5)
@@ -127,3 +128,41 @@ def send_contact_message(message_id: int) -> None:
     ).send()
     message.sent_at = timezone.now()
     message.save(update_fields=["sent_at"])
+
+
+TWO_STEP_TEXT = {
+    "on": (
+        "Two-step sign-in is on",
+        "Two-step sign-in was turned on for {email}. From now on, signing in asks for a code "
+        "from your authenticator app after your password.",
+    ),
+    "off": (
+        "Two-step sign-in is off",
+        "Two-step sign-in was turned off for {email}. Signing in now needs only your password.",
+    ),
+    "codes": (
+        "New recovery codes for Baithak",
+        "New recovery codes were made for {email}. The old ones no longer work.",
+    ),
+    "recovery": (
+        "A recovery code was used to sign in to Baithak",
+        "Someone signed in to {email} with a recovery code instead of the authenticator app. "
+        "Each code works once; you have {left} left.",
+    ),
+}
+
+
+@email_task
+def send_two_step_email(user_id: int, kind: str) -> None:
+    user = _active_user(user_id)
+    if user is None:
+        return
+    subject, text = TWO_STEP_TEXT[kind]
+    _mail(
+        user,
+        subject,
+        f"{text.format(email=user.email, left=codes_left(user))} "
+        f"({timezone.now():%d %b %Y, %H:%M} UTC)\n\n"
+        f"If this was not you, reset your password and write to {settings.SUPPORT_EMAIL} right "
+        "away.",
+    )

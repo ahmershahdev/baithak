@@ -5,7 +5,7 @@ from pathlib import Path
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-not-a-secret")
 os.environ.setdefault("MYSQL_PASSWORD", "baithak")
 # A fixed key for tests only; real keys come from the environment.
-os.environ.setdefault("FILES_ENCRYPTION_KEYS", "dGVzdC1vbmx5LWtleS1ub3QtYS1zZWNyZXQtMzJieXQ=")
+os.environ.setdefault("ENCRYPTION_KEYS", "dGVzdC1vbmx5LWtleS1ub3QtYS1zZWNyZXQtMzJieXQ=")
 
 from config.settings.base import *  # noqa: F403
 

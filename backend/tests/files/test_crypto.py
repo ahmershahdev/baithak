@@ -61,28 +61,42 @@ def test_a_plain_file_is_not_read_as_encrypted() -> None:
 
 
 def test_an_old_key_still_opens_files_after_rotation() -> None:
-    with override_settings(FILES_ENCRYPTION_KEYS=[KEY_A]):
+    with override_settings(ENCRYPTION_KEYS=[KEY_A]):
         blob = sealed(b"before rotation")
-    with override_settings(FILES_ENCRYPTION_KEYS=[KEY_B, KEY_A]):
+    with override_settings(ENCRYPTION_KEYS=[KEY_B, KEY_A]):
         assert opened(blob) == b"before rotation"
         assert sealed(b"after")[len(crypto.MAGIC) : len(crypto.MAGIC) + 4] == crypto.key_id(
             b"b" * 32
         )
-    with override_settings(FILES_ENCRYPTION_KEYS=[KEY_B]), pytest.raises(crypto.Tampered):
+    with override_settings(ENCRYPTION_KEYS=[KEY_B]), pytest.raises(crypto.Tampered):
         opened(blob)
 
 
 @pytest.mark.parametrize(
     ("keys", "message"),
     [
-        ([], "Set FILES_ENCRYPTION_KEYS"),
+        ([], "Set ENCRYPTION_KEYS"),
         (["not base64!"], "isn't base64"),
         ([KEY_A[:20]], "32 bytes"),
     ],
 )
 def test_bad_keys_stop_encryption(keys: list[str], message: str) -> None:
     with (
-        override_settings(FILES_ENCRYPTION_KEYS=keys),
+        override_settings(ENCRYPTION_KEYS=keys),
         pytest.raises(ImproperlyConfigured, match=message),
     ):
         sealed(b"anything")
+
+
+def test_a_sealed_secret_opens_only_unchanged_and_with_its_key() -> None:
+    blob = crypto.seal(b"JBSWY3DPEHPK3PXP")
+
+    assert crypto.unseal(blob) == b"JBSWY3DPEHPK3PXP"
+    assert b"JBSWY3DPEHPK3PXP" not in blob
+    changed = blob[:-1] + bytes([blob[-1] ^ 1])
+    with pytest.raises(crypto.Tampered):
+        crypto.unseal(changed)
+    with override_settings(ENCRYPTION_KEYS=[KEY_B]), pytest.raises(crypto.Tampered):
+        crypto.unseal(blob)
+    with pytest.raises(crypto.Tampered):
+        crypto.unseal(b"not sealed at all, just bytes")
