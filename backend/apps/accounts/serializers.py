@@ -12,11 +12,17 @@ from apps.core.passwords import MAX_LENGTH
 
 class UserSerializer(serializers.ModelSerializer[User]):
     email_verified = serializers.BooleanField(read_only=True)
+    has_password = serializers.SerializerMethodField(
+        help_text="False for someone who only signs in through a provider such as Google."
+    )
 
     class Meta:
         model = User
-        fields = ("id", "email", "username", "display_name", "email_verified")
+        fields = ("id", "email", "username", "display_name", "email_verified", "has_password")
         read_only_fields = fields
+
+    def get_has_password(self, user: User) -> bool:
+        return user.has_usable_password()
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer[User]):
@@ -162,7 +168,12 @@ class DetailSerializer(serializers.Serializer[None]):
 
 
 class DeleteAccountSerializer(serializers.Serializer[None]):
-    password = serializers.CharField(max_length=128, trim_whitespace=False)
+    password = serializers.CharField(max_length=128, trim_whitespace=False, required=False)
+    email = serializers.CharField(
+        max_length=254,
+        required=False,
+        help_text="Typed instead of a password by someone who has none (signs in with Google).",
+    )
 
 
 class BlockingWorkspaceSerializer(serializers.Serializer[None]):
@@ -178,6 +189,10 @@ class OwnsWorkspacesSerializer(serializers.Serializer[None]):
 class AuthConfigSerializer(serializers.Serializer[None]):
     recaptcha_v3_site_key = serializers.CharField(allow_blank=True)
     recaptcha_v2_site_key = serializers.CharField(allow_blank=True)
+    providers = serializers.ListField(
+        child=serializers.ChoiceField(choices=["google"]),
+        help_text="Sign-in buttons to show; each starts at oidc/<provider>/start/.",
+    )
 
 
 class CaptchaErrorSerializer(serializers.Serializer[None]):

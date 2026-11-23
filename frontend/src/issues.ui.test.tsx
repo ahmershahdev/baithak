@@ -13,6 +13,7 @@ const amna = {
   username: "amna",
   display_name: "Amna Khan",
   email_verified: true,
+  has_password: true,
 };
 
 const workspace = { slug: "team", name: "Team", created_at: "2026-11-01T10:00:00Z", role: "admin" };

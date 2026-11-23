@@ -13,7 +13,7 @@ export function json(status: number, body?: unknown): Response {
 const DEFAULTS: Record<string, Handler> = {
   "GET /api/v1/workspaces/": () => json(200, []),
   "GET /api/v1/auth/config/": () =>
-    json(200, { recaptcha_v3_site_key: "", recaptcha_v2_site_key: "" }),
+    json(200, { recaptcha_v3_site_key: "", recaptcha_v2_site_key: "", providers: [] }),
 };
 
 // A stand-in for the backend: routes are "METHOD /path/", unknown routes answer 404.

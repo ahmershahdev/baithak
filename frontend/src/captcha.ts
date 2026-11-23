@@ -60,12 +60,12 @@ function pageTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function useAuthConfig() {
+export function useAuthConfig() {
   return useQuery({
     queryKey: ["auth-config"],
     queryFn: async () => {
       const { data } = await api.GET("/api/v1/auth/config/");
-      return data ?? { recaptcha_v3_site_key: "", recaptcha_v2_site_key: "" };
+      return data ?? { recaptcha_v3_site_key: "", recaptcha_v2_site_key: "", providers: [] };
     },
     staleTime: Infinity,
   });

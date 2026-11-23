@@ -16,7 +16,7 @@ const KEY = ["me", "two-step"] as const;
 const UNREACHABLE = "Could not reach Baithak. Try again.";
 
 /** "JBSW Y3DP EHPK 3PXP": easier to read off a screen and type into a phone. */
-export function groupedKey(secret: string): string {
+function groupedKey(secret: string): string {
   return secret.replace(/(.{4})/g, "$1 ").trim();
 }
 

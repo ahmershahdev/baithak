@@ -7,6 +7,7 @@ import { useSetMe } from "../auth";
 import { useCaptcha } from "../captcha";
 import { CaptchaBox, CaptchaNotice } from "../components/CaptchaBox";
 import { PasswordField } from "../components/PasswordField";
+import { ProviderSignIn } from "../components/ProviderSignIn";
 import {
   AuthLayout,
   Button,
@@ -18,6 +19,7 @@ import {
 } from "../components/ui";
 import { honeypot, textField } from "../forms";
 import { rememberNext, safePath, takeNext } from "../next";
+import { PROVIDER_PROBLEMS } from "../providers";
 
 interface SignInBody {
   email: string;
@@ -119,7 +121,10 @@ export function SignIn() {
   const setMe = useSetMe();
   const captchaBox = useRef<HTMLDivElement>(null);
   const captcha = useCaptcha("signin", captchaBox);
-  const [errors, setErrors] = useState<ApiErrors>({ fields: {} });
+  const [errors, setErrors] = useState<ApiErrors>(() => {
+    const problem = PROVIDER_PROBLEMS[params.get("error") ?? ""];
+    return problem ? { detail: problem, fields: {} } : { fields: {} };
+  });
   const [needsCode, setNeedsCode] = useState(false);
 
   useEffect(() => {
@@ -193,6 +198,7 @@ export function SignIn() {
     >
       <form onSubmit={submit} className="relative flex flex-col gap-5" noValidate>
         {errors.detail && <ErrorMessage>{errors.detail}</ErrorMessage>}
+        <ProviderSignIn next={next} />
         <Field
           label="Email"
           name="email"

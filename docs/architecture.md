@@ -506,6 +506,35 @@ a socket also refuses to open (4401) for a session whose device is gone. Deactiv
 device, sockets included. Django already drops other sessions on a password change through the
 session hash; this also closes their sockets.
 
+## Signing in with Google
+
+`apps/accounts/oidc.py` runs the OpenID Connect authorization code flow, provider-neutral so a
+workspace's own identity provider can reuse it. `oidc/google/start/` stores a random state,
+nonce and PKCE verifier (S256) in the session for 10 minutes and redirects to Google.
+`oidc/google/callback/` takes the state out of the session (so each works once and only in the
+browser that started it, which stops login CSRF), exchanges the code with the verifier and the
+client secret, and checks the ID token with `joserfc`: signature against Google's published
+keys (cached an hour, fetched again once on an unknown key), issuer, audience (and `azp` when
+there are several), expiry with 60 s leeway, and the nonce. Any failure sends the browser to
+`/signin?error=...` with a short reason; success lands on the `next` path, which must be a path
+on this site (`//` and `/\` are refused).
+
+Who that is (`apps/accounts/external.py`): an `external_identity` row links a provider's `sub`,
+never the email, to an account, so changing the email at Google changes nothing here. The first
+time, the email must be one Google marks verified. A verified Baithak account with that address
+is linked and keeps its password. An unverified one is taken over: anyone could have signed up
+with an address they don't own, so its password becomes unusable and its sessions end, and the
+address counts as verified. Otherwise a new account is made, verified, with no password, named
+from the Google profile and a handle from the address (`apps/core/handles.from_email`, digits
+added if taken). Two sign-ins racing to link the same account meet the unique (provider, sub)
+index and both use the one link.
+
+Google sign-in skips Baithak's two-step code (the provider ran its own checks) but not the
+lockout or a deactivated account. Someone with no password confirms account deletion by typing
+their email, and can't turn on two-step sign-in until they set a password (through Forgot your
+password), since it only guards password sign-in. The button shows only when
+`GOOGLE_CLIENT_ID` is set (`config/` lists `providers`).
+
 ## Decisions
 
 | Decision | Why |
@@ -568,6 +597,7 @@ session hash; this also closes their sockets.
 | `client_id` on sends, unique per channel and author | A send retried after a dropped connection returns the stored message instead of a second copy |
 | Messages are not audited, except an admin deleting someone else's | Content keeps its own trail (`edited_at`, `deleted_at`); moderation is a change to the workspace and is audited |
 | `post` throttle, 120 sends per minute per person | Stops a stuck client or a script flooding a channel; reading history is never limited |
+| `joserfc` for ID tokens, the OIDC flow written out | Checking a signed token (keys, algorithms, claims) is where hand-written code goes wrong, so a maintained library does it; it needs only `cryptography`. The redirects are a few HTTP calls, written out and tested against a fake Google |
 | TOTP written out in `apps/core`, not a library | About 40 lines over `hmac` and `base64`, tested against the RFC's vectors, and the maintainer can explain every line |
 | `uqr` to draw the setup QR code | No dependencies; returns the cells, which React draws as one SVG path, so no generated HTML enters the page. Always black on white with a 4-cell quiet zone, since scanners need it, even in dark mode |
 | Lockout ladder on the account, shared by sign-in, reset codes and two-step codes | 3 wrong attempts lock for 1 hour, 3 more for 4 hours, then a week of suspension, then a ban only an admin lifts (Django admin, "Unlock"). Stored on the user so it survives restarts; the owner is emailed at each step. Unknown emails get the same answers from a cache so locks don't reveal who has an account |

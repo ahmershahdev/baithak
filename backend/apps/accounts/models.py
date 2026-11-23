@@ -99,3 +99,25 @@ class Device(models.Model):
 
     def __str__(self) -> str:
         return f"device {self.pk} of {self.user_id}"
+
+
+class ExternalIdentity(models.Model):
+    """An account at an identity provider that signs in as this person."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="identities")
+    # "google" for the site-wide button; a workspace's own provider gets its own key.
+    provider = models.CharField(max_length=40)
+    # The provider's stable id for the account (the token's "sub"), never the email.
+    subject = models.CharField(max_length=255)
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=("provider", "subject"), name="one_identity_per_subject"
+            ),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.provider} identity of {self.user_id}"

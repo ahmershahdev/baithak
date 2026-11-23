@@ -86,3 +86,14 @@ def problem(handle: str) -> str | None:
     if is_offensive(handle):
         return "This handle is not allowed."
     return None
+
+
+_HANDLE_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_.-"
+
+
+def from_email(email: str) -> str:
+    """A starting handle for someone who signs up through a provider, from their address:
+    "Amna.Khan+work@example.com" gives "amna.khan". The caller adds digits if it is taken."""
+    local = email.split("@", 1)[0].split("+", 1)[0].lower()
+    kept = "".join(c for c in local if c in _HANDLE_CHARS).lstrip("_.-")[:24]
+    return kept if len(kept) >= 2 else "member"

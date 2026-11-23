@@ -68,7 +68,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DeleteAccountRequest'
-        required: true
       security:
       - cookieAuth: []
       responses:
@@ -192,6 +191,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationSettings'
+          description: ''
+  /api/v1/auth/oidc/{provider}/callback/:
+    get:
+      operationId: auth_oidc_callback_retrieve
+      summary: Where the provider sends the person back; signs in and goes to the
+        app
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/oidc/{provider}/start/:
+    get:
+      operationId: auth_oidc_start_retrieve
+      summary: Go to a provider to sign in
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
           description: ''
   /api/v1/auth/password-reset/:
     post:
@@ -2874,7 +2922,13 @@ components:
           type: string
         recaptcha_v2_site_key:
           type: string
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvidersEnum'
+          description: Sign-in buttons to show; each starts at oidc/<provider>/start/.
       required:
+      - providers
       - recaptcha_v2_site_key
       - recaptcha_v3_site_key
     Author:
@@ -3133,8 +3187,12 @@ components:
           type: string
           minLength: 1
           maxLength: 128
-      required:
-      - password
+        email:
+          type: string
+          minLength: 1
+          description: Typed instead of a password by someone who has none (signs
+            in with Google).
+          maxLength: 254
     Delivery:
       type: object
       properties:
@@ -4217,6 +4275,11 @@ components:
       required:
       - key
       - name
+    ProvidersEnum:
+      enum:
+      - google
+      type: string
+      description: '* `google` - google'
     Reaction:
       type: object
       properties:
@@ -4516,10 +4579,16 @@ components:
         email_verified:
           type: boolean
           readOnly: true
+        has_password:
+          type: boolean
+          readOnly: true
+          description: False for someone who only signs in through a provider such
+            as Google.
       required:
       - display_name
       - email
       - email_verified
+      - has_password
       - id
       - username
     Webhook:

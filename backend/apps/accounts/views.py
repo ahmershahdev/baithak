@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
+from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -18,8 +19,10 @@ from apps.accounts import (
     captcha,
     deletion,
     devices,
+    external,
     guards,
     lockout,
+    oidc,
     reset_codes,
     tasks,
     two_step,
@@ -63,6 +66,7 @@ LOCKED = (
     f"{settings.SUPPORT_EMAIL} if you need help."
 )
 CONFIRM_FAILED = "The password is wrong."
+EMAIL_MISMATCH = "That is not the email address of this account."
 HAND_OVER = "Make someone else an owner of these workspaces first, or remove everyone else."
 BAD_CODE = "The code is wrong or has expired. Ask for a new one if you need to."
 CAPTCHA_DOUBT = "Please confirm you are a person."
@@ -71,6 +75,10 @@ TWO_STEP_NEEDED = "Enter the code from your authenticator app."
 WRONG_TWO_STEP_CODE = "That code is wrong or was already used."
 SIGN_IN_AGAIN = "Sign in again: the code step timed out."
 CONFIRM_EMAIL_FIRST = "Confirm your email before turning on two-step sign-in."
+PROVIDER_ONLY = (
+    "Two-step sign-in protects password sign-in. Set a password first, with Forgot your "
+    "password on the sign-in page."
+)
 # A password that passed waits this long for its second step.
 TWO_STEP_SECONDS = 5 * 60
 PENDING_USER, PENDING_UNTIL = "two_step_user", "two_step_until"
@@ -118,6 +126,7 @@ class AuthConfigView(APIView):
             {
                 "recaptcha_v3_site_key": settings.RECAPTCHA_V3_SITE_KEY,
                 "recaptcha_v2_site_key": settings.RECAPTCHA_V2_SITE_KEY,
+                "providers": ["google"] if oidc.google() else [],
             }
         )
 
@@ -270,6 +279,10 @@ class TwoStepSetupView(APIView):
         # address; otherwise the link would be a way around it.
         if not user.email_verified:
             return Response({"detail": CONFIRM_EMAIL_FIRST}, status=status.HTTP_403_FORBIDDEN)
+        # Two-step guards password sign-in only (a provider sign-in skips it), and turning it
+        # off needs the password.
+        if not user.has_usable_password():
+            return Response({"detail": PROVIDER_ONLY}, status=status.HTTP_403_FORBIDDEN)
         if two_step.is_on(user):
             return Response(
                 {"detail": "Two-step sign-in is already on."}, status=status.HTTP_400_BAD_REQUEST
@@ -374,8 +387,15 @@ class DeleteAccountView(APIView):
         user = cast(User, request.user)
         serializer = DeleteAccountSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if not user.check_password(serializer.validated_data["password"]):
-            return Response({"detail": CONFIRM_FAILED}, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+        confirmed = (
+            user.check_password(data.get("password", ""))
+            if user.has_usable_password()
+            else data.get("email", "").strip().lower() == user.email
+        )
+        if not confirmed:
+            problem = CONFIRM_FAILED if user.has_usable_password() else EMAIL_MISMATCH
+            return Response({"detail": problem}, status=status.HTTP_400_BAD_REQUEST)
         try:
             with transaction.atomic():
                 devices.end_all(user)
@@ -610,3 +630,64 @@ class SignOutOthersView(APIView):
         user = cast(User, request.user)
         count = devices.end_others(user, keep=request.session.get(devices.SESSION_KEY))
         return Response({"signed_out": count})
+
+
+def safe_next(value: str | None) -> str:
+    """A path on this site to land on after signing in; anything else goes home."""
+    if not value or not value.startswith("/") or value.startswith(("//", "/\\")):
+        return "/"
+    return value
+
+
+def _to_sign_in(problem: str) -> HttpResponseRedirect:
+    return HttpResponseRedirect(f"{settings.FRONTEND_URL}/signin?error={problem}")
+
+
+def _provider(name: str) -> oidc.Provider | None:
+    return oidc.google() if name == "google" else None
+
+
+class OidcStartView(APIView):
+    permission_classes = (AllowAny,)
+    throttle_scope = "auth"
+
+    @extend_schema(
+        responses={302: None, 404: DetailSerializer}, summary="Go to a provider to sign in"
+    )
+    def get(self, request: Request, provider: str) -> HttpResponseRedirect | Response:
+        chosen = _provider(provider)
+        if chosen is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return HttpResponseRedirect(
+            oidc.start(request._request, chosen, safe_next(request.query_params.get("next")))
+        )
+
+
+class OidcCallbackView(APIView):
+    permission_classes = (AllowAny,)
+    throttle_scope = "auth"
+
+    @extend_schema(
+        responses={302: None, 404: DetailSerializer},
+        summary="Where the provider sends the person back; signs in and goes to the app",
+    )
+    def get(self, request: Request, provider: str) -> HttpResponseRedirect | Response:
+        chosen = _provider(provider)
+        if chosen is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        params = request.query_params
+        if params.get("error"):
+            return _to_sign_in("cancelled")
+        try:
+            claims, landing = oidc.finish(
+                request._request, chosen, params.get("code", ""), params.get("state", "")
+            )
+            user = external.account_for(chosen.key, claims)
+        except oidc.Refused:
+            return _to_sign_in("failed")
+        except external.NotAllowed as refused:
+            return _to_sign_in(refused.reason)
+        # The provider ran its own checks, so Baithak's two-step code is not asked here.
+        lockout.record_success(user)
+        login(request._request, user, backend="django.contrib.auth.backends.ModelBackend")
+        return HttpResponseRedirect(f"{settings.FRONTEND_URL}{landing}")

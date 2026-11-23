@@ -74,6 +74,10 @@ progress, with its last two items on hold.
   device") with Sign out, and "Sign out everywhere else". A signed-out device's open tabs lose
   their socket at once. Deactivating an account, a password reset and deleting the account end
   every session and socket.
+- **Continue with Google**: on the sign-in and sign-up pages when `GOOGLE_CLIENT_ID` is set.
+  OIDC code flow with PKCE, state and nonce; ID tokens checked with `joserfc` (new dependency,
+  1.8.0). Accounts link by Google's stable id; a verified address links, an unverified account
+  with that address is taken over, otherwise a new account. Skips two-step, not lockout.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -87,7 +91,8 @@ Before the tests and the deploy, one pull request each, in this order (decided 2
 3. File safety (done above). Message text at rest is still to come: InnoDB tablespace
    encryption, set up with the database (see architecture.md, Encryption at rest).
 4. Sign-in, in four pull requests: two-step sign-in and signed-in devices (both done above);
-   then OIDC; then SAML.
+   then OIDC, in two parts: Continue with Google (done above), then company SSO per
+   workspace; then SAML.
 5. Abuse hardening: limits on socket connection floods, contact spam per email address, a
    replay window on webhooks, a review of race conditions.
 6. A security review against current OWASP guidance, written up in `docs/`.
