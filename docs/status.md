@@ -67,7 +67,8 @@ progress, with its last two items on hold.
 - **Two-step sign-in**: authenticator-app codes (TOTP written in `apps/core`, RFC test
   vectors), each usable once; ten recovery codes, hashed; the key sealed with AES-256-GCM;
   wrong codes on the lockout ladder; emails on every change. Sign-in asks for the code after the
-  password; Settings sets it up with the key to type in or an `otpauth://` link. The setting
+  password; Settings sets it up with a QR code, the key to type in, or an `otpauth://` link.
+  New dependency: `uqr` 0.1.3 (no dependencies of its own) for the QR code. The setting
   `FILES_ENCRYPTION_KEYS` is now `ENCRYPTION_KEYS`, as it covers secrets too.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,

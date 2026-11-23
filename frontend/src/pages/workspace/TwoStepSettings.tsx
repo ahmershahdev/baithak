@@ -5,6 +5,7 @@ import { api, readErrors } from "../../api/client";
 import type { components } from "../../api/schema";
 import { ApiError } from "../../api/workspaces";
 import { PasswordField } from "../../components/PasswordField";
+import { QrCode } from "../../components/QrCode";
 import { Button, ErrorMessage, Field, Notice, QuietButton } from "../../components/ui";
 import { Panel } from "../../components/workspace";
 import { textField } from "../../forms";
@@ -108,29 +109,34 @@ function SetUp({ setup, onEnabled }: { setup: Setup; onEnabled: (codes: string[]
         <p className="font-semibold">1. Add Baithak to your authenticator app</p>
         <p className="text-sm text-text-muted">
           Any app that makes 6-digit codes works, such as Google Authenticator, Microsoft
-          Authenticator, 1Password or Aegis. Choose to enter a key by hand and type this one:
+          Authenticator, 1Password or Aegis. Scan the code with it.
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <code
-            aria-label="Key for your app"
-            className="rounded-xl border border-border bg-bg px-4 py-2 font-mono text-lg tracking-wider select-all"
-          >
-            {groupedKey(setup.secret)}
-          </code>
-          <QuietButton
-            type="button"
-            onClick={() => {
-              void navigator.clipboard.writeText(setup.secret).then(() => {
-                setCopied(true);
-              });
-            }}
-          >
-            {copied ? "Copied" : "Copy key"}
-          </QuietButton>
+        <div className="flex flex-wrap items-start gap-6">
+          <QrCode text={setup.uri} label="QR code for your authenticator app" />
+          <div className="flex min-w-0 flex-col gap-3">
+            <p className="text-sm text-text-muted">Can&rsquo;t scan? Enter this key by hand:</p>
+            <code
+              aria-label="Key for your app"
+              className="rounded-xl border border-border bg-bg px-4 py-2 font-mono text-lg tracking-wider break-all select-all"
+            >
+              {groupedKey(setup.secret)}
+            </code>
+            <QuietButton
+              type="button"
+              className="self-start"
+              onClick={() => {
+                void navigator.clipboard.writeText(setup.secret).then(() => {
+                  setCopied(true);
+                });
+              }}
+            >
+              {copied ? "Copied" : "Copy key"}
+            </QuietButton>
+            <a href={setup.uri} className="text-sm font-semibold text-accent-text underline">
+              On this phone? Open it in your authenticator app
+            </a>
+          </div>
         </div>
-        <a href={setup.uri} className="self-start text-sm font-semibold text-accent-text underline">
-          On this phone? Open it in your authenticator app
-        </a>
       </li>
       <li>
         <form onSubmit={submit} className="flex flex-col gap-3" noValidate>

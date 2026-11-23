@@ -951,6 +951,8 @@ describe("two-step sign-in settings", () => {
     renderAt("/w/team/me");
 
     await userEvent.click(await screen.findByRole("button", { name: "Set up two-step sign-in" }));
+    const qr = screen.getByRole("img", { name: "QR code for your authenticator app" });
+    expect(qr.querySelector("path")?.getAttribute("d")).toMatch(/^M\d+ \d+h1v1h-1z/);
     expect(screen.getByLabelText("Key for your app")).toHaveTextContent(
       "JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP",
     );
