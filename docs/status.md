@@ -47,13 +47,32 @@ progress, with its last two items on hold.
   inline code and code blocks, quotes, lists, headings, links), parsed on the client into React
   elements so no user text becomes HTML. Handles inside code no longer notify anyone. The
   composer's hint shows the syntax on hover.
+- **Channel redesign**: the channel fills the page; a header with members and channel search;
+  day dividers; icon message actions; hover times on grouped messages; a formatting bar and
+  growing text box in the composer; a "jump to latest" pill with a count of new messages.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
 
 ## Next
 
-On hold until the maintainer says go:
+Before the tests and the deploy, one pull request each, in this order (decided 2026-11-23):
+
+1. Channel redesign (done above).
+2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages.
+3. File safety: ClamAV in its own container scans uploads in Celery before anyone can download
+   them, quarantine, decode checks for corrupt files, files encrypted at rest with AES-256-GCM.
+4. Sign-in: MFA (authenticator codes and recovery codes), SSO with OIDC and SAML, sign out
+   other devices, sessions ended when an account is deactivated.
+5. Abuse hardening: limits on socket connection floods, contact spam per email address, a
+   replay window on webhooks, a review of race conditions.
+6. A security review against current OWASP guidance, written up in `docs/`.
+
+Decided: messages are encrypted on the server, not end to end, so search, mentions, email
+digests and integrations keep working. Passwords stay Argon2id; adding bcrypt on top would add
+no strength.
+
+Then, when the maintainer says go:
 
 1. End-to-end tests with Playwright for the main flows, including two browsers in one channel.
 2. Deploy at `baithak.ahmershah.dev` and tag `v1.0.0`. Hosting is not confirmed yet.

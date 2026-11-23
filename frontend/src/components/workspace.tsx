@@ -116,11 +116,14 @@ export function ConfirmButton({
   confirmLabel,
   onConfirm,
   busy = false,
+  icon,
 }: {
   label: string;
   confirmLabel: string;
   onConfirm: () => void;
   busy?: boolean;
+  /** Shown instead of the label on the first button, which keeps the label as its name. */
+  icon?: ReactNode;
 }) {
   const [asking, setAsking] = useState(false);
   const quiet =
@@ -129,12 +132,18 @@ export function ConfirmButton({
     return (
       <button
         type="button"
-        className={`${quiet} text-danger hover:bg-danger-soft`}
+        aria-label={icon ? label : undefined}
+        title={icon ? label : undefined}
+        className={
+          icon
+            ? "grid size-8 place-items-center rounded-md text-text-muted transition-colors hover:bg-danger-soft hover:text-danger focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+            : `${quiet} text-danger hover:bg-danger-soft`
+        }
         onClick={() => {
           setAsking(true);
         }}
       >
-        {label}
+        {icon ?? label}
       </button>
     );
   }

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router";
+import { Link, NavLink, Navigate, Outlet, useMatch, useNavigate, useParams } from "react-router";
 
 import { useChannels, type Channel } from "../../api/chat";
 import { useNotifications } from "../../api/notifications";
@@ -337,6 +337,7 @@ export function WorkspaceShell({ me }: { me: User }) {
   const { slug = "" } = useParams();
   const workspace = useWorkspace(slug);
   const { status: live, sendTyping } = useLive(slug, me.id);
+  const inChannel = useMatch("/w/:slug/c/:channelId") !== null;
 
   useEffect(() => {
     if (workspace.data) rememberWorkspace(workspace.data.slug);
@@ -390,12 +391,14 @@ export function WorkspaceShell({ me }: { me: User }) {
           </div>
         </div>
       </aside>
-      <main className="min-w-0 px-5 py-8 sm:px-10 lg:px-14">
-        <div className="mx-auto max-w-4xl">
+      <main className={inChannel ? "min-w-0" : "min-w-0 px-5 py-8 sm:px-10 lg:px-14"}>
+        <div className={inChannel ? "" : "mx-auto max-w-4xl"}>
           {live === "reconnecting" && (
             <p
               role="status"
-              className="settle mb-4 rounded-xl bg-warning-soft px-4 py-2 text-sm text-warning-soft-text"
+              className={`settle rounded-xl bg-warning-soft px-4 py-2 text-sm text-warning-soft-text ${
+                inChannel ? "m-3 mb-0" : "mb-4"
+              }`}
             >
               Reconnecting. Messages sent meanwhile will appear when the connection is back.
             </p>
@@ -404,7 +407,7 @@ export function WorkspaceShell({ me }: { me: User }) {
             <Outlet context={context} />
           </TypingContext>
         </div>
-        <div className="mt-12 border-t border-border pt-4 md:hidden">
+        <div className={`border-t border-border pt-4 md:hidden ${inChannel ? "m-4" : "mt-12"}`}>
           <Account me={me} slug={slug} />
         </div>
       </main>

@@ -9,6 +9,7 @@ import { TypingContext, useTypers } from "../../chat/live";
 import type { Candidate } from "../../chat/mentions";
 import { startsGroup, storedIds } from "../../chat/timeline";
 import { Composer, MessageRow, TypingLine } from "../../components/chat";
+import { Icon } from "../../components/icons";
 import { ErrorMessage } from "../../components/ui";
 
 export function ThreadPanel({
@@ -54,11 +55,11 @@ export function ThreadPanel({
       aria-label={onClose ? "Thread" : "Discussion"}
       className={
         onClose
-          ? "settle fixed inset-0 z-30 flex flex-col gap-4 bg-bg p-5 lg:static lg:z-auto lg:w-96 lg:shrink-0 lg:border-l lg:border-border lg:bg-transparent lg:p-0 lg:pl-6"
+          ? "settle fixed inset-0 z-30 flex flex-col gap-3 bg-bg p-4 lg:static lg:z-auto lg:h-dvh lg:w-[26rem] lg:shrink-0 lg:border-l lg:border-border lg:bg-bg-subtle"
           : "flex max-h-[70dvh] flex-col gap-4"
       }
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border pb-4">
+      <header className="flex items-center justify-between gap-3 border-b border-border pb-3">
         <div>
           <h2 className="font-display text-xl font-semibold">
             {onClose ? "Thread" : "Discussion"}
@@ -71,9 +72,11 @@ export function ThreadPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-1 text-sm font-semibold text-text-muted hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+            aria-label="Close"
+            title="Close thread"
+            className="grid size-9 place-items-center rounded-xl text-text-muted transition-colors hover:bg-surface hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
           >
-            Close
+            <Icon name="close" />
           </button>
         ) : (
           <Link
