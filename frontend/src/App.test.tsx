@@ -86,6 +86,41 @@ describe("sign in", () => {
     expect(signIn?.headers.get("X-CSRFToken")).toBe("test-csrf-token");
   });
 
+  test("asks for the app's code when two-step sign-in is on", async () => {
+    const codes: unknown[] = [];
+    fakeBackend({
+      ...signedOut,
+      "POST /api/v1/auth/signin/": () =>
+        json(202, { detail: "Enter the code from your authenticator app.", two_step: true }),
+      "POST /api/v1/auth/signin/two-step/": async (request) => {
+        const body = (await request.json()) as { code: string };
+        codes.push(body.code);
+        return body.code === "123456"
+          ? json(200, amna)
+          : json(400, { detail: "That code is wrong or was already used." });
+      },
+    });
+    renderAt("/signin");
+
+    await userEvent.type(await screen.findByLabelText("Email"), "amna@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "Chai-At-Four-42");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("heading", { name: "One more step" })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Code from your authenticator app"), "000000");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("wrong or was already used");
+
+    await userEvent.click(screen.getByRole("button", { name: "Use a recovery code" }));
+    expect(screen.getByLabelText("Recovery code")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Use the authenticator app" }));
+    await userEvent.type(screen.getByLabelText("Code from your authenticator app"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Welcome, Amna Khan" })).toBeInTheDocument();
+    expect(codes).toEqual(["000000", "123456"]);
+  });
+
   test("shows the error from the API", async () => {
     fakeBackend({
       ...signedOut,

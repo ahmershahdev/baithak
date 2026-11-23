@@ -183,3 +183,34 @@ class AuthConfigSerializer(serializers.Serializer[None]):
 class CaptchaErrorSerializer(serializers.Serializer[None]):
     detail = serializers.CharField()
     captcha = serializers.ChoiceField(choices=["v2"], required=False)
+
+
+class TwoStepNeededSerializer(serializers.Serializer[None]):
+    detail = serializers.CharField()
+    two_step = serializers.BooleanField(help_text="Always true: send a code to signin/two-step/.")
+
+
+class CodeSerializer(serializers.Serializer[None]):
+    code = serializers.CharField(
+        max_length=32, help_text="6 digits from the app, or a recovery code."
+    )
+
+
+class PasswordAndCodeSerializer(CodeSerializer):
+    password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
+class TwoStepStatusSerializer(serializers.Serializer[None]):
+    enabled = serializers.BooleanField()
+    recovery_codes_left = serializers.IntegerField()
+
+
+class TwoStepSetupSerializer(serializers.Serializer[None]):
+    secret = serializers.CharField(help_text="Base32, for typing into an app by hand.")
+    uri = serializers.CharField(help_text="otpauth:// address for the QR code.")
+
+
+class RecoveryCodesSerializer(serializers.Serializer[None]):
+    recovery_codes = serializers.ListField(
+        child=serializers.CharField(), help_text="Shown once; only their hashes are kept."
+    )

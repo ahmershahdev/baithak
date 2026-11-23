@@ -34,18 +34,16 @@ class Tampered(Exception):
 
 def _keys() -> list[bytes]:
     keys = []
-    for value in settings.FILES_ENCRYPTION_KEYS:
+    for value in settings.ENCRYPTION_KEYS:
         try:
             key = base64.b64decode(value, validate=True)
         except binascii.Error as error:
-            raise ImproperlyConfigured(
-                "FILES_ENCRYPTION_KEYS holds a key that isn't base64."
-            ) from error
+            raise ImproperlyConfigured("ENCRYPTION_KEYS holds a key that isn't base64.") from error
         if len(key) != 32:
-            raise ImproperlyConfigured("Each key in FILES_ENCRYPTION_KEYS must be 32 bytes.")
+            raise ImproperlyConfigured("Each key in ENCRYPTION_KEYS must be 32 bytes.")
         keys.append(key)
     if not keys:
-        raise ImproperlyConfigured("Set FILES_ENCRYPTION_KEYS to encrypt uploaded files.")
+        raise ImproperlyConfigured("Set ENCRYPTION_KEYS to encrypt stored files and secrets.")
     return keys
 
 
@@ -86,7 +84,7 @@ class _Decrypting(io.RawIOBase):
         wanted = header[len(MAGIC) : len(MAGIC) + 4]
         key = next((k for k in _keys() if key_id(k) == wanted), None)
         if key is None:
-            raise Tampered("No key in FILES_ENCRYPTION_KEYS opens this file.")
+            raise Tampered("No key in ENCRYPTION_KEYS opens this file.")
         self._aead = AESGCM(key)
         self._header = header
         self._prefix = header[-PREFIX:]
@@ -128,3 +126,25 @@ class _Decrypting(io.RawIOBase):
 def decrypt(raw: IO[bytes]) -> IO[bytes]:
     """A readable stream of the plain bytes. Reading raises Tampered if a check fails."""
     return io.BufferedReader(_Decrypting(raw), buffer_size=CHUNK)
+
+
+SEALED = b"BKS1"
+
+
+def seal(secret: bytes) -> bytes:
+    """A small secret (such as a two-step sign-in key) encrypted in one piece."""
+    key = _keys()[0]
+    nonce = os.urandom(12)
+    header = SEALED + key_id(key)
+    return header + nonce + AESGCM(key).encrypt(nonce, secret, header)
+
+
+def unseal(blob: bytes) -> bytes:
+    header, nonce, sealed = blob[:8], blob[8:20], blob[20:]
+    key = next((k for k in _keys() if key_id(k) == header[4:]), None)
+    if not header.startswith(SEALED) or key is None:
+        raise Tampered("No key in ENCRYPTION_KEYS opens this secret.")
+    try:
+        return AESGCM(key).decrypt(nonce, sealed, header)
+    except InvalidTag as error:
+        raise Tampered("The secret failed its check.") from error

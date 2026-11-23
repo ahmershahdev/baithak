@@ -60,3 +60,29 @@ class ContactMessage(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} <{self.email}>"
+
+
+class TwoStep(models.Model):
+    """Two-step sign-in with an authenticator app. A row with no `enabled_at` is a setup the
+    person started but hasn't confirmed with a code; it does nothing at sign-in."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="two_step")
+    # The base32 key, sealed with ENCRYPTION_KEYS (apps/files/crypto.py).
+    secret = models.BinaryField()
+    # The newest 30-second step a code was used for; older and equal steps are refused.
+    last_step = models.BigIntegerField(null=True, blank=True)
+    enabled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"two-step sign-in for {self.user_id}"
+
+
+class RecoveryCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recovery_codes")
+    # HMAC with the secret key, like reset codes.
+    code_hash = models.CharField(max_length=64)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"recovery code for {self.user_id}"

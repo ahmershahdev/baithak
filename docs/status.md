@@ -60,10 +60,15 @@ progress, with its last two items on hold.
   passwords, macros or bomb ratios, UTF-8 text), then ClamAV (new `clamav` container,
   `clamav/clamav:1.5.5`). Refused files lose their bytes and say why in the message; scanning
   fails closed and retries, with a sweeper for stuck files. Files and previews are AES-256-GCM
-  at rest in 64 KiB chunks with key rotation (`FILES_ENCRYPTION_KEYS`, required in
+  at rest in 64 KiB chunks with key rotation (`ENCRYPTION_KEYS`, required in
   production); `manage.py encrypt_files` converts older files. File search shows clean files
   only. New direct dependency: `cryptography` 50.0.2 (already installed through another
   package).
+- **Two-step sign-in**: authenticator-app codes (TOTP written in `apps/core`, RFC test
+  vectors), each usable once; ten recovery codes, hashed; the key sealed with AES-256-GCM;
+  wrong codes on the lockout ladder; emails on every change. Sign-in asks for the code after the
+  password; Settings sets it up with the key to type in or an `otpauth://` link. The setting
+  `FILES_ENCRYPTION_KEYS` is now `ENCRYPTION_KEYS`, as it covers secrets too.
 - **Docs refresh**: README with the logo, badges and a table of documents; CONTRIBUTING rewritten
   with a code of conduct section; new `CODE_OF_CONDUCT.md`; SECURITY.md with supported versions,
   response times and scope; stale lines fixed in design, architecture, roadmap and this file.
@@ -76,8 +81,8 @@ Before the tests and the deploy, one pull request each, in this order (decided 2
 2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages (done above).
 3. File safety (done above). Message text at rest is still to come: InnoDB tablespace
    encryption, set up with the database (see architecture.md, Encryption at rest).
-4. Sign-in: MFA (authenticator codes and recovery codes), SSO with OIDC and SAML, sign out
-   other devices, sessions ended when an account is deactivated.
+4. Sign-in, in four pull requests: two-step sign-in (done above); sign out other devices and
+   end every session when an account is deactivated; OIDC; SAML.
 5. Abuse hardening: limits on socket connection floods, contact spam per email address, a
    replay window on webhooks, a review of race conditions.
 6. A security review against current OWASP guidance, written up in `docs/`.

@@ -927,6 +927,74 @@ describe("guests", () => {
   });
 });
 
+describe("two-step sign-in settings", () => {
+  const settings = () =>
+    json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" });
+  const codes = Array.from({ length: 10 }, (_, i) => `abcde-fgh${String(i)}k`);
+
+  test("set it up with the key, a first code, then see the recovery codes once", async () => {
+    let on = false;
+    backend({
+      "GET /api/v1/auth/notifications/": settings,
+      "GET /api/v1/auth/two-step/": () =>
+        json(200, { enabled: on, recovery_codes_left: on ? 10 : 0 }),
+      "POST /api/v1/auth/two-step/setup/": () =>
+        json(200, {
+          secret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+          uri: "otpauth://totp/Baithak%3Aamna%40example.com?secret=JBSW&issuer=Baithak",
+        }),
+      "POST /api/v1/auth/two-step/enable/": () => {
+        on = true;
+        return json(200, { recovery_codes: codes });
+      },
+    });
+    renderAt("/w/team/me");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Set up two-step sign-in" }));
+    expect(screen.getByLabelText("Key for your app")).toHaveTextContent(
+      "JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP",
+    );
+    expect(
+      screen.getByRole("link", { name: "On this phone? Open it in your authenticator app" }),
+    ).toHaveAttribute("href", expect.stringMatching(/^otpauth:\/\/totp\//));
+    await userEvent.type(screen.getByLabelText("Code from the app"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Turn on two-step sign-in" }));
+
+    const list = await screen.findByRole("list", { name: "Recovery codes" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(10);
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
+      "download",
+      "baithak-recovery-codes.txt",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "I have saved them" }));
+
+    expect(screen.queryByRole("list", { name: "Recovery codes" })).not.toBeInTheDocument();
+    expect(await screen.findByText("10 recovery codes left.")).toBeInTheDocument();
+  });
+
+  test("turning it off asks for the password and a code", async () => {
+    const sent: unknown[] = [];
+    backend({
+      "GET /api/v1/auth/notifications/": settings,
+      "GET /api/v1/auth/two-step/": () => json(200, { enabled: true, recovery_codes_left: 3 }),
+      "POST /api/v1/auth/two-step/disable/": async (request) => {
+        sent.push(await request.json());
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderAt("/w/team/me");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+    await userEvent.type(screen.getByLabelText("Your password"), "Chai-At-Four-42");
+    await userEvent.type(screen.getByLabelText("Code from the app, or a recovery code"), "654321");
+    await userEvent.click(screen.getByRole("button", { name: "Turn off two-step sign-in" }));
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ password: "Chai-At-Four-42", code: "654321" }]);
+    });
+  });
+});
+
 describe("deleting your account", () => {
   const settings = () =>
     json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" });

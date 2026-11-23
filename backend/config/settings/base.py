@@ -111,9 +111,10 @@ CHANNEL_LAYERS = {
 FILES_ROOT = Path(env("FILES_ROOT", str(BASE_DIR / "var" / "files")))
 # Seconds a signed download link works.
 FILE_LINK_MAX_AGE = 12 * 60 * 60
-# Base64 AES-256 keys, comma-separated. The first encrypts new files; the rest still decrypt
-# older ones, so a key can be rotated (docs/architecture.md, Files).
-FILES_ENCRYPTION_KEYS = env_list("FILES_ENCRYPTION_KEYS")
+# Base64 AES-256 keys, comma-separated, for stored files and secrets such as two-step sign-in
+# keys. The first encrypts; the rest still decrypt, so a key can be rotated (docs/architecture.md,
+# Encryption at rest).
+ENCRYPTION_KEYS = env_list("ENCRYPTION_KEYS")
 # Uploads are scanned by clamd before anyone can download them; "clamd" or, in tests, "fake".
 FILE_SCANNER = "clamd"
 CLAMAV_HOST = env("CLAMAV_HOST", "127.0.0.1")

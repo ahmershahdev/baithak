@@ -14,22 +14,36 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts import captcha, deletion, guards, lockout, reset_codes, tasks
+from apps.accounts import (
+    captcha,
+    deletion,
+    guards,
+    lockout,
+    reset_codes,
+    tasks,
+    two_step,
+)
 from apps.accounts.models import ContactMessage, User, username_validator
 from apps.accounts.serializers import (
     AuthConfigSerializer,
     AvailabilityRequestSerializer,
     AvailabilityResultSerializer,
     CaptchaErrorSerializer,
+    CodeSerializer,
     ContactSerializer,
     DeleteAccountSerializer,
     DetailSerializer,
     EmailSerializer,
     NotificationSettingsSerializer,
     OwnsWorkspacesSerializer,
+    PasswordAndCodeSerializer,
     PasswordResetConfirmSerializer,
+    RecoveryCodesSerializer,
     SignInSerializer,
     SignUpSerializer,
+    TwoStepNeededSerializer,
+    TwoStepSetupSerializer,
+    TwoStepStatusSerializer,
     UidTokenSerializer,
     UserSerializer,
     check_handle,
@@ -49,6 +63,13 @@ HAND_OVER = "Make someone else an owner of these workspaces first, or remove eve
 BAD_CODE = "The code is wrong or has expired. Ask for a new one if you need to."
 CAPTCHA_DOUBT = "Please confirm you are a person."
 CAPTCHA_FAILED = "The person check failed. Try it again."
+TWO_STEP_NEEDED = "Enter the code from your authenticator app."
+WRONG_TWO_STEP_CODE = "That code is wrong or was already used."
+SIGN_IN_AGAIN = "Sign in again: the code step timed out."
+CONFIRM_EMAIL_FIRST = "Confirm your email before turning on two-step sign-in."
+# A password that passed waits this long for its second step.
+TWO_STEP_SECONDS = 5 * 60
+PENDING_USER, PENDING_UNTIL = "two_step_user", "two_step_until"
 
 
 # DRF's SessionAuthentication checks CSRF only for signed-in requests. Sign-in and sign-up are
@@ -141,8 +162,13 @@ class SignInView(AnonymousAPIView):
 
     @extend_schema(
         request=SignInSerializer,
-        responses={200: UserSerializer, 400: CaptchaErrorSerializer, 429: DetailSerializer},
-        summary="Sign in",
+        responses={
+            200: UserSerializer,
+            202: TwoStepNeededSerializer,
+            400: CaptchaErrorSerializer,
+            429: DetailSerializer,
+        },
+        summary="Sign in; 202 when a two-step code is needed next",
     )
     def post(self, request: Request) -> Response:
         if guards.caught_by_honeypot(request.data):
@@ -164,9 +190,149 @@ class SignInView(AnonymousAPIView):
             else:
                 guards.note_failure(email)
             return Response({"detail": WRONG_CREDENTIALS}, status=status.HTTP_400_BAD_REQUEST)
+        if two_step.is_on(user):
+            # Not signed in yet: the session only remembers who passed the password, briefly.
+            request.session[PENDING_USER] = user.pk
+            request.session[PENDING_UNTIL] = timezone.now().timestamp() + TWO_STEP_SECONDS
+            return Response(
+                {"detail": TWO_STEP_NEEDED, "two_step": True}, status=status.HTTP_202_ACCEPTED
+            )
         lockout.record_success(user)
         login(request._request, user)
         return Response(UserSerializer(user).data)
+
+
+class SignInTwoStepView(AnonymousAPIView):
+    @extend_schema(
+        request=CodeSerializer,
+        responses={200: UserSerializer, 400: DetailSerializer, 429: DetailSerializer},
+        summary="Finish signing in with a code from the authenticator app or a recovery code",
+    )
+    def post(self, request: Request) -> Response:
+        serializer = CodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_id = request.session.get(PENDING_USER)
+        until = request.session.get(PENDING_UNTIL, 0)
+        user = User.objects.filter(pk=user_id, is_active=True).first() if user_id else None
+        if user is None or until < timezone.now().timestamp():
+            return Response({"detail": SIGN_IN_AGAIN}, status=status.HTTP_400_BAD_REQUEST)
+        if lockout.blocked(user):
+            request.session.pop(PENDING_USER, None)
+            return Response({"detail": LOCKED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        used = two_step.check(user, serializer.validated_data["code"])
+        if used is None:
+            # Wrong codes climb the same lockout ladder as wrong passwords.
+            lockout.record_failure(user)
+            return Response({"detail": WRONG_TWO_STEP_CODE}, status=status.HTTP_400_BAD_REQUEST)
+        request.session.pop(PENDING_USER, None)
+        request.session.pop(PENDING_UNTIL, None)
+        lockout.record_success(user)
+        login(request._request, user, backend="django.contrib.auth.backends.ModelBackend")
+        if used == two_step.Used.RECOVERY:
+            tasks.send_two_step_email.delay(user.pk, "recovery")
+        return Response(UserSerializer(user).data)
+
+
+def _wrong_password_or_code(user: User, data: dict[str, str]) -> Response | None:
+    if not user.check_password(data["password"]):
+        return Response({"detail": CONFIRM_FAILED}, status=status.HTTP_400_BAD_REQUEST)
+    if two_step.check(user, data["code"]) is None:
+        return Response({"detail": WRONG_TWO_STEP_CODE}, status=status.HTTP_400_BAD_REQUEST)
+    return None
+
+
+class TwoStepView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(responses={200: TwoStepStatusSerializer}, summary="My two-step sign-in")
+    def get(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        return Response(
+            {"enabled": two_step.is_on(user), "recovery_codes_left": two_step.codes_left(user)}
+        )
+
+
+class TwoStepSetupView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=None,
+        responses={200: TwoStepSetupSerializer, 400: DetailSerializer, 403: DetailSerializer},
+        summary="Start setting up two-step sign-in: a new key for the authenticator app",
+    )
+    def post(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        # An email link signs an unverified person in, so two-step must wait for a verified
+        # address; otherwise the link would be a way around it.
+        if not user.email_verified:
+            return Response({"detail": CONFIRM_EMAIL_FIRST}, status=status.HTTP_403_FORBIDDEN)
+        if two_step.is_on(user):
+            return Response(
+                {"detail": "Two-step sign-in is already on."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        secret, uri = two_step.start(user)
+        return Response({"secret": secret, "uri": uri})
+
+
+class TwoStepEnableView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=CodeSerializer,
+        responses={200: RecoveryCodesSerializer, 400: DetailSerializer},
+        summary="Turn two-step sign-in on with a first code from the app",
+    )
+    def post(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        serializer = CodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        codes = two_step.confirm(user, serializer.validated_data["code"])
+        if codes is None:
+            return Response({"detail": WRONG_TWO_STEP_CODE}, status=status.HTTP_400_BAD_REQUEST)
+        tasks.send_two_step_email.delay(user.pk, "on")
+        return Response({"recovery_codes": codes})
+
+
+class TwoStepDisableView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=PasswordAndCodeSerializer,
+        responses={204: None, 400: DetailSerializer},
+        summary="Turn two-step sign-in off",
+    )
+    def post(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        serializer = PasswordAndCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if refused := _wrong_password_or_code(user, serializer.validated_data):
+            return refused
+        two_step.turn_off(user)
+        tasks.send_two_step_email.delay(user.pk, "off")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RecoveryCodesView(APIView):
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=PasswordAndCodeSerializer,
+        responses={200: RecoveryCodesSerializer, 400: DetailSerializer},
+        summary="Replace my recovery codes; the old ones stop working",
+    )
+    def post(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        serializer = PasswordAndCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not two_step.is_on(user):
+            return Response(
+                {"detail": "Turn on two-step sign-in first."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if refused := _wrong_password_or_code(user, serializer.validated_data):
+            return refused
+        codes = two_step.new_codes(user)
+        tasks.send_two_step_email.delay(user.pk, "codes")
+        return Response({"recovery_codes": codes})
 
 
 class SignOutView(APIView):
