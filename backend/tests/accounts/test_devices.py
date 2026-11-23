@@ -69,8 +69,11 @@ class TestListing:
         theirs = device(bilal)
         mine = device(amna)
 
-        assert [d["id"] for d in mine.get(f"{AUTH}devices/").json()] == [device_id(mine)]
-        assert mine.delete(f"{AUTH}devices/{device_id(theirs)}/").status_code == 404
+        listed = mine.get(f"{AUTH}devices/").json()
+        refused = mine.delete(f"{AUTH}devices/{device_id(theirs)}/")
+
+        assert [d["id"] for d in listed] == [device_id(mine)]
+        assert refused.status_code == 404
         assert signed_in(theirs)
 
     def test_signed_out_people_get_nothing(self, api: APIClient) -> None:
