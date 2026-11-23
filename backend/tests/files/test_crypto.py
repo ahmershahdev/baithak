@@ -33,7 +33,10 @@ def test_round_trip(size: int) -> None:
 
 
 def test_the_same_file_encrypts_differently_each_time() -> None:
-    assert sealed(b"chai at four") != sealed(b"chai at four")
+    first, second = (sealed(b"chai at four") for _ in range(2))
+
+    assert first != second
+    assert opened(first) == opened(second)
 
 
 def test_a_changed_byte_is_caught() -> None:
