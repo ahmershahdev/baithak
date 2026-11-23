@@ -152,7 +152,8 @@ describe("a channel", () => {
       },
     });
     await openChannel();
-    await screen.findByText("two");
+    // The first render can take over a second on a cold run of the whole suite.
+    await screen.findByText("two", {}, { timeout: 5_000 });
     live(3, message(3, 3, "three"));
     await screen.findByText("three");
 

@@ -138,6 +138,16 @@ and the form only. Headings are Fraunces with the soft and wonky axes (`.wonky`)
 - **Password strength**: four segments under the new-password field, red, mustard, then green,
   with zxcvbn's advice in words. It scores against the email, handle and name typed so far.
 
+## Reading pages
+
+Long pages to read, such as the privacy policy, use `components/DocLayout.tsx`: a sand header
+band with the jaali, the wordmark and a Contact button, then a breadcrumb, the title in Fraunces,
+the intro and the date it was last changed. Below it, a sticky "On this page" list sits beside
+the text on wide screens and above it on narrow ones. Every section has an anchor. Facts with
+two parts (what, how long) go in bordered tables. The sign-in layout takes an optional
+breadcrumb too, which the contact page uses. Breadcrumbs mark the current page with
+`aria-current="page"` and never link it.
+
 ## Workspace screens
 
 A two-column grid from medium widths: a 17rem sidebar on `bg-subtle` (wordmark, workspace

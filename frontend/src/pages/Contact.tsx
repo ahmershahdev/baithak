@@ -61,9 +61,11 @@ export function Contact() {
     </>
   );
 
+  const trail = [{ label: "Baithak", to: "/" }, { label: "Contact" }];
+
   if (sent) {
     return (
-      <AuthLayout title="Thank you" intro={intro}>
+      <AuthLayout title="Thank you" intro={intro} trail={trail}>
         <Notice>
           Your message is with us. We reply by email, usually within two working days.
         </Notice>
@@ -72,7 +74,7 @@ export function Contact() {
   }
 
   return (
-    <AuthLayout title="Talk to us" intro={intro}>
+    <AuthLayout title="Talk to us" intro={intro} trail={trail}>
       <form onSubmit={submit} className="relative flex flex-col gap-5" noValidate>
         {errors.detail && <ErrorMessage>{errors.detail}</ErrorMessage>}
         <div className="grid gap-5 sm:grid-cols-2">
