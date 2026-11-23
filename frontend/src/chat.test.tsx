@@ -997,6 +997,59 @@ describe("two-step sign-in settings", () => {
   });
 });
 
+describe("signed-in devices", () => {
+  const settings = () =>
+    json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" });
+  const now = new Date().toISOString();
+
+  test("lists devices and signs one out, then every other one", async () => {
+    let listed = [
+      { id: 1, name: "Chrome on Windows", created_at: now, last_seen_at: now, current: true },
+      { id: 2, name: "Safari on iPhone", created_at: now, last_seen_at: now, current: false },
+      { id: 3, name: "Firefox on Linux", created_at: now, last_seen_at: now, current: false },
+    ];
+    const signedOut: string[] = [];
+    backend({
+      "GET /api/v1/auth/notifications/": settings,
+      "GET /api/v1/auth/devices/": () => json(200, listed),
+      "DELETE /api/v1/auth/devices/2/": () => {
+        signedOut.push("2");
+        listed = listed.filter((d) => d.id !== 2);
+        return new Response(null, { status: 204 });
+      },
+      "POST /api/v1/auth/devices/sign-out-others/": () => {
+        signedOut.push("others");
+        listed = listed.filter((d) => d.current);
+        return json(200, { signed_out: 1 });
+      },
+    });
+    renderAt("/w/team/me");
+
+    const devices = await screen.findByRole("list", { name: "Devices" });
+    expect(within(devices).getByText("This device")).toBeInTheDocument();
+    expect(
+      within(devices).queryByRole("button", { name: "Sign out Chrome on Windows" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(devices).getByRole("button", { name: "Sign out Safari on iPhone" }),
+    );
+    expect(await screen.findByText("That device is signed out.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Safari on iPhone")).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign out everywhere else" }));
+    expect(await screen.findByText("1 other device is signed out.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: "Sign out everywhere else" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(signedOut).toEqual(["2", "others"]);
+  });
+});
+
 describe("deleting your account", () => {
   const settings = () =>
     json(200, { notify_by_email: true, quiet_start: null, quiet_end: null, time_zone: "UTC" });

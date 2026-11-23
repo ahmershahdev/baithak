@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.mail import EmailMessage, send_mail
 from django.utils import timezone
 
-from apps.accounts import reset_codes
+from apps.accounts import devices, reset_codes
 from apps.accounts.models import ContactMessage, User
 from apps.accounts.tokens import email_verification_token, encode_uid
 from apps.accounts.two_step import codes_left
@@ -166,3 +166,8 @@ def send_two_step_email(user_id: int, kind: str) -> None:
         f"If this was not you, reset your password and write to {settings.SUPPORT_EMAIL} right "
         "away.",
     )
+
+
+@shared_task
+def prune_devices() -> None:
+    devices.prune()

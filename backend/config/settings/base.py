@@ -57,6 +57,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.accounts.devices.DeviceMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -139,6 +140,10 @@ CELERY_BEAT_SCHEDULE = {
     "rescan-stuck-files": {
         "task": "apps.files.tasks.rescan_stuck",
         "schedule": 600.0,
+    },
+    "prune-devices": {
+        "task": "apps.accounts.tasks.prune_devices",
+        "schedule": 86400.0,
     },
 }
 # Scans get their own queue so a burst of uploads never holds up email or previews.

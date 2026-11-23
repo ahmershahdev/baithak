@@ -214,3 +214,15 @@ class RecoveryCodesSerializer(serializers.Serializer[None]):
     recovery_codes = serializers.ListField(
         child=serializers.CharField(), help_text="Shown once; only their hashes are kept."
     )
+
+
+class DeviceSerializer(serializers.Serializer[None]):
+    id = serializers.IntegerField()
+    name = serializers.CharField(help_text='Browser and system, such as "Firefox on Windows".')
+    created_at = serializers.DateTimeField(help_text="When this device signed in.")
+    last_seen_at = serializers.DateTimeField(help_text="Updated at most every 5 minutes.")
+    current = serializers.BooleanField(help_text="The device making this request.")
+
+
+class SignedOutSerializer(serializers.Serializer[None]):
+    signed_out = serializers.IntegerField()

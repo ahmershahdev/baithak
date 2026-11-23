@@ -78,6 +78,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/devices/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where I am signed in, most recently used first */
+        get: operations["auth_devices_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/devices/{device_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign one of my devices out; its open tabs close their live connection */
+        delete: operations["auth_devices_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/devices/sign-out-others/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out every device but this one */
+        post: operations["auth_devices_sign_out_others_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me/": {
         parameters: {
             query?: never;
@@ -1285,6 +1336,23 @@ export interface components {
         Detail: {
             detail: string;
         };
+        Device: {
+            id: number;
+            /** @description Browser and system, such as "Firefox on Windows". */
+            name: string;
+            /**
+             * Format: date-time
+             * @description When this device signed in.
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description Updated at most every 5 minutes.
+             */
+            last_seen_at: string;
+            /** @description The device making this request. */
+            current: boolean;
+        };
         EmailRequest: {
             captcha?: string;
             captcha_v2?: string;
@@ -1713,6 +1781,9 @@ export interface components {
             display_name?: string;
             password: string;
         };
+        SignedOut: {
+            signed_out: number;
+        };
         /**
          * @description * `backlog` - backlog
          *     * `todo` - todo
@@ -1904,6 +1975,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnsWorkspaces"];
+                };
+            };
+        };
+    };
+    auth_devices_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Device"][];
+                };
+            };
+        };
+    };
+    auth_devices_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    auth_devices_sign_out_others_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedOut"];
                 };
             };
         };

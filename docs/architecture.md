@@ -486,6 +486,26 @@ Turning it on or off, new recovery codes and a recovery code used to sign in eac
 Someone who lost both their phone and their codes writes to support; once they are confirmed,
 deleting their row in the Django admin turns it off.
 
+## Signed-in devices
+
+Every sign-in (password, two-step or email link) makes a `device` row, and the session keeps its
+id. `DeviceMiddleware`, right after Django's authentication, looks the row up on each request
+(one primary-key query): if it is gone, the session is signed out there and then. So signing a
+device out is deleting its row; the raw session key is never stored or looked for. A session
+from before devices existed gets a row on its next request. `last_seen_at` is written at most
+every 5 minutes, and a daily task deletes rows idle longer than a session lives (two weeks).
+
+Only the User-Agent is kept, for a name like "Chrome on Windows" (`apps/core/devices.py`); no IP
+address. The list, signing one device out, and "sign out everywhere else" are under
+`/api/v1/auth/devices/`.
+
+Open sockets are closed too. Ending devices sends `chat.signed_out` with their ids to the
+person's user group, and each consumer closes with 4401 if its session's device is among them;
+a socket also refuses to open (4401) for a session whose device is gone. Deactivating an account
+(`is_active` off, in the Django admin), a password reset and deleting the account end every
+device, sockets included. Django already drops other sessions on a password change through the
+session hash; this also closes their sockets.
+
 ## Decisions
 
 | Decision | Why |

@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.test import Client
 
+from apps.accounts import devices
 from apps.accounts.models import User
 from apps.chat import messages, presence
 from apps.chat.consumers import NOT_A_MEMBER, NOT_SIGNED_IN
@@ -190,6 +191,39 @@ class TestThroughTheRealApp:
         assert connected
         assert (await receive(socket))["type"] == "subscribed"
         await socket.disconnect()
+
+    async def test_signing_a_device_out_closes_only_its_sockets(
+        self, owner: User, workspace: Workspace
+    ) -> None:
+        def session(user: User) -> tuple[list[tuple[bytes, bytes]], int]:
+            client = Client()
+            client.force_login(user)
+            cookie = client.cookies["sessionid"].value
+            headers = [
+                (b"cookie", f"sessionid={cookie}".encode()),
+                (b"origin", b"http://localhost"),
+            ]
+            return headers, client.session[devices.SESSION_KEY]
+
+        laptop_headers, laptop = await database_sync_to_async(session)(owner)
+        phone_headers, _ = await database_sync_to_async(session)(owner)
+        laptop_socket = WebsocketCommunicator(application, PATH, headers=laptop_headers)
+        phone_socket = WebsocketCommunicator(application, PATH, headers=phone_headers)
+        assert (await laptop_socket.connect())[0]
+        assert (await phone_socket.connect())[0]
+        await receive(laptop_socket)
+        await receive(phone_socket)
+
+        await database_sync_to_async(devices.end)(owner, laptop)
+
+        output = await laptop_socket.receive_output()
+        while output["type"] == "websocket.send":
+            output = await laptop_socket.receive_output()
+        assert output == {"type": "websocket.close", "code": NOT_SIGNED_IN}
+        assert await quiet(phone_socket)
+        again = WebsocketCommunicator(application, PATH, headers=laptop_headers)
+        assert await again.connect() == (False, NOT_SIGNED_IN)
+        await phone_socket.disconnect()
 
     async def test_a_foreign_origin_is_refused(self, owner: User, workspace: Workspace) -> None:
         headers = await database_sync_to_async(self._headers)(owner, b"https://evil.example")

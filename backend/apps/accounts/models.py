@@ -86,3 +86,16 @@ class RecoveryCode(models.Model):
 
     def __str__(self) -> str:
         return f"recovery code for {self.user_id}"
+
+
+class Device(models.Model):
+    """One signed-in session. The session holds this row's id; deleting the row signs that
+    session out on its next request (apps/accounts/devices.py)."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
+    user_agent = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"device {self.pk} of {self.user_id}"

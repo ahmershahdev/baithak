@@ -7,7 +7,8 @@ from typing import Any, cast
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from apps.accounts.models import User
+from apps.accounts.devices import SESSION_KEY as DEVICE_KEY
+from apps.accounts.models import Device, User
 from apps.chat import presence
 from apps.chat.access import readable_channels
 from apps.chat.events import channel_group, user_group, workspace_group
@@ -84,6 +85,7 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
     """
 
     user_id: int
+    device_id: int | None
     slug: str
     workspace_id: int
     subscribed: set[int]
@@ -98,6 +100,10 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
             return
         account = cast(User, user)
         self.user_id = account.pk
+        self.device_id, signed_in = await self._device()
+        if not signed_in:
+            await self.close(code=NOT_SIGNED_IN)
+            return
         self.person = {
             "id": account.pk,
             "username": account.username,
@@ -162,6 +168,16 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
 
     async def _announce(self, *, online: bool) -> None:
         presence_batches.add(self.channel_layer, self.workspace_id, self.user_id, online=online)
+
+    @database_sync_to_async
+    def _device(self) -> tuple[int | None, bool]:
+        """This session's device and whether it is still signed in. A session from before
+        devices existed has none yet; it gets one on its next HTTP request."""
+        session = self.scope.get("session")
+        device_id = session.get(DEVICE_KEY) if session is not None else None
+        if device_id is None:
+            return None, True
+        return device_id, Device.objects.filter(pk=device_id, user_id=self.user_id).exists()
 
     @database_sync_to_async
     def _readable(self) -> Readable | None:
@@ -243,6 +259,12 @@ class WorkspaceConsumer(AsyncJsonWebsocketConsumer):
 
     async def chat_notifications(self, event: dict[str, Any]) -> None:
         await self.send_json({"type": "notifications"})
+
+    async def chat_signed_out(self, event: dict[str, Any]) -> None:
+        """This device, or every device of the person, was signed out (apps/accounts/devices.py)."""
+        devices = event["devices"]
+        if devices is None or self.device_id in devices:
+            await self.close(code=NOT_SIGNED_IN)
 
     async def chat_access(self, event: dict[str, Any]) -> None:
         readable = await self._readable()
