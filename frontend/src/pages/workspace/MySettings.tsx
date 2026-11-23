@@ -5,10 +5,10 @@ import { Link, useNavigate } from "react-router";
 import { api, readErrors } from "../../api/client";
 import type { components } from "../../api/schema";
 import { ApiError } from "../../api/workspaces";
-import { ME } from "../../auth";
+import { ME, useMe } from "../../auth";
 import { PasswordField } from "../../components/PasswordField";
 import { Select } from "../../components/Select";
-import { Button, ErrorMessage, Notice, QuietButton } from "../../components/ui";
+import { Button, ErrorMessage, Field, Notice, QuietButton } from "../../components/ui";
 import { PageHeader, Panel } from "../../components/workspace";
 import { DeviceSettings } from "./DeviceSettings";
 import { TwoStepSettings } from "./TwoStepSettings";
@@ -192,9 +192,13 @@ function DeleteAccount() {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [blocking, setBlocking] = useState<Blocking[]>([]);
+  // Someone who only signs in with Google has no password; they type their email instead.
+  const hasPassword = useMe().data?.has_password ?? true;
   const remove = useMutation({
-    mutationFn: async (password: string) =>
-      api.POST("/api/v1/auth/delete-account/", { body: { password } }),
+    mutationFn: async (confirmation: string) =>
+      api.POST("/api/v1/auth/delete-account/", {
+        body: hasPassword ? { password: confirmation } : { email: confirmation },
+      }),
     onSuccess: ({ response, error }) => {
       if (response.status === 204) {
         client.clear();
@@ -239,12 +243,22 @@ function DeleteAccount() {
         </QuietButton>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-          <PasswordField
-            label="Your password, to confirm"
-            name="password"
-            autoComplete="current-password"
-            required
-          />
+          {hasPassword ? (
+            <PasswordField
+              label="Your password, to confirm"
+              name="password"
+              autoComplete="current-password"
+              required
+            />
+          ) : (
+            <Field
+              label="Your email address, to confirm"
+              name="password"
+              type="email"
+              autoComplete="off"
+              required
+            />
+          )}
           {problem && <ErrorMessage>{problem}</ErrorMessage>}
           {blocking.length > 0 && (
             <ul className="flex flex-col gap-1 text-sm">

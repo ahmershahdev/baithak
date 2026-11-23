@@ -15,6 +15,7 @@ const amna: User = {
   username: "amna",
   display_name: "Amna Khan",
   email_verified: true,
+  has_password: true,
 };
 
 const general: Channel = {
@@ -1074,6 +1075,28 @@ describe("deleting your account", () => {
       "href",
       "/w/team/members",
     );
+  });
+
+  test("someone without a password confirms with their email", async () => {
+    const sent: unknown[] = [];
+    backend({
+      "GET /api/v1/auth/notifications/": settings,
+      "GET /api/v1/auth/me/": () => json(200, { ...amna, has_password: false }),
+      "POST /api/v1/auth/delete-account/": async (request) => {
+        sent.push(await request.json());
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderAt("/w/team/me");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Delete account" }));
+    expect(screen.queryByLabelText("Your password, to confirm")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Your email address, to confirm"), amna.email);
+    await userEvent.click(screen.getByRole("button", { name: "Delete my account for good" }));
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ email: amna.email }]);
+    });
   });
 
   test("sends the password and lands on sign in once deleted", async () => {

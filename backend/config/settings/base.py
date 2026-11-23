@@ -217,6 +217,10 @@ RECAPTCHA_V2_SITE_KEY = env("RECAPTCHA_V2_SITE_KEY", "")
 RECAPTCHA_V2_SECRET_KEY = env("RECAPTCHA_V2_SECRET_KEY", "")
 RECAPTCHA_V3_MIN_SCORE = float(env("RECAPTCHA_V3_MIN_SCORE", "0.5"))
 
+# "Continue with Google" (apps/accounts/oidc.py); an empty client id hides the button.
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET", "")
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Baithak API",
     "VERSION": "0.1.0",

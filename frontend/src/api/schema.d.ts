@@ -164,6 +164,40 @@ export interface paths {
         patch: operations["auth_notifications_partial_update"];
         trace?: never;
     };
+    "/api/v1/auth/oidc/{provider}/callback/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the provider sends the person back; signs in and goes to the app */
+        get: operations["auth_oidc_callback_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oidc/{provider}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Go to a provider to sign in */
+        get: operations["auth_oidc_start_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/password-reset/": {
         parameters: {
             query?: never;
@@ -1210,6 +1244,8 @@ export interface components {
         AuthConfig: {
             recaptcha_v3_site_key: string;
             recaptcha_v2_site_key: string;
+            /** @description Sign-in buttons to show; each starts at oidc/<provider>/start/. */
+            providers: components["schemas"]["ProvidersEnum"][];
         };
         Author: {
             readonly id: number;
@@ -1312,7 +1348,9 @@ export interface components {
             user_ids: number[];
         };
         DeleteAccountRequest: {
-            password: string;
+            password?: string;
+            /** @description Typed instead of a password by someone who has none (signs in with Google). */
+            email?: string;
         };
         Delivery: {
             readonly id: number;
@@ -1714,6 +1752,11 @@ export interface components {
             name: string;
             description?: string;
         };
+        /**
+         * @description * `google` - google
+         * @enum {string}
+         */
+        ProvidersEnum: "google";
         Reaction: {
             emoji: string;
             count: number;
@@ -1834,6 +1877,8 @@ export interface components {
             readonly username: string;
             readonly display_name: string;
             readonly email_verified: boolean;
+            /** @description False for someone who only signs in through a provider such as Google. */
+            readonly has_password: boolean;
         };
         Webhook: {
             readonly id: number;
@@ -1948,7 +1993,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["DeleteAccountRequest"];
             };
@@ -2109,6 +2154,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+        };
+    };
+    auth_oidc_callback_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+        };
+    };
+    auth_oidc_start_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
                 };
             };
         };

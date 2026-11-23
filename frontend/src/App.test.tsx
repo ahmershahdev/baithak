@@ -12,6 +12,7 @@ const amna: User = {
   username: "amna",
   display_name: "Amna Khan",
   email_verified: true,
+  has_password: true,
 };
 
 const signedOut = { "GET /api/v1/auth/me/": () => new Response(null, { status: 204 }) };
@@ -119,6 +120,37 @@ describe("sign in", () => {
 
     expect(await screen.findByRole("heading", { name: "Welcome, Amna Khan" })).toBeInTheDocument();
     expect(codes).toEqual(["000000", "123456"]);
+  });
+
+  test("offers Google when it is set up, carrying where to go next", async () => {
+    fakeBackend({
+      ...signedOut,
+      "GET /api/v1/auth/config/": () =>
+        json(200, { recaptcha_v3_site_key: "", recaptcha_v2_site_key: "", providers: ["google"] }),
+    });
+    renderAt("/signin?next=%2Finvite%2Fabc");
+
+    expect(await screen.findByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      "/api/v1/auth/oidc/google/start/?next=%2Finvite%2Fabc",
+    );
+  });
+
+  test("hides Google when it is not set up", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signin");
+
+    await screen.findByLabelText("Email");
+    expect(screen.queryByRole("link", { name: "Continue with Google" })).not.toBeInTheDocument();
+  });
+
+  test("explains why Google sign-in came back refused", async () => {
+    fakeBackend(signedOut);
+    renderAt("/signin?error=unverified");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Your Google account's email address isn't verified",
+    );
   });
 
   test("shows the error from the API", async () => {
@@ -325,7 +357,11 @@ describe("bot checks", () => {
     const backend = fakeBackend({
       ...signedOut,
       "GET /api/v1/auth/config/": () =>
-        json(200, { recaptcha_v3_site_key: "v3-site", recaptcha_v2_site_key: "v2-site" }),
+        json(200, {
+          recaptcha_v3_site_key: "v3-site",
+          recaptcha_v2_site_key: "v2-site",
+          providers: [],
+        }),
       "POST /api/v1/auth/signin/": () => {
         attempts += 1;
         return attempts === 1

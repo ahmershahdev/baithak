@@ -83,7 +83,11 @@ describe("captcha", () => {
     fakeBackend({
       ...signedOut,
       "GET /api/v1/auth/config/": () =>
-        json(200, { recaptcha_v3_site_key: "v3-site", recaptcha_v2_site_key: "v2-site" }),
+        json(200, {
+          recaptcha_v3_site_key: "v3-site",
+          recaptcha_v2_site_key: "v2-site",
+          providers: [],
+        }),
     });
     renderAt("/signin");
 

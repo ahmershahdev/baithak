@@ -128,6 +128,10 @@ const SECTIONS: DocSection[] = [
               "Security records",
               "A count of failed sign-ins and any lockout on your account, and an audit log of changes to workspaces, members, roles, projects and issues.",
             ],
+            [
+              "Signing in with Google",
+              "If you choose Continue with Google: Google's id for your account, your email address and your name. Not your Google password, and nothing else from your Google account.",
+            ],
             ["Contact form", "Your name, email address and message, so we can reply."],
           ]}
         />
@@ -207,6 +211,10 @@ const SECTIONS: DocSection[] = [
           </strong>{" "}
           delivers our emails (address confirmation, reset codes, notification emails and contact
           form messages), so it handles your email address and the message.
+        </p>
+        <p>
+          <strong className="text-text">Google sign-in</strong>, if you use it, tells Google you are
+          signing in to Baithak, under the same Google policies as above.
         </p>
         <p>
           <strong className="text-text">GitHub and other tools</strong> can post into a channel when

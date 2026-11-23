@@ -215,7 +215,11 @@ class TestAuthEndpointsUseTheGuards:
 def test_config_gives_the_public_site_keys_only(api: APIClient) -> None:
     response = api.get("/api/v1/auth/config/")
 
-    assert response.json() == {"recaptcha_v3_site_key": "site-3", "recaptcha_v2_site_key": "site-2"}
+    assert response.json() == {
+        "recaptcha_v3_site_key": "site-3",
+        "recaptcha_v2_site_key": "site-2",
+        "providers": [],
+    }
 
 
 def test_failure_counter_survives_expiring_between_add_and_incr() -> None:

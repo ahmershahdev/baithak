@@ -14,6 +14,7 @@ const amna: User = {
   username: "amna",
   display_name: "Amna Khan",
   email_verified: true,
+  has_password: true,
 };
 
 const team = (role: Workspace["role"] = "admin"): Workspace => ({

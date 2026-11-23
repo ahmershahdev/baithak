@@ -6,6 +6,7 @@ import { api, readErrors, type ApiErrors } from "../api/client";
 import { useCaptcha } from "../captcha";
 import { CaptchaBox, CaptchaNotice } from "../components/CaptchaBox";
 import { PasswordField } from "../components/PasswordField";
+import { ProviderSignIn } from "../components/ProviderSignIn";
 import {
   AuthLayout,
   Button,
@@ -128,6 +129,7 @@ export function SignUp() {
     >
       <form onSubmit={submit} className="relative flex flex-col gap-5" noValidate>
         {errors.detail && <ErrorMessage>{errors.detail}</ErrorMessage>}
+        <ProviderSignIn next={next} />
         <Field
           label="Email"
           name="email"
