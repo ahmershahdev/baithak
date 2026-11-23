@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: 2026-11-23. Update at the end of every work session.
+Last updated: 2026-11-24. Update at the end of every work session.
 
 ## Where we are
 
@@ -90,13 +90,18 @@ Before the tests and the deploy, one pull request each, in this order (decided 2
 2. Privacy page rewrite, and breadcrumbs on the privacy and contact pages (done above).
 3. File safety (done above). Message text at rest is still to come: InnoDB tablespace
    encryption, set up with the database (see architecture.md, Encryption at rest).
-4. Sign-in, in four pull requests: two-step sign-in and signed-in devices (both done above);
-   then OIDC, in two parts: Continue with Google (done above), then company SSO per
-   workspace; then SAML.
+4. Sign-in: two-step sign-in, signed-in devices and Continue with Google are done (above).
+   Left: company SSO per workspace over OIDC (an owner connects Okta, Entra ID or Keycloak by
+   issuer URL, client id and secret, and can require it, with a way back in for the owner),
+   reusing `apps/accounts/oidc.py`; then SAML (likely `python3-saml`, which needs `xmlsec`).
+   **Next session starts here, with company SSO.**
 5. Abuse hardening: limits on socket connection floods, contact spam per email address, a
    replay window on webhooks, a review of race conditions.
 6. A security review against current OWASP guidance, written up in `docs/`.
 
+Offered and not yet decided: rebuild uploaded images (re-encode, so hidden payloads can't
+survive), serve downloads from a separate domain (with the deploy), and InnoDB tablespace
+encryption for message text at rest (with the database setup).
 Decided: messages are encrypted on the server, not end to end, so search, mentions, email
 digests and integrations keep working. Passwords stay Argon2id; adding bcrypt on top would add
 no strength.
