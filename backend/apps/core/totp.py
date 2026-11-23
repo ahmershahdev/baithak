@@ -28,7 +28,9 @@ def _key(secret: str) -> bytes:
 
 
 def hotp(secret: str, counter: int) -> str:
-    digest = hmac.new(_key(secret), counter.to_bytes(8, "big"), hashlib.sha1).digest()
+    # HMAC-SHA-1 is what RFC 4226 specifies and what authenticator apps compute; SHA-1's
+    # collision weakness doesn't apply to HMAC, and some apps ignore any other algorithm.
+    digest = hmac.new(_key(secret), counter.to_bytes(8, "big"), hashlib.sha1).digest()  # NOSONAR
     # RFC 4226 section 5.3: the low 4 bits of the last byte pick where to read 31 bits from.
     offset = digest[-1] & 0x0F
     number = int.from_bytes(digest[offset : offset + 4], "big") & 0x7FFFFFFF
