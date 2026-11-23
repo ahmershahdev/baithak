@@ -10,6 +10,7 @@ import {
 
 import { deleteMessage, editMessage, react, remember, type Channel } from "../api/chat";
 import { ApiError } from "../api/workspaces";
+import { linkSelection, prefixLines, wrapSelection, type Edit } from "../chat/markup";
 import { activeQuery, insertMention, mentionsMe, suggest, type Candidate } from "../chat/mentions";
 import { QUICK_REACTIONS, reactedByMe, whoReacted } from "../chat/reactions";
 import { typingText, type Person } from "../chat/presence";
@@ -23,6 +24,7 @@ import {
 } from "../chat/files";
 import type { Message } from "../chat/timeline";
 import { Formatted } from "./Formatted";
+import { Icon, type IconName } from "./icons";
 import { IssueChip, IssueFromMessage } from "./IssueFromMessage";
 import { ErrorMessage } from "./ui";
 import { Avatar, ConfirmButton } from "./workspace";
@@ -86,7 +88,30 @@ function ReactionPicker({
   );
 }
 
-const actionClass = "rounded-md px-2 py-1 text-xs font-semibold hover:bg-bg-subtle";
+function ToolButton({
+  label,
+  icon,
+  onClick,
+  expanded,
+}: {
+  label: string;
+  icon: IconName;
+  onClick: () => void;
+  expanded?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-expanded={expanded}
+      onClick={onClick}
+      className="grid size-8 place-items-center rounded-md text-text-muted transition-colors hover:bg-bg-subtle hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none aria-expanded:bg-accent-soft aria-expanded:text-accent-soft-text"
+    >
+      <Icon name={icon} />
+    </button>
+  );
+}
 
 function Attachments({ attachments }: { attachments: Attachment[] }) {
   return (
@@ -280,12 +305,21 @@ export function MessageRow({
 
   return (
     <li
-      className={`group relative flex gap-3 rounded-lg px-2 ${
+      className={`group relative flex gap-3 rounded-xl px-3 transition-colors ${
         forMe ? "border-l-2 border-mention-edge bg-mention" : "hover:bg-bg-subtle"
-      } ${grouped ? "py-0.5" : "mt-3 py-1"}`}
+      } ${grouped ? "py-0.5" : "mt-2 pt-2 pb-1"}`}
     >
       <div className="w-9 shrink-0">
-        {!grouped && <Avatar name={name} colorKey={message.author?.username ?? name} />}
+        {grouped ? (
+          <time
+            dateTime={message.created_at}
+            className="invisible block pt-0.5 text-right text-[0.65rem] leading-5 text-text-subtle tabular-nums group-focus-within:visible group-hover:visible"
+          >
+            {clock.format(new Date(message.created_at))}
+          </time>
+        ) : (
+          <Avatar name={name} colorKey={message.author?.username ?? name} />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         {onOpenThread && message.parent_seq !== null && (
@@ -356,8 +390,9 @@ export function MessageRow({
             onClick={() => {
               onOpenThread(threadSeq);
             }}
-            className="mt-1 text-sm font-semibold text-accent-text hover:underline"
+            className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-transparent px-1.5 py-0.5 -ml-1.5 text-sm font-semibold text-accent-text transition-colors hover:border-border hover:bg-surface"
           >
+            <Icon name="thread" className="size-3.5" />
             {replies(message.reply_count)}
           </button>
         )}
@@ -408,59 +443,52 @@ export function MessageRow({
         />
       )}
       {(canEdit || canReply || canReact || canFile) && (
-        <div className="absolute -top-3 right-2 hidden items-center gap-1 rounded-lg border border-border bg-surface-raised p-0.5 shadow-sm group-focus-within:flex group-hover:flex">
+        <div className="absolute -top-4 right-3 z-10 hidden items-center gap-0.5 rounded-xl border border-border bg-surface-raised p-0.5 shadow-md group-focus-within:flex group-hover:flex">
           {canReact && (
-            <button
-              type="button"
-              aria-expanded={picking}
+            <ToolButton
+              label="React"
+              icon="smile"
+              expanded={picking}
               onClick={() => {
                 setPicking((now) => !now);
               }}
-              className={actionClass}
-            >
-              React
-            </button>
+            />
           )}
           {canReply && (
-            <button
-              type="button"
+            <ToolButton
+              label="Reply"
+              icon="reply"
               onClick={() => {
                 onOpenThread(threadSeq);
               }}
-              className={actionClass}
-            >
-              Reply
-            </button>
+            />
           )}
           {canFile && (
-            <button
-              type="button"
-              aria-expanded={filing}
+            <ToolButton
+              label="Issue"
+              icon="issue"
+              expanded={filing}
               onClick={() => {
                 setFiling((now) => !now);
               }}
-              className={actionClass}
-            >
-              Issue
-            </button>
+            />
           )}
           {canEdit && !channel.archived && (
-            <button
-              type="button"
+            <ToolButton
+              label="Edit"
+              icon="pencil"
               onClick={() => {
                 setDraft(message.body);
                 setEditing(true);
               }}
-              className={actionClass}
-            >
-              Edit
-            </button>
+            />
           )}
           {canEdit && (
             <ConfirmButton
               label="Delete"
               confirmLabel="Yes, delete"
               busy={busy}
+              icon={<Icon name="trash" />}
               onConfirm={() => void remove()}
             />
           )}
@@ -469,6 +497,18 @@ export function MessageRow({
     </li>
   );
 }
+
+type Make = (text: string, start: number, end: number) => Edit;
+
+const FORMATS: { label: string; icon: IconName; make: Make }[] = [
+  { label: "Bold", icon: "bold", make: (t, s, e) => wrapSelection(t, s, e, "**") },
+  { label: "Italic", icon: "italic", make: (t, s, e) => wrapSelection(t, s, e, "*") },
+  { label: "Strikethrough", icon: "strike", make: (t, s, e) => wrapSelection(t, s, e, "~~") },
+  { label: "Code", icon: "code", make: (t, s, e) => wrapSelection(t, s, e, "`") },
+  { label: "Link", icon: "link", make: linkSelection },
+  { label: "Quote", icon: "quote", make: (t, s, e) => prefixLines(t, s, e, "> ") },
+  { label: "List", icon: "list", make: (t, s, e) => prefixLines(t, s, e, "- ") },
+];
 
 interface Pending {
   clientId: string;
@@ -524,11 +564,31 @@ export function Composer({
   const open = options.length > 0;
   const current = Math.min(active, options.length - 1);
 
+  const selectAfter = useRef<[number, number] | null>(null);
+
   useLayoutEffect(() => {
-    if (moveCaretTo.current === null || !area.current) return;
-    area.current.setSelectionRange(moveCaretTo.current, moveCaretTo.current);
-    moveCaretTo.current = null;
+    const box = area.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${String(Math.min(box.scrollHeight, 240))}px`;
+    if (selectAfter.current) {
+      box.setSelectionRange(...selectAfter.current);
+      selectAfter.current = null;
+    } else if (moveCaretTo.current !== null) {
+      box.setSelectionRange(moveCaretTo.current, moveCaretTo.current);
+      moveCaretTo.current = null;
+    }
   }, [draft]);
+
+  function apply(make: Make) {
+    const box = area.current;
+    if (!box) return;
+    const edit = make(draft, box.selectionStart, box.selectionEnd);
+    selectAfter.current = [edit.start, edit.end];
+    setDraft(edit.text);
+    setCaret(edit.end);
+    box.focus();
+  }
 
   function choose(candidate: Candidate) {
     if (!query) return;
@@ -614,6 +674,14 @@ export function Composer({
         return;
       }
     }
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+      const mark = { b: "**", i: "*" }[event.key.toLowerCase()];
+      if (mark) {
+        event.preventDefault();
+        apply((t, s, e) => wrapSelection(t, s, e, mark));
+        return;
+      }
+    }
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       submit();
@@ -656,141 +724,171 @@ export function Composer({
           event.preventDefault();
           addFiles([...event.dataTransfer.files]);
         }}
-        className="relative rounded-2xl border border-border-strong bg-surface p-2 focus-within:border-focus-ring focus-within:ring-4 focus-within:ring-focus-ring/20"
+        className="relative rounded-2xl border border-border-strong bg-surface shadow-sm transition-shadow focus-within:border-focus-ring focus-within:shadow-md focus-within:ring-4 focus-within:ring-focus-ring/20"
       >
-        {picked.length > 0 && (
-          <ul aria-label="Files to send" className="flex flex-wrap gap-2 px-2 pt-1 pb-2">
-            {picked.map((item) => (
-              <li
-                key={item.key}
-                className={`flex max-w-full items-center gap-2 rounded-lg border px-2 py-1 text-sm ${
-                  item.problem ? "border-danger text-danger" : "border-border bg-bg"
-                }`}
-              >
-                <span className="truncate">{item.name}</span>
-                <span className="shrink-0 text-xs text-text-subtle">
-                  {item.problem ??
-                    (item.attachment ? formatSize(item.attachment.size) : "Uploading")}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${item.name}`}
-                  onClick={() => {
-                    setPicked((now) => now.filter((p) => p.key !== item.key));
-                  }}
-                  className="shrink-0 rounded px-1 text-text-subtle hover:bg-bg-subtle hover:text-text"
+        <div
+          role="toolbar"
+          aria-label="Formatting"
+          aria-controls={id}
+          className="flex items-center gap-0.5 border-b border-border px-2 py-1"
+        >
+          {FORMATS.map((format) => (
+            <button
+              key={format.label}
+              type="button"
+              aria-label={format.label}
+              title={format.label}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              onClick={() => {
+                apply(format.make);
+              }}
+              className="grid size-7 place-items-center rounded-md text-text-subtle transition-colors hover:bg-bg-subtle hover:text-text focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+            >
+              <Icon name={format.icon} className="size-3.5" />
+            </button>
+          ))}
+        </div>
+        <div className="p-2">
+          {picked.length > 0 && (
+            <ul aria-label="Files to send" className="flex flex-wrap gap-2 px-2 pt-1 pb-2">
+              {picked.map((item) => (
+                <li
+                  key={item.key}
+                  className={`flex max-w-full items-center gap-2 rounded-lg border px-2 py-1 text-sm ${
+                    item.problem ? "border-danger text-danger" : "border-border bg-bg"
+                  }`}
                 >
-                  &times;
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {open && (
-          <ul
-            id={`${id}-mentions`}
-            role="listbox"
-            aria-label="People to mention"
-            className="settle absolute inset-x-2 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-border bg-surface-raised p-1 shadow-lg"
-          >
-            {options.map((candidate, index) => (
-              <li
-                key={candidate.username}
-                id={`${id}-mention-${candidate.username}`}
-                role="option"
-                aria-selected={index === current}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  choose(candidate);
-                }}
-                className="flex cursor-pointer items-baseline gap-2 rounded-lg px-3 py-1.5 text-sm aria-selected:bg-bg-subtle"
-              >
-                <span className="font-semibold">@{candidate.username}</span>
-                {candidate.display_name && (
-                  <span className="truncate text-text-muted">{candidate.display_name}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <label htmlFor={id} className="sr-only">
-          {label}
-        </label>
-        <textarea
-          ref={area}
-          id={id}
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls={open ? `${id}-mentions` : undefined}
-          aria-activedescendant={
-            open && options[current] ? `${id}-mention-${options[current].username}` : undefined
-          }
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setCaret(event.target.selectionStart);
-            setActive(0);
-            if (event.target.value.trim()) onTyping?.();
-          }}
-          onSelect={(event) => {
-            setCaret(event.currentTarget.selectionStart);
-          }}
-          onKeyDown={onKeyDown}
-          onPaste={(event) => {
-            const files = [...event.clipboardData.files];
-            if (upload && files.length > 0) {
-              event.preventDefault();
-              addFiles(files);
+                  <span className="truncate">{item.name}</span>
+                  <span className="shrink-0 text-xs text-text-subtle">
+                    {item.problem ??
+                      (item.attachment ? formatSize(item.attachment.size) : "Uploading")}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item.name}`}
+                    onClick={() => {
+                      setPicked((now) => now.filter((p) => p.key !== item.key));
+                    }}
+                    className="shrink-0 rounded px-1 text-text-subtle hover:bg-bg-subtle hover:text-text"
+                  >
+                    &times;
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {open && (
+            <ul
+              id={`${id}-mentions`}
+              role="listbox"
+              aria-label="People to mention"
+              className="settle absolute inset-x-2 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-border bg-surface-raised p-1 shadow-lg"
+            >
+              {options.map((candidate, index) => (
+                <li
+                  key={candidate.username}
+                  id={`${id}-mention-${candidate.username}`}
+                  role="option"
+                  aria-selected={index === current}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    choose(candidate);
+                  }}
+                  className="flex cursor-pointer items-baseline gap-2 rounded-lg px-3 py-1.5 text-sm aria-selected:bg-bg-subtle"
+                >
+                  <span className="font-semibold">@{candidate.username}</span>
+                  {candidate.display_name && (
+                    <span className="truncate text-text-muted">{candidate.display_name}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <label htmlFor={id} className="sr-only">
+            {label}
+          </label>
+          <textarea
+            ref={area}
+            id={id}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls={open ? `${id}-mentions` : undefined}
+            aria-activedescendant={
+              open && options[current] ? `${id}-mention-${options[current].username}` : undefined
             }
-          }}
-          rows={2}
-          maxLength={4000}
-          placeholder={label}
-          className="block w-full resize-none bg-transparent px-2 py-1 outline-none placeholder:text-text-subtle"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2 pt-1">
-          <div className="flex flex-wrap items-center gap-3">
-            {upload && (
-              <>
-                <input
-                  ref={filePicker}
-                  type="file"
-                  multiple
-                  hidden
-                  aria-label="Attach files"
-                  onChange={(event) => {
-                    addFiles([...(event.target.files ?? [])]);
-                    event.target.value = "";
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => filePicker.current?.click()}
-                  disabled={picked.length >= MAX_FILES}
-                  className="rounded-lg px-2 py-1 text-sm font-semibold text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-50"
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setCaret(event.target.selectionStart);
+              setActive(0);
+              if (event.target.value.trim()) onTyping?.();
+            }}
+            onSelect={(event) => {
+              setCaret(event.currentTarget.selectionStart);
+            }}
+            onKeyDown={onKeyDown}
+            onPaste={(event) => {
+              const files = [...event.clipboardData.files];
+              if (upload && files.length > 0) {
+                event.preventDefault();
+                addFiles(files);
+              }
+            }}
+            rows={1}
+            maxLength={4000}
+            placeholder={label}
+            className="block max-h-60 min-h-10 w-full resize-none bg-transparent px-2 py-1.5 leading-relaxed outline-none placeholder:text-text-subtle"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              {upload && (
+                <>
+                  <input
+                    ref={filePicker}
+                    type="file"
+                    multiple
+                    hidden
+                    aria-label="Attach files"
+                    onChange={(event) => {
+                      addFiles([...(event.target.files ?? [])]);
+                      event.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => filePicker.current?.click()}
+                    disabled={picked.length >= MAX_FILES}
+                    title="Attach files (or paste or drop them)"
+                    className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-text-muted transition-colors hover:bg-bg-subtle hover:text-text disabled:opacity-50"
+                  >
+                    <Icon name="paperclip" />
+                    Attach
+                  </button>
+                </>
+              )}
+              {footer ?? (
+                <span
+                  className="hidden text-xs text-text-subtle sm:inline"
+                  title="**bold**  *italic*  __underline__  ~~strike~~  `code`  ```code block```  > quote  - list  ||spoiler||"
                 >
-                  Attach
-                </button>
-              </>
-            )}
-            {footer ?? (
-              <span
-                className="text-xs text-text-subtle"
-                title="**bold**  *italic*  __underline__  ~~strike~~  `code`  ```code block```  > quote  - list  ||spoiler||"
-              >
-                Enter to send, Shift+Enter for a new line
-              </span>
-            )}
+                  <kbd className="font-sans font-semibold">Enter</kbd> to send,{" "}
+                  <kbd className="font-sans font-semibold">Shift+Enter</kbd> for a new line
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={(!draft.trim() && ready.length === 0) || uploading}
+              className="btn-lamp flex items-center gap-1.5 rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-40"
+            >
+              <Icon name="send" />
+              Send
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={(!draft.trim() && ready.length === 0) || uploading}
-            className="btn-lamp rounded-lg bg-accent px-4 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
-          >
-            Send
-          </button>
         </div>
       </div>
     </div>

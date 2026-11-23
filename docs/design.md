@@ -147,6 +147,20 @@ signed-in person with Settings and Sign out under their name), and the page on `
 On narrow screens the sidebar sits on top and the account block moves below the page. A thread
 opens beside the channel on wide screens and full screen on narrow ones.
 
+A channel takes the whole page beside the sidebar, with no width cap, so long messages and code
+blocks have room. Its header shows the channel's icon, name and topic, the members as a stack of
+three avatars with a count, and a search button scoped to the channel. Messages are split by day
+with a centered pill ("Today", "Yesterday", then the date). Pills don't stick to the top while
+scrolling, since a stuck line crosses the message under it. Grouped messages show their time in the
+avatar column on hover. Message actions are icon buttons in a raised bar at the top right, each
+named for screen readers and given a tooltip. A floating pill takes the reader back to the
+latest message, counting what arrived while they were scrolled up.
+
+The composer has a formatting bar (bold, italic, strike, code, link, quote, list) that wraps or
+unwraps the selection; Ctrl+B and Ctrl+I do the same. The text box grows with the draft up to
+15rem. Icons are drawn in `components/icons.tsx` on a 20-unit grid with 1.6 strokes, so they
+stay one family.
+
 Formatted messages keep to the tokens: inline code and code blocks on `surface-sunken` in the
 mono font, quotes behind a `border-strong` rule in `text-muted`, links in `info` (neel) with an
 underline so they never look like the brand red, and spoilers as a solid `text` bar until

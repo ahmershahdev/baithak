@@ -42,6 +42,19 @@ export function useChannels(slug: string) {
 }
 
 /** Who to offer after "@": the channel's members when it is private, else the workspace's. */
+export function useChannelMembers(slug: string, id: number, enabled = true) {
+  return useQuery({
+    queryKey: chatKeys.channelMembers(slug, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/api/v1/workspaces/{slug}/channels/{channel_id}/members/", {
+          params: path(slug, id),
+        }),
+      ),
+    enabled,
+  });
+}
+
 export function useMentionCandidates(
   slug: string,
   channel: Channel,
@@ -51,16 +64,7 @@ export function useMentionCandidates(
   // Anything but a public channel is read only by its members.
   const isPrivate = channel.kind !== "public";
   const workspace = useMembers(slug);
-  const inChannel = useQuery({
-    queryKey: chatKeys.channelMembers(slug, channel.id),
-    queryFn: async () =>
-      unwrap(
-        await api.GET("/api/v1/workspaces/{slug}/channels/{channel_id}/members/", {
-          params: path(slug, channel.id),
-        }),
-      ),
-    enabled: isPrivate,
-  });
+  const inChannel = useChannelMembers(slug, channel.id, isPrivate);
   const people = isPrivate
     ? (inChannel.data ?? [])
     : (workspace.data ?? []).filter((member) => member.role !== "guest");
